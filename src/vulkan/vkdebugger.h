@@ -1,4 +1,5 @@
 #include "vulkan/vulkan.h"
+#include "vulkaninstance.h"
 
 class VKDebugger
 {
@@ -10,19 +11,28 @@ private:
      * Thus, it must be searched for manually.
      */
     static VkResult createDebugUtilsMessengerEXT(
-        VkInstance instance,
-        const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo,
-        const VkAllocationCallbacks* pAllocator,
-        VkDebugUtilsMessengerEXT* pDebugMessenger);
+            VkInstance instance,
+            const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo,
+            const VkAllocationCallbacks* pAllocator,
+            VkDebugUtilsMessengerEXT* pDebugMessenger);
+
+    static void destroyDebugUtilsMessengerEXT(
+            VkInstance instance,
+            VkDebugUtilsMessengerEXT debugMessenger,
+            const VkAllocationCallbacks* pAllocator);
 
 public:
     VKDebugger();
-    ~VKDebugger();
+    void create(VulkanInstance vkInstance);
+
+    static VkDebugUtilsMessengerCreateInfoEXT debugMessengerCreateInfo();
 
     static VkBool32
     debugCallback(
-        VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
-        VkDebugUtilsMessageTypeFlagsEXT messageType,
-        const VkDebugUtilsMessengerCallbackDataEXT *pCallbackData,
-        void *pUserData);
+            VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
+            VkDebugUtilsMessageTypeFlagsEXT messageType,
+            const VkDebugUtilsMessengerCallbackDataEXT *pCallbackData,
+            void *pUserData);
+
+    void destroy(VulkanInstance vkInstance);
 };

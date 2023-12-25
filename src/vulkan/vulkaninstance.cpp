@@ -1,9 +1,11 @@
 #include <stdexcept>
 #include <iostream>
-#include "vulkaninstance.h"
 #include "GLFW/glfw3.h"
+#include "vkdebugger.h"
 
-VulkanInstance::VulkanInstance()
+VulkanInstance::VulkanInstance() {}
+
+void VulkanInstance::create()
 {
     const std::vector<const char*> validationLayers = {
             "VK_LAYER_KHRONOS_validation"
@@ -25,28 +27,25 @@ VulkanInstance::VulkanInstance()
     createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
     createInfo.pApplicationInfo = &appInfo;
 
-    uint32_t glfwExtensionCount = 0;
-    const char** glfwExtensions;
-
-    glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
-
-    createInfo.enabledExtensionCount = glfwExtensionCount;
-    createInfo.ppEnabledExtensionNames = glfwExtensions;
-
     createInfo.flags |= VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR;
 
     auto extensions = getRequiredExtensions();
     createInfo.enabledExtensionCount = static_cast<uint32_t>(extensions.size());
     createInfo.ppEnabledExtensionNames = extensions.data();
 
+    VkDebugUtilsMessengerCreateInfoEXT debugCreateInfo = VKDebugger::debugMessengerCreateInfo();
     if (enableValidationLayers)
     {
         createInfo.enabledLayerCount = static_cast<uint32_t>(validationLayers.size());
         createInfo.ppEnabledLayerNames = validationLayers.data();
+
+        // hook debug utils messenger into vkCreate and vkDestroy
+        createInfo.pNext = (VkDebugUtilsMessengerCreateInfoEXT*) &debugCreateInfo;
     }
     else
     {
         createInfo.enabledLayerCount = 0;
+        createInfo.pNext = nullptr;
     }
 
     VkResult result = vkCreateInstance(&createInfo, nullptr, &instance);
@@ -55,11 +54,6 @@ VulkanInstance::VulkanInstance()
         std::cout << "error code " << result << std::endl;
         throw std::runtime_error("failed to create instance!");
     }
-}
-
-VulkanInstance::~VulkanInstance()
-{
-    vkDestroyInstance(instance, nullptr);
 }
 
 void VulkanInstance::listExtensions()
@@ -106,7 +100,7 @@ bool VulkanInstance::checkValidationLayerSupport(std::vector<const char *> valid
     return true;
 }
 
-std::vector<const char *> VulkanInstance::getRequiredExtensions()
+std::vector<const char *> VulkanInstance::getRequiredExtensions() const
 {
     uint32_t glfwExtensionCount = 0;
     const char** glfwExtensions;
@@ -118,9 +112,15 @@ std::vector<const char *> VulkanInstance::getRequiredExtensions()
     // needs to be done for every vk instance.
     extensions.emplace_back(VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME);
 
-    if (enableValidationLayers) {
+    if (enableValidationLayers)
+    {
         extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
     }
 
     return extensions;
+}
+
+void VulkanInstance::destroy()
+{
+    vkDestroyInstance(instance, nullptr);
 }

@@ -1,13 +1,14 @@
 #include "application.h"
 #include "window.h"
 #include "smartpointer.h"
-#include "vulkan/vulkaninstance.h"
+#include "vulkan/vkdebugger.h"
 
 class PathTracerApp : public Application
 {
 private:
     uPtr<Window> window;
     VulkanInstance vulkanInstance;
+    VKDebugger vulkanDebugger;
 
 public:
     PathTracerApp();

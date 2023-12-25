@@ -1,14 +1,22 @@
 #include "pathtracerapp.h"
 #include "smartpointer.h"
 
-PathTracerApp::PathTracerApp() : vulkanInstance() {}
+PathTracerApp::PathTracerApp()
+{
+    vulkanInstance.create();
+    vulkanDebugger.create(vulkanInstance);
+}
 
-PathTracerApp::~PathTracerApp() {}
+PathTracerApp::~PathTracerApp()
+{
+    vulkanDebugger.destroy(vulkanInstance);
+    vulkanInstance.destroy();
+}
 
 void PathTracerApp::create()
 {
     window = mkU<Window>(800, 600);
-    vulkanInstance.listExtensions();
+    VulkanInstance::listExtensions();
 }
 
 void PathTracerApp::render()
