@@ -1,11 +1,11 @@
 #include <iostream>
 #include "vkdebugger.h"
 
-VKDebugger::VKDebugger() {}
+VkDebugger::VkDebugger() {}
 
-void VKDebugger::create(VulkanInstance vkInstance)
+void VkDebugger::create(VulkanInstance vkInstance)
 {
-    auto createInfo = VKDebugger::debugMessengerCreateInfo();
+    auto createInfo = VkDebugger::debugMessengerCreateInfo();
     createInfo.pUserData = nullptr; // Optional
 
     if (createDebugUtilsMessengerEXT(
@@ -18,7 +18,7 @@ void VKDebugger::create(VulkanInstance vkInstance)
     }
 }
 
-VkBool32 VKDebugger::debugCallback(
+VkBool32 VkDebugger::debugCallback(
     VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
     VkDebugUtilsMessageTypeFlagsEXT messageType,
     const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
@@ -28,7 +28,7 @@ VkBool32 VKDebugger::debugCallback(
         return VK_FALSE;
 }
 
-VkResult VKDebugger::createDebugUtilsMessengerEXT(
+VkResult VkDebugger::createDebugUtilsMessengerEXT(
     VkInstance instance,
     const VkDebugUtilsMessengerCreateInfoEXT *pCreateInfo,
     const VkAllocationCallbacks *pAllocator,
@@ -45,7 +45,7 @@ VkResult VKDebugger::createDebugUtilsMessengerEXT(
     }
 }
 
-void VKDebugger::destroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger,
+void VkDebugger::destroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger,
                                                const VkAllocationCallbacks *pAllocator)
 {
     auto func = (PFN_vkDestroyDebugUtilsMessengerEXT) vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
@@ -55,12 +55,12 @@ void VKDebugger::destroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtils
     }
 }
 
-void VKDebugger::destroy(VulkanInstance vkInstance)
+void VkDebugger::destroy(VulkanInstance vkInstance)
 {
     destroyDebugUtilsMessengerEXT(vkInstance.instance, debugMessenger, nullptr);
 }
 
-VkDebugUtilsMessengerCreateInfoEXT VKDebugger::debugMessengerCreateInfo()
+VkDebugUtilsMessengerCreateInfoEXT VkDebugger::debugMessengerCreateInfo()
 {
     VkDebugUtilsMessengerCreateInfoEXT createInfo{};
     createInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;

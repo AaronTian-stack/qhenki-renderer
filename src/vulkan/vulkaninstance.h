@@ -1,3 +1,5 @@
+#pragma once
+
 #include "vulkan/vulkan.h"
 
 class VulkanInstance
@@ -19,6 +21,7 @@ public:
     std::vector<const char*> getRequiredExtensions() const;
     void destroy();
 
-    friend class VKDebugger;
+    friend class VkDebugger;
+    friend class VkDevicePicker;
 
 };

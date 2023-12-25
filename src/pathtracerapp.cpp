@@ -5,17 +5,18 @@ PathTracerApp::PathTracerApp()
 {
     vulkanInstance.create();
     vulkanDebugger.create(vulkanInstance);
+    vulkanDevicePicker.pickPhysicalDevice(vulkanInstance);
 }
 
 PathTracerApp::~PathTracerApp()
 {
     vulkanDebugger.destroy(vulkanInstance);
     vulkanInstance.destroy();
+    // device picker is implicitly destroyed with vulkan instance
 }
 
 void PathTracerApp::create()
 {
-    window = mkU<Window>(800, 600);
     VulkanInstance::listExtensions();
 }
 
@@ -27,9 +28,4 @@ void PathTracerApp::render()
 void PathTracerApp::resize()
 {
 
-}
-
-bool PathTracerApp::isAlive()
-{
-    return !window->shouldClose();
 }

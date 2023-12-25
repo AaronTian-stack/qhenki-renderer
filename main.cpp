@@ -7,12 +7,14 @@
 #include <iostream>
 #include "src/pathtracerapp.h"
 
+Window window(800, 600);
+
 int main()
 {
     PathTracerApp app;
     app.create();
 
-    while(app.isAlive())
+    while(!window.shouldClose())
     {
         glfwPollEvents();
         app.render();

@@ -1,19 +1,21 @@
+#pragma once
+
 #include "application.h"
 #include "window.h"
 #include "smartpointer.h"
 #include "vulkan/vkdebugger.h"
+#include "vulkan/vkdevicepicker.h"
 
 class PathTracerApp : public Application
 {
 private:
-    uPtr<Window> window;
     VulkanInstance vulkanInstance;
-    VKDebugger vulkanDebugger;
+    VkDebugger vulkanDebugger;
+    VkDevicePicker vulkanDevicePicker;
 
 public:
     PathTracerApp();
     ~PathTracerApp();
-    bool isAlive();
     void create() override;
     void render() override;
     void resize() override;

@@ -1,7 +1,9 @@
+#pragma once
+
 #include "vulkan/vulkan.h"
 #include "vulkaninstance.h"
 
-class VKDebugger
+class VkDebugger
 {
 private:
     VkDebugUtilsMessengerEXT debugMessenger;
@@ -22,7 +24,7 @@ private:
             const VkAllocationCallbacks* pAllocator);
 
 public:
-    VKDebugger();
+    VkDebugger();
     void create(VulkanInstance vkInstance);
 
     static VkDebugUtilsMessengerCreateInfoEXT debugMessengerCreateInfo();
