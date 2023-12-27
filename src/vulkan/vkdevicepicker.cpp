@@ -3,6 +3,7 @@
 #include <set>
 #include <iostream>
 #include "vkdevicepicker.h"
+#include "swapchainmanager.h"
 
 VkDevicePicker::VkDevicePicker() {}
 
@@ -100,8 +101,38 @@ bool VkDevicePicker::isDeviceSuitable(VkPhysicalDevice device, VkSurfaceKHR surf
     // can add more conditions in below function if wanted, such as geometry shader support
     QueueFamilyIndices indices = findQueueFamilies(device, surface);
     deviceToQueue[device] = indices;
+    bool extensionsSupported = checkDeviceExtensionSupport(device);
+
+    bool swapChainAdequate = false;
+    if (extensionsSupported)
+    {
+        SwapChainSupportDetails swapChainSupport = SwapChainManager::querySwapChainSupport(device, surface);
+        // has some surface format and presentation mode
+        swapChainAdequate = !swapChainSupport.formats.empty() && !swapChainSupport.presentModes.empty();
+    }
+
     // does it have the queue families we wanted?
-    return indices.isComplete();
+    // are the required extensions supported?
+    // is the swap chain adequate?
+    return indices.isComplete() && extensionsSupported && swapChainAdequate;
+}
+
+bool VkDevicePicker::checkDeviceExtensionSupport(VkPhysicalDevice device)
+{
+    uint32_t extensionCount;
+    vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, nullptr);
+
+    std::vector<VkExtensionProperties> availableExtensions(extensionCount);
+    vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, availableExtensions.data());
+
+    std::set<std::string> requiredExtensions(deviceExtensions.begin(), deviceExtensions.end());
+
+    for (const auto& extension : availableExtensions)
+    {
+        requiredExtensions.erase(extension.extensionName);
+    }
+
+    return requiredExtensions.empty();
 }
 
 void VkDevicePicker::createLogicalDevice()
@@ -141,8 +172,6 @@ void VkDevicePicker::createLogicalDevice()
     // enabledLayerCount and ppEnabledLayerNames are deprecated, no need to set them
     createInfo.enabledLayerCount = 0;
 
-    // required for macOS
-    std::vector<const char*> deviceExtensions = { "VK_KHR_portability_subset" };
     createInfo.enabledExtensionCount = static_cast<uint32_t>(deviceExtensions.size());
     createInfo.ppEnabledExtensionNames = deviceExtensions.data();
 
@@ -166,6 +195,11 @@ VkDevice VkDevicePicker::getDevice()
 QueueFamilyIndices VkDevicePicker::selectedDeviceFamily()
 {
     return deviceToQueue[physicalDevice];
+}
+
+VkPhysicalDevice VkDevicePicker::getPhysicalDevice()
+{
+    return physicalDevice;
 }
 
 bool QueueFamilyIndices::isComplete()

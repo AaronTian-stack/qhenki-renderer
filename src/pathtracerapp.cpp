@@ -7,9 +7,18 @@ PathTracerApp::PathTracerApp()
 
 PathTracerApp::~PathTracerApp()
 {
-    vulkanDevicePicker.destroy();
-    vulkanDebugger.destroy(vulkanInstance);
+    // destroy instance last
     vulkanInstance.destroy();
+}
+
+void PathTracerApp::destroy()
+{
+    // destroy swap chain before the device
+    swapChainManager.destroy(vulkanDevicePicker);
+    // destroy logical device
+    vulkanDevicePicker.destroy();
+    // destroy debugger
+    vulkanDebugger.destroy(vulkanInstance);
 }
 
 void PathTracerApp::create(Window &window)
@@ -25,6 +34,9 @@ void PathTracerApp::create(Window &window)
     vulkanDevicePicker.pickPhysicalDevice(vulkanInstance, window.getSurface());
     vulkanDevicePicker.createLogicalDevice();
     vulkanQueueManager.initQueues(vulkanDevicePicker.getDevice(), vulkanDevicePicker.selectedDeviceFamily());
+
+    // create swap chain
+    swapChainManager.createSwapChain(vulkanDevicePicker, window);
 }
 
 void PathTracerApp::render()

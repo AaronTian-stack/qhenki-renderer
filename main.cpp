@@ -20,6 +20,7 @@ int main()
         app.render();
     }
 
+    app.destroy();
     window.destroySurface(app.getVulkanInstance());
 
     return 0;

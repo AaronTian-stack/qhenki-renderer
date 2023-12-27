@@ -55,7 +55,7 @@ void VkDebugger::destroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtils
     }
 }
 
-void VkDebugger::destroy(VulkanInstance vkInstance)
+void VkDebugger::destroy(const VulkanInstance &vkInstance)
 {
     destroyDebugUtilsMessengerEXT(vkInstance.getInstance(), debugMessenger, nullptr);
 }

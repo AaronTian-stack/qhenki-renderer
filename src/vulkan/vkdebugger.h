@@ -36,5 +36,5 @@ public:
             const VkDebugUtilsMessengerCallbackDataEXT *pCallbackData,
             void *pUserData);
 
-    void destroy(VulkanInstance vkInstance);
+    void destroy(const VulkanInstance &vkInstance);
 };

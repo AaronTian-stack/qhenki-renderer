@@ -64,7 +64,7 @@ void VulkanInstance::listExtensions()
     vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr);
     std::vector<VkExtensionProperties> extensions(extensionCount);
     vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, extensions.data());
-    std::cout << "available extensions:\n";
+    std::cout << "available instance extensions:\n";
 
     for (const auto &extension : extensions)
     {

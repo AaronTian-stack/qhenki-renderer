@@ -21,4 +21,5 @@ public:
     ~Window();
 
     VkSurfaceKHR getSurface();
+    GLFWwindow* getWindow();
 };

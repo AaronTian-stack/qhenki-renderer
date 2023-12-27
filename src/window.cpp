@@ -42,3 +42,8 @@ VkSurfaceKHR Window::getSurface()
 {
     return surface;
 }
+
+GLFWwindow *Window::getWindow()
+{
+    return window;
+}
