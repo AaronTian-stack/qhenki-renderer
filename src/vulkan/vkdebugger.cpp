@@ -9,7 +9,7 @@ void VkDebugger::create(VulkanInstance vkInstance)
     createInfo.pUserData = nullptr; // Optional
 
     if (createDebugUtilsMessengerEXT(
-            vkInstance.instance,
+            vkInstance.getInstance(),
             &createInfo,
             nullptr,
             &debugMessenger) != VK_SUCCESS)
@@ -57,7 +57,7 @@ void VkDebugger::destroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtils
 
 void VkDebugger::destroy(VulkanInstance vkInstance)
 {
-    destroyDebugUtilsMessengerEXT(vkInstance.instance, debugMessenger, nullptr);
+    destroyDebugUtilsMessengerEXT(vkInstance.getInstance(), debugMessenger, nullptr);
 }
 
 VkDebugUtilsMessengerCreateInfoEXT VkDebugger::debugMessengerCreateInfo()

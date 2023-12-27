@@ -24,3 +24,21 @@ bool Window::shouldClose()
 {
     return glfwWindowShouldClose(window);
 }
+
+void Window::destroySurface(VulkanInstance vkInstance)
+{
+    vkDestroySurfaceKHR(vkInstance.getInstance(), surface, nullptr);
+}
+
+void Window::createSurface(VulkanInstance vkInstance)
+{
+    if (glfwCreateWindowSurface(vkInstance.getInstance(), window, nullptr, &surface) != VK_SUCCESS)
+    {
+        throw std::runtime_error("failed to create window surface!");
+    }
+}
+
+VkSurfaceKHR Window::getSurface()
+{
+    return surface;
+}

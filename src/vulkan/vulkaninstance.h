@@ -1,11 +1,12 @@
 #pragma once
 
 #include "vulkan/vulkan.h"
+#include <vector>
 
 class VulkanInstance
 {
 private:
-    VkInstance instance{};
+    VkInstance instance;
 public:
 
 #ifdef NDEBUG
@@ -21,7 +22,6 @@ public:
     std::vector<const char*> getRequiredExtensions() const;
     void destroy();
 
-    friend class VkDebugger;
-    friend class VkDevicePicker;
+    VkInstance getInstance() const;
 
 };

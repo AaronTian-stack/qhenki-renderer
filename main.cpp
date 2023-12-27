@@ -12,13 +12,15 @@ Window window(800, 600);
 int main()
 {
     PathTracerApp app;
-    app.create();
+    app.create(window);
 
     while(!window.shouldClose())
     {
         glfwPollEvents();
         app.render();
     }
+
+    window.destroySurface(app.getVulkanInstance());
 
     return 0;
 }
