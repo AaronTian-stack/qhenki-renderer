@@ -32,7 +32,9 @@ void PathTracerApp::create(Window &window)
     window.createSurface(vulkanInstance);
     // pick physical device (with feature checking)
     vulkanDevicePicker.pickPhysicalDevice(vulkanInstance, window.getSurface());
+    // create queues, logical device
     vulkanDevicePicker.createLogicalDevice();
+    // retrieve queues
     vulkanQueueManager.initQueues(vulkanDevicePicker.getDevice(), vulkanDevicePicker.selectedDeviceFamily());
 
     // create swap chain

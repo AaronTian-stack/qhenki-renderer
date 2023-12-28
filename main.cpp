@@ -23,5 +23,7 @@ int main()
     app.destroy();
     window.destroySurface(app.getVulkanInstance());
 
+    // vulkan instance is destroyed in destructor of app
+    // glfw destroys window in destructor
     return 0;
 }

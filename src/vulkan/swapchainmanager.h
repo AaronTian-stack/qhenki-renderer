@@ -14,6 +14,7 @@ class SwapChainManager
 {
 private:
     VkSwapchainKHR swapChain;
+    // VkImage is a handle to an image object, multidimensional array of data. can be used as attachments, textures, etc.
     std::vector<VkImage> swapChainImages;
     VkFormat swapChainImageFormat;
     VkExtent2D swapChainExtent;

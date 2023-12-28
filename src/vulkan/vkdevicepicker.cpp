@@ -41,6 +41,8 @@ void VkDevicePicker::pickPhysicalDevice(VulkanInstance vkInstance, VkSurfaceKHR 
         isDiscrete ?
         std::cout << "Device " << deviceProperties.deviceName << ": Discrete GPU\n"
         : std::cout << "Device " << deviceProperties.deviceName << ": Integrated GPU\n";
+
+        listQueueFamilies(device);
     }
 
     int deviceIndex = -1;
@@ -160,6 +162,7 @@ void VkDevicePicker::createLogicalDevice()
     }
 
     // TODO: add device features
+    // could just enable all available features by just calling vkGetPhysicalDeviceFeatures
     VkPhysicalDeviceFeatures deviceFeatures{};
 
     VkDeviceCreateInfo createInfo{};
@@ -200,6 +203,24 @@ QueueFamilyIndices VkDevicePicker::selectedDeviceFamily()
 VkPhysicalDevice VkDevicePicker::getPhysicalDevice()
 {
     return physicalDevice;
+}
+
+void VkDevicePicker::listQueueFamilies(VkPhysicalDevice device)
+{
+    uint32_t queueFamilyCount = 0;
+    vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, nullptr);
+
+    std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
+    vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies.data());
+
+    // care about graphics, compute, and transfer, 1, 2, 4. compare against binary number
+    std::cout << "Number of queue families: " << queueFamilyCount << std::endl;
+    int i = 1;
+    for (const auto &queueFamily : queueFamilies)
+    {
+        std::cout << "family " << i << ": " << queueFamily.queueFlags << queueFamily.queueCount << std::endl;
+        i++;
+    }
 }
 
 bool QueueFamilyIndices::isComplete()

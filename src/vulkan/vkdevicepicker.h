@@ -31,7 +31,9 @@ private:
     // note: theoretically, we could have multiple physical devices and run different operations on them
     // VkPhysicalDevice is implicitly destroyed with VkInstance
     VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
-    // logical device needs to be explicitly destroyed
+
+    // logical device needs to be explicitly destroyed.
+    // it is the physical device + what device features we want, what queues we want to create, etc.
     VkDevice device;
     bool isDeviceSuitable(VkPhysicalDevice device, VkSurfaceKHR surface);
     bool checkDeviceExtensionSupport(VkPhysicalDevice device);
@@ -42,7 +44,7 @@ public:
     VkDevicePicker();
     void pickPhysicalDevice(VulkanInstance vkInstance, VkSurfaceKHR surface);
     QueueFamilyIndices selectedDeviceFamily();
-    // creates a logical device from physicalDevice
+    // creates queue families, logical device from physicalDevice
     void createLogicalDevice();
     void destroy();
 
@@ -50,4 +52,5 @@ public:
     VkPhysicalDevice getPhysicalDevice();
 
     static QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device, VkSurfaceKHR surface);
+    static void listQueueFamilies(VkPhysicalDevice device);
 };
