@@ -64,9 +64,10 @@ VkExtent2D SwapChainManager::chooseSwapExtent(Window &window, const VkSurfaceCap
     } else {
         int width, height;
         glfwGetFramebufferSize(window.getWindow(), &width, &height);
-        VkExtent2D actualExtent = {
-                static_cast<uint32_t>(width),
-                static_cast<uint32_t>(height)
+        VkExtent2D actualExtent =
+        {
+            static_cast<uint32_t>(width),
+            static_cast<uint32_t>(height)
         };
 
         actualExtent.width = std::clamp(actualExtent.width, capabilities.minImageExtent.width, capabilities.maxImageExtent.width);
@@ -152,9 +153,52 @@ void SwapChainManager::createSwapChain(VkDevicePicker &vkDevicePicker, Window &w
     // store format and extent for later use
     swapChainImageFormat = surfaceFormat.format;
     swapChainExtent = extent;
+
+    createImageViews(vkDevicePicker);
 }
 
 void SwapChainManager::destroy(VkDevicePicker &vkDevicePicker)
 {
+    for (auto imageView : swapChainImageViews)
+    {
+        vkDestroyImageView(vkDevicePicker.getDevice(), imageView, nullptr);
+    }
     vkDestroySwapchainKHR(vkDevicePicker.getDevice(), swapChain, nullptr);
+}
+
+void SwapChainManager::createImageViews(VkDevicePicker &vkDevicePicker)
+{
+    swapChainImageViews.resize(swapChainImages.size());
+
+    for (size_t i = 0; i < swapChainImages.size(); i++)
+    {
+        VkImageViewCreateInfo createInfo{};
+        createInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+        // image to create view for
+        createInfo.image = swapChainImages[i];
+        // how image data should be interpreted
+        createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+        // swizzling components
+        createInfo.format = swapChainImageFormat;
+        // color channels (default mapping)
+        createInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
+        createInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+        createInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+        createInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+        // subresource range describes image's purpose and which part of image should be accessed
+        // color target
+        createInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        // no mipmapping
+        createInfo.subresourceRange.baseMipLevel = 0;
+        createInfo.subresourceRange.levelCount = 1;
+        // no 3D textures
+        createInfo.subresourceRange.baseArrayLayer = 0;
+        createInfo.subresourceRange.layerCount = 1;
+
+        // create image view
+        if (vkCreateImageView(vkDevicePicker.getDevice(), &createInfo, nullptr, &swapChainImageViews[i]) != VK_SUCCESS)
+        {
+            throw std::runtime_error("failed to create image views!");
+        }
+    }
 }

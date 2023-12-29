@@ -16,7 +16,7 @@ public:
 #endif
 
     VulkanInstance();
-    void create();
+    void create(bool verbose);
     static void listExtensions();
     static bool checkValidationLayerSupport(std::vector<const char*> validationLayers);
     std::vector<const char*> getRequiredExtensions() const;

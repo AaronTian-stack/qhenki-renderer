@@ -3,9 +3,10 @@
 
 VkDebugger::VkDebugger() {}
 
-void VkDebugger::create(VulkanInstance vkInstance)
+void VkDebugger::create(VulkanInstance vkInstance, bool verbose)
 {
-    auto createInfo = VkDebugger::debugMessengerCreateInfo();
+    // specify debug messenger
+    auto createInfo = VkDebugger::debugMessengerCreateInfo(verbose);
     createInfo.pUserData = nullptr; // Optional
 
     if (createDebugUtilsMessengerEXT(
@@ -60,7 +61,7 @@ void VkDebugger::destroy(const VulkanInstance &vkInstance)
     destroyDebugUtilsMessengerEXT(vkInstance.getInstance(), debugMessenger, nullptr);
 }
 
-VkDebugUtilsMessengerCreateInfoEXT VkDebugger::debugMessengerCreateInfo()
+VkDebugUtilsMessengerCreateInfoEXT VkDebugger::debugMessengerCreateInfo(bool verbose)
 {
     VkDebugUtilsMessengerCreateInfoEXT createInfo{};
     createInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
@@ -70,6 +71,11 @@ VkDebugUtilsMessengerCreateInfoEXT VkDebugger::debugMessengerCreateInfo()
             VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT
             | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT
             | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+
+    if (verbose)
+    {
+        createInfo.messageSeverity |= VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT;
+    }
 
     // message type filter
     createInfo.messageType =

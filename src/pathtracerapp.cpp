@@ -26,9 +26,9 @@ void PathTracerApp::create(Window &window)
     VulkanInstance::listExtensions();
 
     // create instance, load extensions
-    vulkanInstance.create();
+    vulkanInstance.create(false);
     // create debugger, validation layers
-    vulkanDebugger.create(vulkanInstance);
+    vulkanDebugger.create(vulkanInstance, false);
     window.createSurface(vulkanInstance);
     // pick physical device (with feature checking)
     vulkanDevicePicker.pickPhysicalDevice(vulkanInstance, window.getSurface());

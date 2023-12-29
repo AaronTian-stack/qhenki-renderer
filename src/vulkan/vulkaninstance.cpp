@@ -7,7 +7,7 @@
 
 VulkanInstance::VulkanInstance() {}
 
-void VulkanInstance::create()
+void VulkanInstance::create(bool verbose)
 {
     const std::vector<const char*> validationLayers = {
             "VK_LAYER_KHRONOS_validation"
@@ -35,13 +35,13 @@ void VulkanInstance::create()
     createInfo.enabledExtensionCount = static_cast<uint32_t>(extensions.size());
     createInfo.ppEnabledExtensionNames = extensions.data();
 
-    VkDebugUtilsMessengerCreateInfoEXT debugCreateInfo = VkDebugger::debugMessengerCreateInfo();
+    VkDebugUtilsMessengerCreateInfoEXT debugCreateInfo = VkDebugger::debugMessengerCreateInfo(verbose);
     if (enableValidationLayers)
     {
         createInfo.enabledLayerCount = static_cast<uint32_t>(validationLayers.size());
         createInfo.ppEnabledLayerNames = validationLayers.data();
 
-        // hook debug utils messenger into vkCreate and vkDestroy
+        // hook separate debug utils messenger into vkCreate and vkDestroy
         createInfo.pNext = (VkDebugUtilsMessengerCreateInfoEXT*) &debugCreateInfo;
     }
     else

@@ -25,9 +25,10 @@ private:
 
 public:
     VkDebugger();
-    void create(VulkanInstance vkInstance);
+    void create(VulkanInstance vkInstance, bool verbose);
 
-    static VkDebugUtilsMessengerCreateInfoEXT debugMessengerCreateInfo();
+    // returns creation info struct
+    static VkDebugUtilsMessengerCreateInfoEXT debugMessengerCreateInfo(bool verbose);
 
     static VkBool32
     debugCallback(
