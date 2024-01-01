@@ -25,7 +25,7 @@ private:
     const std::vector<const char*> deviceExtensions =
     {
             "VK_KHR_portability_subset",
-            VK_KHR_SWAPCHAIN_EXTENSION_NAME
+            VK_KHR_SWAPCHAIN_EXTENSION_NAME,
     };
 
     // note: theoretically, we could have multiple physical devices and run different operations on them
@@ -46,7 +46,7 @@ public:
     QueueFamilyIndices selectedDeviceFamily();
     // creates queue families, logical device from physicalDevice
     void createLogicalDevice();
-    void destroy();
+    void dispose();
 
     VkDevice getDevice();
     VkPhysicalDevice getPhysicalDevice();

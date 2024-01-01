@@ -5,12 +5,12 @@ VkDebugger::VkDebugger() {}
 
 void VkDebugger::create(VulkanInstance vkInstance, bool verbose)
 {
+    instance = vkInstance.getInstance();
     // specify debug messenger
     auto createInfo = VkDebugger::debugMessengerCreateInfo(verbose);
     createInfo.pUserData = nullptr; // Optional
 
     if (createDebugUtilsMessengerEXT(
-            vkInstance.getInstance(),
             &createInfo,
             nullptr,
             &debugMessenger) != VK_SUCCESS)
@@ -30,7 +30,6 @@ VkBool32 VkDebugger::debugCallback(
 }
 
 VkResult VkDebugger::createDebugUtilsMessengerEXT(
-    VkInstance instance,
     const VkDebugUtilsMessengerCreateInfoEXT *pCreateInfo,
     const VkAllocationCallbacks *pAllocator,
     VkDebugUtilsMessengerEXT *pDebugMessenger)
@@ -46,7 +45,7 @@ VkResult VkDebugger::createDebugUtilsMessengerEXT(
     }
 }
 
-void VkDebugger::destroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger,
+void VkDebugger::destroyDebugUtilsMessengerEXT(VkDebugUtilsMessengerEXT debugMessenger,
                                                const VkAllocationCallbacks *pAllocator)
 {
     auto func = (PFN_vkDestroyDebugUtilsMessengerEXT) vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
@@ -56,9 +55,9 @@ void VkDebugger::destroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtils
     }
 }
 
-void VkDebugger::destroy(const VulkanInstance &vkInstance)
+void VkDebugger::dispose()
 {
-    destroyDebugUtilsMessengerEXT(vkInstance.getInstance(), debugMessenger, nullptr);
+    destroyDebugUtilsMessengerEXT(debugMessenger, nullptr);
 }
 
 VkDebugUtilsMessengerCreateInfoEXT VkDebugger::debugMessengerCreateInfo(bool verbose)

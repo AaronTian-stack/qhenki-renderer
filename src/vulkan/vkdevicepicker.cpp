@@ -185,7 +185,7 @@ void VkDevicePicker::createLogicalDevice()
     }
 }
 
-void VkDevicePicker::destroy()
+void VkDevicePicker::dispose()
 {
     vkDestroyDevice(device, nullptr);
 }

@@ -20,7 +20,7 @@ int main()
         app.render();
     }
 
-    app.destroy();
+    app.dispose();
     window.destroySurface(app.getVulkanInstance());
 
     // vulkan instance is destroyed in destructor of app

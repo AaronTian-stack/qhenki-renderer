@@ -10,9 +10,11 @@ struct SwapChainSupportDetails
     std::vector<VkPresentModeKHR> presentModes;
 };
 
-class SwapChainManager
+class SwapChainManager : public Disposable
 {
 private:
+    VkDevice deviceForDispose;
+
     VkSwapchainKHR swapChain;
     // VkImage is a handle to an image object, multidimensional array of data. can be used as attachments, textures, etc.
     std::vector<VkImage> swapChainImages;
@@ -30,6 +32,7 @@ private:
 
 public:
     static SwapChainSupportDetails querySwapChainSupport(VkPhysicalDevice device, VkSurfaceKHR surface);
+    VkFormat getFormat() const;
     void createSwapChain(VkDevicePicker &vkDevicePicker, Window &window);
-    void destroy(VkDevicePicker &vkDevicePicker);
+    void dispose() override;
 };

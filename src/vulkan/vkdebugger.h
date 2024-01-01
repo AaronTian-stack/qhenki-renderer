@@ -3,23 +3,22 @@
 #include "vulkan/vulkan.h"
 #include "vulkaninstance.h"
 
-class VkDebugger
+class VkDebugger : public Disposable
 {
 private:
     VkDebugUtilsMessengerEXT debugMessenger;
+    VkInstance instance;
 
     /*
      * Creates a debug messenger manually since vkCreateDebugUtilsMessengerEXT is not an extension function.
      * Thus, it must be searched for manually.
      */
-    static VkResult createDebugUtilsMessengerEXT(
-            VkInstance instance,
+    VkResult createDebugUtilsMessengerEXT(
             const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo,
             const VkAllocationCallbacks* pAllocator,
             VkDebugUtilsMessengerEXT* pDebugMessenger);
 
-    static void destroyDebugUtilsMessengerEXT(
-            VkInstance instance,
+    void destroyDebugUtilsMessengerEXT(
             VkDebugUtilsMessengerEXT debugMessenger,
             const VkAllocationCallbacks* pAllocator);
 
@@ -37,5 +36,5 @@ public:
             const VkDebugUtilsMessengerCallbackDataEXT *pCallbackData,
             void *pUserData);
 
-    void destroy(const VulkanInstance &vkInstance);
+    void dispose() override;
 };

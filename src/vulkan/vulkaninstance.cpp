@@ -9,8 +9,9 @@ VulkanInstance::VulkanInstance() {}
 
 void VulkanInstance::create(bool verbose)
 {
-    const std::vector<const char*> validationLayers = {
-            "VK_LAYER_KHRONOS_validation"
+    const std::vector<const char*> validationLayers =
+    {
+        "VK_LAYER_KHRONOS_validation"
     };
 
     if (enableValidationLayers && !checkValidationLayerSupport(validationLayers))
@@ -23,6 +24,7 @@ void VulkanInstance::create(bool verbose)
     appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
     appInfo.pEngineName = "No Engine";
     appInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
+    // moltenvk goes up to 1.2
     appInfo.apiVersion = VK_API_VERSION_1_1;
 
     VkInstanceCreateInfo createInfo{};
@@ -113,6 +115,7 @@ std::vector<const char *> VulkanInstance::getRequiredExtensions() const
     // macOS requires the VK_KHR_portability_subset extension to be enabled.
     // needs to be done for every vk instance.
     extensions.emplace_back(VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME);
+    extensions.emplace_back(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME);
 
     if (enableValidationLayers)
     {
@@ -122,7 +125,7 @@ std::vector<const char *> VulkanInstance::getRequiredExtensions() const
     return extensions;
 }
 
-void VulkanInstance::destroy()
+void VulkanInstance::dispose()
 {
     vkDestroyInstance(instance, nullptr);
 }

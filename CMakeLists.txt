@@ -15,20 +15,6 @@ file(GLOB IMGUI_HEADERS ${CMAKE_CURRENT_SOURCE_DIR}/dependencies/include/imgui/*
 set(dir ${CMAKE_CURRENT_SOURCE_DIR})
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${dir}/build)
 
-####################
-#set(source "${CMAKE_SOURCE_DIR}/resources")
-#set(destination "${CMAKE_CURRENT_BINARY_DIR}/resources")
-
-# Compile shaders
-#add_custom_command(TARGET ${PROJECT_NAME} PRE_BUILD
-#        COMMAND /bin/sh ${CMAKE_SOURCE_DIR}/resources/shaders/compile.sh)
-
-#add_custom_command(TARGET ${PROJECT_NAME}
-#        COMMAND ${CMAKE_COMMAND} -E create_symlink ${source} ${destination}
-#        DEPENDS ${destination}
-#        COMMENT "symbolic link resource folder from ${source} => ${destination}")
-####################
-
 #Include library files
 include_directories(dependencies/include)
 
@@ -40,3 +26,31 @@ target_link_libraries(${PROJECT_NAME} Vulkan::Vulkan)
 
 find_package(glfw3 REQUIRED)
 target_link_libraries(${PROJECT_NAME} glfw)
+
+
+####################
+# Set the directory containing your shader files
+set(SHADER_DIR ${CMAKE_CURRENT_SOURCE_DIR}/resources/shaders)
+
+# Find all .vert and .frag files in the shader directory
+file(GLOB_RECURSE SHADER_SOURCES "${SHADER_DIR}/*.vert" "${SHADER_DIR}/*.frag" "${SHADER_DIR}/*.glsl")
+
+# Compile shaders to SPIR-V using glslc
+foreach(SHADER_SOURCE ${SHADER_SOURCES})
+    # Get the filename and extension
+    get_filename_component(FILENAME ${SHADER_SOURCE} NAME_WE)
+    get_filename_component(EXTENSION ${SHADER_SOURCE} EXT)
+
+    # Compile the shader to SPIR-V
+    set(SPIRV_OUTPUT "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${FILENAME}.spv")
+    add_custom_command(
+            OUTPUT ${SPIRV_OUTPUT}
+            COMMAND glslc ${SHADER_SOURCE} -o ${SPIRV_OUTPUT}
+            MAIN_DEPENDENCY ${SHADER_SOURCE}
+            COMMENT "Compiling ${SHADER_SOURCE}"
+    )
+
+    # Add the SPIR-V file as a source for the executable
+    target_sources(${PROJECT_NAME} PRIVATE ${SPIRV_OUTPUT})
+endforeach()
+####################

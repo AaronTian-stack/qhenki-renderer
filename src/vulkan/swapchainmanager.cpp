@@ -79,6 +79,8 @@ VkExtent2D SwapChainManager::chooseSwapExtent(Window &window, const VkSurfaceCap
 
 void SwapChainManager::createSwapChain(VkDevicePicker &vkDevicePicker, Window &window)
 {
+    deviceForDispose = vkDevicePicker.getDevice();
+
     SwapChainSupportDetails swapChainSupport = querySwapChainSupport(
             vkDevicePicker.getPhysicalDevice(), window.getSurface()
             );
@@ -157,13 +159,13 @@ void SwapChainManager::createSwapChain(VkDevicePicker &vkDevicePicker, Window &w
     createImageViews(vkDevicePicker);
 }
 
-void SwapChainManager::destroy(VkDevicePicker &vkDevicePicker)
+void SwapChainManager::dispose()
 {
     for (auto imageView : swapChainImageViews)
     {
-        vkDestroyImageView(vkDevicePicker.getDevice(), imageView, nullptr);
+        vkDestroyImageView(deviceForDispose, imageView, nullptr);
     }
-    vkDestroySwapchainKHR(vkDevicePicker.getDevice(), swapChain, nullptr);
+    vkDestroySwapchainKHR(deviceForDispose, swapChain, nullptr);
 }
 
 void SwapChainManager::createImageViews(VkDevicePicker &vkDevicePicker)
@@ -201,4 +203,9 @@ void SwapChainManager::createImageViews(VkDevicePicker &vkDevicePicker)
             throw std::runtime_error("failed to create image views!");
         }
     }
+}
+
+VkFormat SwapChainManager::getFormat() const
+{
+    return swapChainImageFormat;
 }

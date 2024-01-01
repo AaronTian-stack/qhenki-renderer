@@ -1,9 +1,10 @@
 #pragma once
 
 #include "vulkan/vulkan.h"
+#include "../disposable.h"
 #include <vector>
 
-class VulkanInstance
+class VulkanInstance : public Disposable
 {
 private:
     VkInstance instance;
@@ -20,7 +21,7 @@ public:
     static void listExtensions();
     static bool checkValidationLayerSupport(std::vector<const char*> validationLayers);
     std::vector<const char*> getRequiredExtensions() const;
-    void destroy();
+    void dispose() override;
 
     VkInstance getInstance() const;
 

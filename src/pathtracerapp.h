@@ -5,8 +5,10 @@
 #include "vulkan/vkdevicepicker.h"
 #include "vulkan/vkqueuemanager.h"
 #include "vulkan/swapchainmanager.h"
+#include "vulkan/vulkanpipeline.h"
+#include "vulkan/vkpipelinebuilder.h"
 
-class PathTracerApp
+class PathTracerApp : public Disposable
 {
 private:
     VulkanInstance vulkanInstance;
@@ -15,6 +17,10 @@ private:
     VkQueueManager vulkanQueueManager;
     SwapChainManager swapChainManager;
 
+    VulkanRenderPass renderPass;
+    VkPipelineBuilder pipelineBuilder;
+    uPtr<VulkanPipeline> pipeline;
+
 public:
     PathTracerApp();
     ~PathTracerApp();
@@ -22,7 +28,7 @@ public:
     void create(Window &window);
     void render();
     void resize();
-    void destroy();
+    void dispose() override;
 
     VulkanInstance getVulkanInstance();
 };
