@@ -1,6 +1,6 @@
-#include "vkpipelinebuilder.h"
+#include "pipelinebuilder.h"
 
-VkPipelineBuilder::VkPipelineBuilder()
+PipelineBuilder::PipelineBuilder()
 {
     dynamicState.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
     dynamicState.dynamicStateCount = static_cast<uint32_t>(dynamicStates.size());
@@ -8,7 +8,7 @@ VkPipelineBuilder::VkPipelineBuilder()
     reset();
 }
 
-void VkPipelineBuilder::reset()
+void PipelineBuilder::reset()
 {
     // NO VERTEX DATA!
     vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
@@ -81,15 +81,15 @@ void VkPipelineBuilder::reset()
     pipelineLayoutInfo.pPushConstantRanges = nullptr; // Optional
 }
 
-uPtr<VulkanPipeline> VkPipelineBuilder::buildPipeline(VkDevice device, VulkanRenderPass &renderPass, VulkanShader &shader)
+uPtr<Pipeline> PipelineBuilder::buildPipeline(VkDevice device, RenderPass* renderPass, Shader* shader)
 {
-    auto pipeline = mkU<VulkanPipeline>();
+    auto pipeline = mkU<Pipeline>();
     pipeline->setDevice(device);
 
     VkGraphicsPipelineCreateInfo pipelineInfo{};
     pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
     pipelineInfo.stageCount = 2;
-    pipelineInfo.pStages = shader.getShaderStages().data();
+    pipelineInfo.pStages = shader->getShaderStages().data();
 
     pipelineInfo.pVertexInputState = &vertexInputInfo;
     pipelineInfo.pInputAssemblyState = &inputAssembly;
@@ -102,15 +102,13 @@ uPtr<VulkanPipeline> VkPipelineBuilder::buildPipeline(VkDevice device, VulkanRen
 
     pipelineInfo.layout = pipeline->createPipelineLayout(pipelineLayoutInfo);
 
-    pipelineInfo.renderPass = renderPass.getRenderPass();
+    pipelineInfo.renderPass = renderPass->getRenderPass();
     pipelineInfo.subpass = 0;
 
     pipelineInfo.basePipelineHandle = VK_NULL_HANDLE; // Optional
     pipelineInfo.basePipelineIndex = -1; // Optional
 
     pipeline->createGraphicsPipeline(pipelineInfo);
-
-    shader.dispose();
 
     return pipeline;
 }

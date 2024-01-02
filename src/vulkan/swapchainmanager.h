@@ -1,7 +1,8 @@
 #include <vector>
 #include "vulkan/vulkan.h"
-#include "vkdevicepicker.h"
+#include "devicepicker.h"
 #include "../window.h"
+#include "renderpass.h"
 
 struct SwapChainSupportDetails
 {
@@ -9,6 +10,8 @@ struct SwapChainSupportDetails
     std::vector<VkSurfaceFormatKHR> formats;
     std::vector<VkPresentModeKHR> presentModes;
 };
+
+class vec2;
 
 class SwapChainManager : public Disposable
 {
@@ -20,7 +23,9 @@ private:
     std::vector<VkImage> swapChainImages;
     VkFormat swapChainImageFormat;
     VkExtent2D swapChainExtent;
-    std::vector<VkImageView> swapChainImageViews;
+    std::vector<VkImageView> swapChainImageViews; // TODO: maybe abstraction that pairs image with image view?
+    // wraps the image views
+    std::vector<VkFramebuffer> swapChainFramebuffers;
 
     // color channels, color space
     VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats);
@@ -28,11 +33,16 @@ private:
     VkPresentModeKHR chooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes);
     // resolution of swap chain images
     static VkExtent2D chooseSwapExtent(Window &window, const VkSurfaceCapabilitiesKHR& capabilities);
-    void createImageViews(VkDevicePicker &vkDevicePicker);
+    void createImageViews(DevicePicker &vkDevicePicker);
 
 public:
     static SwapChainSupportDetails querySwapChainSupport(VkPhysicalDevice device, VkSurfaceKHR surface);
     VkFormat getFormat() const;
-    void createSwapChain(VkDevicePicker &vkDevicePicker, Window &window);
+    void createSwapChain(DevicePicker &vkDevicePicker, Window &window);
+    void createFramebuffers(RenderPass &renderPass);
     void dispose() override;
+
+    VkExtent2D getExtent() const;
+    VkSwapchainKHR getSwapChain();
+    VkFramebuffer getFramebuffer(int index);
 };

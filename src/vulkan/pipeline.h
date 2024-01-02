@@ -3,7 +3,7 @@
 #include <vulkan/vulkan.h>
 #include "../disposable.h"
 
-class VulkanPipeline : public Disposable
+class Pipeline : public Disposable
 {
 private:
     VkPipelineLayout pipelineLayout;
@@ -12,9 +12,10 @@ private:
     VkPipelineLayout createPipelineLayout(VkPipelineLayoutCreateInfo pipelineLayoutInfo);
 
 public:
-    VulkanPipeline();
+    Pipeline();
 
     void dispose() override;
+    VkPipeline getGraphicsPipeline();
 
-    friend class VkPipelineBuilder;
+    friend class PipelineBuilder;
 };

@@ -1,11 +1,11 @@
 #include <vulkan/vulkan.h>
 #include <vector>
-#include "vulkanpipeline.h"
-#include "vulkanshader.h"
-#include "vulkanrenderpass.h"
+#include "pipeline.h"
+#include "shader.h"
+#include "renderpass.h"
 #include "../smartpointer.h"
 
-class VkPipelineBuilder
+class PipelineBuilder
 {
 private:
     const std::vector<VkDynamicState> dynamicStates =
@@ -27,7 +27,7 @@ private:
     VkPipelineLayoutCreateInfo pipelineLayoutInfo{}; // TODO: add way to change this
 
 public:
-    VkPipelineBuilder();
-    uPtr<VulkanPipeline> buildPipeline(VkDevice device, VulkanRenderPass &renderPass, VulkanShader &shader);
+    PipelineBuilder();
+    uPtr<Pipeline> buildPipeline(VkDevice device, RenderPass* renderPass, Shader* shader);
     void reset();
 };

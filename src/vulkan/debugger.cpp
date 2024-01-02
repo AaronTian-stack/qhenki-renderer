@@ -1,13 +1,13 @@
 #include <iostream>
-#include "vkdebugger.h"
+#include "debugger.h"
 
-VkDebugger::VkDebugger() {}
+Debugger::Debugger() {}
 
-void VkDebugger::create(VulkanInstance vkInstance, bool verbose)
+void Debugger::create(VulkanInstance vkInstance, bool verbose)
 {
     instance = vkInstance.getInstance();
     // specify debug messenger
-    auto createInfo = VkDebugger::debugMessengerCreateInfo(verbose);
+    auto createInfo = Debugger::debugMessengerCreateInfo(verbose);
     createInfo.pUserData = nullptr; // Optional
 
     if (createDebugUtilsMessengerEXT(
@@ -19,7 +19,7 @@ void VkDebugger::create(VulkanInstance vkInstance, bool verbose)
     }
 }
 
-VkBool32 VkDebugger::debugCallback(
+VkBool32 Debugger::debugCallback(
     VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
     VkDebugUtilsMessageTypeFlagsEXT messageType,
     const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
@@ -29,7 +29,7 @@ VkBool32 VkDebugger::debugCallback(
         return VK_FALSE;
 }
 
-VkResult VkDebugger::createDebugUtilsMessengerEXT(
+VkResult Debugger::createDebugUtilsMessengerEXT(
     const VkDebugUtilsMessengerCreateInfoEXT *pCreateInfo,
     const VkAllocationCallbacks *pAllocator,
     VkDebugUtilsMessengerEXT *pDebugMessenger)
@@ -45,8 +45,8 @@ VkResult VkDebugger::createDebugUtilsMessengerEXT(
     }
 }
 
-void VkDebugger::destroyDebugUtilsMessengerEXT(VkDebugUtilsMessengerEXT debugMessenger,
-                                               const VkAllocationCallbacks *pAllocator)
+void Debugger::destroyDebugUtilsMessengerEXT(VkDebugUtilsMessengerEXT debugMessenger,
+                                             const VkAllocationCallbacks *pAllocator)
 {
     auto func = (PFN_vkDestroyDebugUtilsMessengerEXT) vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
     if (func != nullptr)
@@ -55,12 +55,12 @@ void VkDebugger::destroyDebugUtilsMessengerEXT(VkDebugUtilsMessengerEXT debugMes
     }
 }
 
-void VkDebugger::dispose()
+void Debugger::dispose()
 {
     destroyDebugUtilsMessengerEXT(debugMessenger, nullptr);
 }
 
-VkDebugUtilsMessengerCreateInfoEXT VkDebugger::debugMessengerCreateInfo(bool verbose)
+VkDebugUtilsMessengerCreateInfoEXT Debugger::debugMessengerCreateInfo(bool verbose)
 {
     VkDebugUtilsMessengerCreateInfoEXT createInfo{};
     createInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;

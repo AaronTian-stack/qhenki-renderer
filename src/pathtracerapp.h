@@ -1,25 +1,31 @@
 #pragma once
 
 #include "smartpointer.h"
-#include "vulkan/vkdebugger.h"
-#include "vulkan/vkdevicepicker.h"
-#include "vulkan/vkqueuemanager.h"
+#include "vulkan/debugger.h"
+#include "vulkan/devicepicker.h"
+#include "vulkan/queuemanager.h"
 #include "vulkan/swapchainmanager.h"
-#include "vulkan/vulkanpipeline.h"
-#include "vulkan/vkpipelinebuilder.h"
+#include "vulkan/pipeline.h"
+#include "vulkan/pipelinebuilder.h"
+#include "vulkan/commandpool.h"
+#include "vulkan/syncer.h"
 
 class PathTracerApp : public Disposable
 {
 private:
     VulkanInstance vulkanInstance;
-    VkDebugger vulkanDebugger;
-    VkDevicePicker vulkanDevicePicker;
-    VkQueueManager vulkanQueueManager;
+    Debugger debugger;
+    DevicePicker devicePicker;
+    QueueManager queueManager;
     SwapChainManager swapChainManager;
 
-    VulkanRenderPass renderPass;
-    VkPipelineBuilder pipelineBuilder;
-    uPtr<VulkanPipeline> pipeline;
+    RenderPass renderPass;
+    PipelineBuilder pipelineBuilder;
+    uPtr<Pipeline> pipeline;
+    uPtr<Shader> shader;
+
+    CommandPool commandPool; // one pool per thread
+    Syncer syncer;
 
 public:
     PathTracerApp();
@@ -29,6 +35,8 @@ public:
     void render();
     void resize();
     void dispose() override;
+
+    void recordCommandBuffer(uint32_t imageIndex); // TODO: NEED TO DELETE THIS LATER
 
     VulkanInstance getVulkanInstance();
 };

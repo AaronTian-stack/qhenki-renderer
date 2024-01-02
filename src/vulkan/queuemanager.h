@@ -1,14 +1,14 @@
 #include "vulkan/vulkan.h"
-#include "vkdevicepicker.h"
+#include "devicepicker.h"
 
-class VkQueueManager
+class QueueManager
 {
 private:
     VkQueue graphicsQueue;
     VkQueue presentQueue;
 
 public:
-    VkQueueManager();
+    QueueManager();
 
     /*
      * Initializes the queues for the device.
@@ -17,7 +17,8 @@ public:
      */
     void initQueues(VkDevice device, QueueFamilyIndices indices);
 
-    //VkQueue getGraphicsQueue() const;
-    //VkQueue getPresentQueue() const;
+    // TODO: delete these getters
+    VkQueue getGraphicsQueue() const { return graphicsQueue;}
+    VkQueue getPresentQueue() const { return presentQueue; }
 
 };

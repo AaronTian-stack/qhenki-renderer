@@ -2,7 +2,7 @@
 #include "../disposable.h"
 #include <vector>
 
-class VulkanShader : public Disposable
+class Shader : public Disposable
 {
 private:
     VkShaderModule vertShaderModule;
@@ -18,7 +18,7 @@ private:
 public:
     static std::vector<char> readFile(const std::string &filename);
 
-    VulkanShader(VkDevice device, const char* vertShaderPath, const char* fragShaderPath);
+    Shader(VkDevice device, const char* vertShaderPath, const char* fragShaderPath);
 
     const std::array<VkPipelineShaderStageCreateInfo, 2> &getShaderStages() const { return shaderStages; }
 

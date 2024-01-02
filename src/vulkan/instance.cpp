@@ -1,8 +1,8 @@
 #include <stdexcept>
 #include <iostream>
 #include "GLFW/glfw3.h"
-#include "vkdebugger.h"
-#include "vulkaninstance.h"
+#include "debugger.h"
+#include "instance.h"
 
 
 VulkanInstance::VulkanInstance() {}
@@ -37,7 +37,7 @@ void VulkanInstance::create(bool verbose)
     createInfo.enabledExtensionCount = static_cast<uint32_t>(extensions.size());
     createInfo.ppEnabledExtensionNames = extensions.data();
 
-    VkDebugUtilsMessengerCreateInfoEXT debugCreateInfo = VkDebugger::debugMessengerCreateInfo(verbose);
+    VkDebugUtilsMessengerCreateInfoEXT debugCreateInfo = Debugger::debugMessengerCreateInfo(verbose);
     if (enableValidationLayers)
     {
         createInfo.enabledLayerCount = static_cast<uint32_t>(validationLayers.size());

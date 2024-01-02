@@ -1,7 +1,9 @@
+#pragma once
+
 #include <vulkan/vulkan.h>
 #include "../disposable.h"
 
-class VulkanRenderPass : public Disposable
+class RenderPass : public Disposable
 {
 private:
     VkRenderPass renderPass;
@@ -13,7 +15,7 @@ private:
     VkSubpassDescription subpass; // the sub-passes are specified in this
 
 public:
-    VulkanRenderPass();
+    RenderPass();
     void create();
     void reset();
     void dispose() override;

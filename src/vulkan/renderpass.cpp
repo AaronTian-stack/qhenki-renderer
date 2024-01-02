@@ -1,12 +1,12 @@
-#include "vulkanrenderpass.h"
+#include "renderpass.h"
 #include <stdexcept>
 
-VulkanRenderPass::VulkanRenderPass()
+RenderPass::RenderPass()
 {
     reset();
 }
 
-void VulkanRenderPass::create()
+void RenderPass::create()
 {
     if (vkCreateRenderPass(deviceForDispose, &renderPassInfo, nullptr, &renderPass) != VK_SUCCESS)
     {
@@ -14,12 +14,12 @@ void VulkanRenderPass::create()
     }
 }
 
-void VulkanRenderPass::dispose()
+void RenderPass::dispose()
 {
     vkDestroyRenderPass(deviceForDispose, renderPass, nullptr);
 }
 
-void VulkanRenderPass::reset()
+void RenderPass::reset()
 {
     colorAttachment.format = VK_FORMAT_A8B8G8R8_UINT_PACK32; // need to provide swapchain format
     colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
@@ -44,7 +44,7 @@ void VulkanRenderPass::reset()
     renderPassInfo.pSubpasses = &subpass;
 }
 
-void VulkanRenderPass::setColorAttachmentFormat(VkFormat format)
+void RenderPass::setColorAttachmentFormat(VkFormat format)
 {
     colorAttachment.format = format;
 }

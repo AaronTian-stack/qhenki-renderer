@@ -59,9 +59,12 @@ VkPresentModeKHR SwapChainManager::chooseSwapPresentMode(const std::vector<VkPre
 
 VkExtent2D SwapChainManager::chooseSwapExtent(Window &window, const VkSurfaceCapabilitiesKHR &capabilities)
 {
-    if (capabilities.currentExtent.width != std::numeric_limits<uint32_t>::max()) {
+    if (capabilities.currentExtent.width != std::numeric_limits<uint32_t>::max())
+    {
         return capabilities.currentExtent;
-    } else {
+    }
+    else
+    {
         int width, height;
         glfwGetFramebufferSize(window.getWindow(), &width, &height);
         VkExtent2D actualExtent =
@@ -77,7 +80,7 @@ VkExtent2D SwapChainManager::chooseSwapExtent(Window &window, const VkSurfaceCap
     }
 }
 
-void SwapChainManager::createSwapChain(VkDevicePicker &vkDevicePicker, Window &window)
+void SwapChainManager::createSwapChain(DevicePicker &vkDevicePicker, Window &window)
 {
     deviceForDispose = vkDevicePicker.getDevice();
 
@@ -115,7 +118,7 @@ void SwapChainManager::createSwapChain(VkDevicePicker &vkDevicePicker, Window &w
     createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
     // handling swap chain images used across multiple queue families
-    QueueFamilyIndices indices = VkDevicePicker::findQueueFamilies(vkDevicePicker.getPhysicalDevice(), window.getSurface());
+    QueueFamilyIndices indices = DevicePicker::findQueueFamilies(vkDevicePicker.getPhysicalDevice(), window.getSurface());
     uint32_t queueFamilyIndices[] = {indices.graphicsFamily.value(), indices.presentFamily.value()};
 
     if (indices.graphicsFamily != indices.presentFamily)
@@ -161,6 +164,10 @@ void SwapChainManager::createSwapChain(VkDevicePicker &vkDevicePicker, Window &w
 
 void SwapChainManager::dispose()
 {
+    for (auto framebuffer : swapChainFramebuffers)
+    {
+        vkDestroyFramebuffer(deviceForDispose, framebuffer, nullptr);
+    }
     for (auto imageView : swapChainImageViews)
     {
         vkDestroyImageView(deviceForDispose, imageView, nullptr);
@@ -168,7 +175,7 @@ void SwapChainManager::dispose()
     vkDestroySwapchainKHR(deviceForDispose, swapChain, nullptr);
 }
 
-void SwapChainManager::createImageViews(VkDevicePicker &vkDevicePicker)
+void SwapChainManager::createImageViews(DevicePicker &vkDevicePicker)
 {
     swapChainImageViews.resize(swapChainImages.size());
 
@@ -208,4 +215,51 @@ void SwapChainManager::createImageViews(VkDevicePicker &vkDevicePicker)
 VkFormat SwapChainManager::getFormat() const
 {
     return swapChainImageFormat;
+}
+
+void SwapChainManager::createFramebuffers(RenderPass &renderPass)
+{
+    swapChainFramebuffers.resize(swapChainImageViews.size());
+
+    for (size_t i = 0; i < swapChainImageViews.size(); i++)
+    {
+        VkImageView attachments[] =
+        {
+            swapChainImageViews[i]
+        };
+
+        VkFramebufferCreateInfo framebufferInfo{};
+        framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+        // render pass
+        framebufferInfo.renderPass = renderPass.getRenderPass();
+        // attachments
+        framebufferInfo.attachmentCount = 1;
+        framebufferInfo.pAttachments = attachments;
+        // width and height
+        framebufferInfo.width = swapChainExtent.width;
+        framebufferInfo.height = swapChainExtent.height;
+        // layers
+        framebufferInfo.layers = 1;
+
+        // create framebuffer
+        if (vkCreateFramebuffer(deviceForDispose, &framebufferInfo, nullptr, &swapChainFramebuffers[i]) != VK_SUCCESS)
+        {
+            throw std::runtime_error("failed to create framebuffer!");
+        }
+    }
+}
+
+VkExtent2D SwapChainManager::getExtent() const
+{
+    return swapChainExtent;
+}
+
+VkSwapchainKHR SwapChainManager::getSwapChain()
+{
+    return swapChain;
+}
+
+VkFramebuffer SwapChainManager::getFramebuffer(int index)
+{
+    return swapChainFramebuffers[index];
 }

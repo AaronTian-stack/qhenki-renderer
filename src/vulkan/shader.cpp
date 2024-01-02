@@ -1,10 +1,10 @@
-#include "vulkanshader.h"
+#include "shader.h"
 #include <string>
 #include <fstream>
 #include <sstream>
 #include <iostream>
 
-std::vector<char> VulkanShader::readFile(const std::string &filename)
+std::vector<char> Shader::readFile(const std::string &filename)
 {
     std::ifstream file;
     file.exceptions(std::ifstream::failbit | std::ifstream::badbit);
@@ -29,7 +29,7 @@ std::vector<char> VulkanShader::readFile(const std::string &filename)
     return {};
 }
 
-VkShaderModule VulkanShader::createShaderModule(const std::string &filePath)
+VkShaderModule Shader::createShaderModule(const std::string &filePath)
 {
     std::vector<char> code = readFile(filePath);
     VkShaderModuleCreateInfo createInfo{};
@@ -44,7 +44,7 @@ VkShaderModule VulkanShader::createShaderModule(const std::string &filePath)
     return shaderModule;
 }
 
-VulkanShader::VulkanShader(VkDevice device, const char* vertShaderPath, const char* fragShaderPath)
+Shader::Shader(VkDevice device, const char* vertShaderPath, const char* fragShaderPath)
 {
     setDevice(device);
     vertShaderModule = createShaderModule(vertShaderPath);
@@ -56,7 +56,7 @@ VulkanShader::VulkanShader(VkDevice device, const char* vertShaderPath, const ch
     shaderStages = {vertShaderStageInfo, fragShaderStageInfo};
 }
 
-VkPipelineShaderStageCreateInfo VulkanShader::vertexStageInfo(const VkShaderModule &vertShaderModule)
+VkPipelineShaderStageCreateInfo Shader::vertexStageInfo(const VkShaderModule &vertShaderModule)
 {
     VkPipelineShaderStageCreateInfo vertShaderStageInfo{};
     vertShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -66,7 +66,7 @@ VkPipelineShaderStageCreateInfo VulkanShader::vertexStageInfo(const VkShaderModu
     return vertShaderStageInfo;
 }
 
-VkPipelineShaderStageCreateInfo VulkanShader::fragmentStageInfo(VkShaderModule const &fragShaderModule)
+VkPipelineShaderStageCreateInfo Shader::fragmentStageInfo(VkShaderModule const &fragShaderModule)
 {
     VkPipelineShaderStageCreateInfo fragShaderStageInfo{};
     fragShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -76,7 +76,7 @@ VkPipelineShaderStageCreateInfo VulkanShader::fragmentStageInfo(VkShaderModule c
     return fragShaderStageInfo;
 }
 
-void VulkanShader::dispose()
+void Shader::dispose()
 {
     vkDestroyShaderModule(deviceForDispose, fragShaderModule, nullptr);
     vkDestroyShaderModule(deviceForDispose, vertShaderModule, nullptr);

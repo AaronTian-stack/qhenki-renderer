@@ -2,12 +2,12 @@
 #include <vector>
 #include <set>
 #include <iostream>
-#include "vkdevicepicker.h"
+#include "devicepicker.h"
 #include "swapchainmanager.h"
 
-VkDevicePicker::VkDevicePicker() {}
+DevicePicker::DevicePicker() {}
 
-void VkDevicePicker::pickPhysicalDevice(VulkanInstance vkInstance, VkSurfaceKHR surface)
+void DevicePicker::pickPhysicalDevice(VulkanInstance vkInstance, VkSurfaceKHR surface)
 {
     uint32_t deviceCount = 0;
     vkEnumeratePhysicalDevices(vkInstance.getInstance(), &deviceCount, nullptr);
@@ -58,7 +58,7 @@ void VkDevicePicker::pickPhysicalDevice(VulkanInstance vkInstance, VkSurfaceKHR 
     }
 }
 
-QueueFamilyIndices VkDevicePicker::findQueueFamilies(VkPhysicalDevice device, VkSurfaceKHR surface)
+QueueFamilyIndices DevicePicker::findQueueFamilies(VkPhysicalDevice device, VkSurfaceKHR surface)
 {
     QueueFamilyIndices indices;
 
@@ -98,7 +98,7 @@ QueueFamilyIndices VkDevicePicker::findQueueFamilies(VkPhysicalDevice device, Vk
     return indices;
 }
 
-bool VkDevicePicker::isDeviceSuitable(VkPhysicalDevice device, VkSurfaceKHR surface)
+bool DevicePicker::isDeviceSuitable(VkPhysicalDevice device, VkSurfaceKHR surface)
 {
     // can add more conditions in below function if wanted, such as geometry shader support
     QueueFamilyIndices indices = findQueueFamilies(device, surface);
@@ -119,7 +119,7 @@ bool VkDevicePicker::isDeviceSuitable(VkPhysicalDevice device, VkSurfaceKHR surf
     return indices.isComplete() && extensionsSupported && swapChainAdequate;
 }
 
-bool VkDevicePicker::checkDeviceExtensionSupport(VkPhysicalDevice device)
+bool DevicePicker::checkDeviceExtensionSupport(VkPhysicalDevice device)
 {
     uint32_t extensionCount;
     vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, nullptr);
@@ -137,7 +137,7 @@ bool VkDevicePicker::checkDeviceExtensionSupport(VkPhysicalDevice device)
     return requiredExtensions.empty();
 }
 
-void VkDevicePicker::createLogicalDevice()
+void DevicePicker::createLogicalDevice()
 {
     if (physicalDevice == VK_NULL_HANDLE)
         throw std::runtime_error("physical device is null");
@@ -185,27 +185,27 @@ void VkDevicePicker::createLogicalDevice()
     }
 }
 
-void VkDevicePicker::dispose()
+void DevicePicker::dispose()
 {
     vkDestroyDevice(device, nullptr);
 }
 
-VkDevice VkDevicePicker::getDevice()
+VkDevice DevicePicker::getDevice()
 {
     return device;
 }
 
-QueueFamilyIndices VkDevicePicker::selectedDeviceFamily()
+QueueFamilyIndices DevicePicker::selectedDeviceFamily()
 {
     return deviceToQueue[physicalDevice];
 }
 
-VkPhysicalDevice VkDevicePicker::getPhysicalDevice()
+VkPhysicalDevice DevicePicker::getPhysicalDevice()
 {
     return physicalDevice;
 }
 
-void VkDevicePicker::listQueueFamilies(VkPhysicalDevice device)
+void DevicePicker::listQueueFamilies(VkPhysicalDevice device)
 {
     uint32_t queueFamilyCount = 0;
     vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, nullptr);

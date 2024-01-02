@@ -1,9 +1,9 @@
 #pragma once
 
 #include "vulkan/vulkan.h"
-#include "vulkaninstance.h"
+#include "instance.h"
 
-class VkDebugger : public Disposable
+class Debugger : public Disposable
 {
 private:
     VkDebugUtilsMessengerEXT debugMessenger;
@@ -23,7 +23,7 @@ private:
             const VkAllocationCallbacks* pAllocator);
 
 public:
-    VkDebugger();
+    Debugger();
     void create(VulkanInstance vkInstance, bool verbose);
 
     // returns creation info struct

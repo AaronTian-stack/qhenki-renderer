@@ -1,9 +1,9 @@
-#include "vulkanpipeline.h"
+#include "pipeline.h"
 #include <stdexcept>
 
-VulkanPipeline::VulkanPipeline() {}
+Pipeline::Pipeline() {}
 
-VkPipelineLayout VulkanPipeline::createPipelineLayout(VkPipelineLayoutCreateInfo pipelineLayoutInfo)
+VkPipelineLayout Pipeline::createPipelineLayout(VkPipelineLayoutCreateInfo pipelineLayoutInfo)
 {;
     if (vkCreatePipelineLayout(deviceForDispose, &pipelineLayoutInfo, nullptr, &pipelineLayout) != VK_SUCCESS)
     {
@@ -12,7 +12,7 @@ VkPipelineLayout VulkanPipeline::createPipelineLayout(VkPipelineLayoutCreateInfo
     return pipelineLayout;
 }
 
-void VulkanPipeline::createGraphicsPipeline(const VkGraphicsPipelineCreateInfo &pipelineInfo)
+void Pipeline::createGraphicsPipeline(const VkGraphicsPipelineCreateInfo &pipelineInfo)
 {
     if (vkCreateGraphicsPipelines(deviceForDispose,
                                   VK_NULL_HANDLE,
@@ -25,8 +25,13 @@ void VulkanPipeline::createGraphicsPipeline(const VkGraphicsPipelineCreateInfo &
     }
 }
 
-void VulkanPipeline::dispose()
+void Pipeline::dispose()
 {
     vkDestroyPipeline(deviceForDispose, graphicsPipeline, nullptr);
     vkDestroyPipelineLayout(deviceForDispose, pipelineLayout, nullptr);
+}
+
+VkPipeline Pipeline::getGraphicsPipeline()
+{
+    return graphicsPipeline;
 }

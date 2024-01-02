@@ -4,7 +4,7 @@
 #include <map>
 
 #include "vulkan/vulkan.h"
-#include "vulkaninstance.h"
+#include "instance.h"
 
 struct QueueFamilyIndices
 {
@@ -17,7 +17,7 @@ struct QueueFamilyIndices
 };
 
 // responsible for picking the physical device and creating the logical device
-class VkDevicePicker
+class DevicePicker
 {
 private:
 
@@ -41,7 +41,7 @@ private:
     std::unordered_map<VkPhysicalDevice, QueueFamilyIndices> deviceToQueue;
 
 public:
-    VkDevicePicker();
+    DevicePicker();
     void pickPhysicalDevice(VulkanInstance vkInstance, VkSurfaceKHR surface);
     QueueFamilyIndices selectedDeviceFamily();
     // creates queue families, logical device from physicalDevice
