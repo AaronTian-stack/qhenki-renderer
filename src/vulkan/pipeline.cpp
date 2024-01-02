@@ -1,7 +1,7 @@
 #include "pipeline.h"
 #include <stdexcept>
 
-Pipeline::Pipeline() {}
+Pipeline::Pipeline(VkDevice device) : Disposable(device) {}
 
 VkPipelineLayout Pipeline::createPipelineLayout(VkPipelineLayoutCreateInfo pipelineLayoutInfo)
 {;

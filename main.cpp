@@ -7,7 +7,7 @@
 #include <iostream>
 #include "src/pathtracerapp.h"
 
-Window window(800, 600);
+Window window(1024, 768);
 
 int main()
 {

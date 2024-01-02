@@ -83,8 +83,7 @@ void PipelineBuilder::reset()
 
 uPtr<Pipeline> PipelineBuilder::buildPipeline(VkDevice device, RenderPass* renderPass, Shader* shader)
 {
-    auto pipeline = mkU<Pipeline>();
-    pipeline->setDevice(device);
+    auto pipeline = mkU<Pipeline>(device);
 
     VkGraphicsPipelineCreateInfo pipelineInfo{};
     pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;

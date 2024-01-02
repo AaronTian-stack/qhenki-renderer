@@ -12,7 +12,7 @@ private:
     VkPipelineLayout createPipelineLayout(VkPipelineLayoutCreateInfo pipelineLayoutInfo);
 
 public:
-    Pipeline();
+    Pipeline(VkDevice device);
 
     void dispose() override;
     VkPipeline getGraphicsPipeline();

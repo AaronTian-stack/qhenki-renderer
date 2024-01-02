@@ -20,7 +20,7 @@ void CommandPool::dispose()
     vkDestroyCommandPool(deviceForDispose, commandPool, nullptr);
 }
 
-void CommandPool::createCommandBuffer(const char* name)
+VkCommandBuffer CommandPool::createCommandBuffer()
 {
     VkCommandBuffer commandBuffer;
     VkCommandBufferAllocateInfo allocInfo{};
@@ -28,13 +28,18 @@ void CommandPool::createCommandBuffer(const char* name)
     allocInfo.commandPool = commandPool;
     allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; // TODO: abstract so you can create secondary command buffers
     allocInfo.commandBufferCount = 1;
-
     if (vkAllocateCommandBuffers(deviceForDispose, &allocInfo, &commandBuffer) != VK_SUCCESS)
     {
         throw std::runtime_error("failed to allocate command buffers!");
     }
+    return commandBuffer;
+}
 
+VkCommandBuffer CommandPool::createCommandBuffer(const char* name)
+{
+    VkCommandBuffer commandBuffer = createCommandBuffer();
     commandBuffers[name] = commandBuffer;
+    return commandBuffer;
 }
 
 VkCommandBuffer CommandPool::getCommandBuffer(const char *name)

@@ -4,11 +4,12 @@
 #include "vulkan/debugger.h"
 #include "vulkan/devicepicker.h"
 #include "vulkan/queuemanager.h"
-#include "vulkan/swapchainmanager.h"
+#include "vulkan/swapchain.h"
 #include "vulkan/pipeline.h"
 #include "vulkan/pipelinebuilder.h"
 #include "vulkan/commandpool.h"
 #include "vulkan/syncer.h"
+#include "vulkan/frame.h"
 
 class PathTracerApp : public Disposable
 {
@@ -17,7 +18,7 @@ private:
     Debugger debugger;
     DevicePicker devicePicker;
     QueueManager queueManager;
-    SwapChainManager swapChainManager;
+    SwapChain swapChain;
 
     RenderPass renderPass;
     PipelineBuilder pipelineBuilder;
@@ -26,6 +27,10 @@ private:
 
     CommandPool commandPool; // one pool per thread
     Syncer syncer;
+
+    int currentFrame = 0;
+    const int MAX_FRAMES_IN_FLIGHT = 2;
+    std::vector<Frame> frames;
 
 public:
     PathTracerApp();
@@ -36,7 +41,7 @@ public:
     void resize();
     void dispose() override;
 
-    void recordCommandBuffer(uint32_t imageIndex); // TODO: NEED TO DELETE THIS LATER
+    void recordCommandBuffer(VkFramebuffer framebuffer); // TODO: NEED TO DELETE THIS LATER
 
     VulkanInstance getVulkanInstance();
 };

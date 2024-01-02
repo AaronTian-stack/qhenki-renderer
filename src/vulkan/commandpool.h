@@ -1,3 +1,5 @@
+#pragma once
+
 #include <vulkan/vulkan.h>
 #include "../disposable.h"
 #include "devicepicker.h"
@@ -12,6 +14,7 @@ public:
     void create(VkDevice device, QueueFamilyIndices queueFamilyIndices);
     void dispose() override;
 
-    void createCommandBuffer(const char* name);
+    VkCommandBuffer createCommandBuffer();
+    VkCommandBuffer createCommandBuffer(const char* name);
     VkCommandBuffer getCommandBuffer(const char* name);
 };

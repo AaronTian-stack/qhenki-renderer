@@ -46,7 +46,8 @@ VkShaderModule Shader::createShaderModule(const std::string &filePath)
 
 Shader::Shader(VkDevice device, const char* vertShaderPath, const char* fragShaderPath)
 {
-    setDevice(device);
+    deviceForDispose = device;
+
     vertShaderModule = createShaderModule(vertShaderPath);
     fragShaderModule = createShaderModule(fragShaderPath);
 

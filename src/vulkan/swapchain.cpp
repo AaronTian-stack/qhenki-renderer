@@ -1,6 +1,6 @@
-#include "swapchainmanager.h"
+#include "swapchain.h"
 
-SwapChainSupportDetails SwapChainManager::querySwapChainSupport(VkPhysicalDevice device, VkSurfaceKHR surface)
+SwapChainSupportDetails SwapChain::querySwapChainSupport(VkPhysicalDevice device, VkSurfaceKHR surface)
 {
     SwapChainSupportDetails details;
     // basic surface capabilities
@@ -29,7 +29,7 @@ SwapChainSupportDetails SwapChainManager::querySwapChainSupport(VkPhysicalDevice
     return details;
 }
 
-VkSurfaceFormatKHR SwapChainManager::chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR> &availableFormats)
+VkSurfaceFormatKHR SwapChain::chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR> &availableFormats)
 {
     for (const auto& availableFormat : availableFormats)
     {
@@ -42,7 +42,7 @@ VkSurfaceFormatKHR SwapChainManager::chooseSwapSurfaceFormat(const std::vector<V
     return availableFormats[0]; // if can't find, just return the first one
 }
 
-VkPresentModeKHR SwapChainManager::chooseSwapPresentMode(const std::vector<VkPresentModeKHR> &availablePresentModes)
+VkPresentModeKHR SwapChain::chooseSwapPresentMode(const std::vector<VkPresentModeKHR> &availablePresentModes)
 {
     for (const auto& availablePresentMode : availablePresentModes)
     {
@@ -57,7 +57,7 @@ VkPresentModeKHR SwapChainManager::chooseSwapPresentMode(const std::vector<VkPre
     return VK_PRESENT_MODE_FIFO_KHR;
 }
 
-VkExtent2D SwapChainManager::chooseSwapExtent(Window &window, const VkSurfaceCapabilitiesKHR &capabilities)
+VkExtent2D SwapChain::chooseSwapExtent(Window &window, const VkSurfaceCapabilitiesKHR &capabilities)
 {
     if (capabilities.currentExtent.width != std::numeric_limits<uint32_t>::max())
     {
@@ -80,7 +80,7 @@ VkExtent2D SwapChainManager::chooseSwapExtent(Window &window, const VkSurfaceCap
     }
 }
 
-void SwapChainManager::createSwapChain(DevicePicker &vkDevicePicker, Window &window)
+void SwapChain::createSwapChain(DevicePicker &vkDevicePicker, Window &window)
 {
     deviceForDispose = vkDevicePicker.getDevice();
 
@@ -162,7 +162,7 @@ void SwapChainManager::createSwapChain(DevicePicker &vkDevicePicker, Window &win
     createImageViews(vkDevicePicker);
 }
 
-void SwapChainManager::dispose()
+void SwapChain::dispose()
 {
     for (auto framebuffer : swapChainFramebuffers)
     {
@@ -175,7 +175,7 @@ void SwapChainManager::dispose()
     vkDestroySwapchainKHR(deviceForDispose, swapChain, nullptr);
 }
 
-void SwapChainManager::createImageViews(DevicePicker &vkDevicePicker)
+void SwapChain::createImageViews(DevicePicker &vkDevicePicker)
 {
     swapChainImageViews.resize(swapChainImages.size());
 
@@ -212,12 +212,12 @@ void SwapChainManager::createImageViews(DevicePicker &vkDevicePicker)
     }
 }
 
-VkFormat SwapChainManager::getFormat() const
+VkFormat SwapChain::getFormat() const
 {
     return swapChainImageFormat;
 }
 
-void SwapChainManager::createFramebuffers(RenderPass &renderPass)
+void SwapChain::createFramebuffers(RenderPass &renderPass)
 {
     swapChainFramebuffers.resize(swapChainImageViews.size());
 
@@ -249,17 +249,20 @@ void SwapChainManager::createFramebuffers(RenderPass &renderPass)
     }
 }
 
-VkExtent2D SwapChainManager::getExtent() const
+VkExtent2D SwapChain::getExtent() const
 {
     return swapChainExtent;
 }
 
-VkSwapchainKHR SwapChainManager::getSwapChain()
+VkSwapchainKHR SwapChain::getSwapChain()
 {
     return swapChain;
 }
 
-VkFramebuffer SwapChainManager::getFramebuffer(int index)
+VkFramebuffer SwapChain::nextImage(VkSemaphore imageAvailable)
 {
-    return swapChainFramebuffers[index];
+    vkAcquireNextImageKHR(deviceForDispose, swapChain,
+                          UINT64_MAX, imageAvailable, VK_NULL_HANDLE,
+                          &imageIndex);
+    return swapChainFramebuffers[imageIndex];
 }

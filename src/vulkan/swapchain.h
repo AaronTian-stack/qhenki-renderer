@@ -1,3 +1,5 @@
+#pragma once
+
 #include <vector>
 #include "vulkan/vulkan.h"
 #include "devicepicker.h"
@@ -13,17 +15,21 @@ struct SwapChainSupportDetails
 
 class vec2;
 
-class SwapChainManager : public Disposable
+class SwapChain : public Disposable
 {
 private:
-    VkDevice deviceForDispose;
+    uint32_t imageIndex; // for presentation
 
-    VkSwapchainKHR swapChain;
+    VkDevice deviceForDispose;
+    VkSwapchainKHR swapChain; // holds the images
+
     // VkImage is a handle to an image object, multidimensional array of data. can be used as attachments, textures, etc.
     std::vector<VkImage> swapChainImages;
+    std::vector<VkImageView> swapChainImageViews; // TODO: maybe abstraction that pairs image with image view?
+
     VkFormat swapChainImageFormat;
     VkExtent2D swapChainExtent;
-    std::vector<VkImageView> swapChainImageViews; // TODO: maybe abstraction that pairs image with image view?
+
     // wraps the image views
     std::vector<VkFramebuffer> swapChainFramebuffers;
 
@@ -44,5 +50,8 @@ public:
 
     VkExtent2D getExtent() const;
     VkSwapchainKHR getSwapChain();
-    VkFramebuffer getFramebuffer(int index);
+
+    VkFramebuffer nextImage(VkSemaphore imageAvailable);
+
+    friend class QueueManager;
 };

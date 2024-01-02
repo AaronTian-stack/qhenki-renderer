@@ -3,7 +3,7 @@
 #include <set>
 #include <iostream>
 #include "devicepicker.h"
-#include "swapchainmanager.h"
+#include "swapchain.h"
 
 DevicePicker::DevicePicker() {}
 
@@ -108,7 +108,7 @@ bool DevicePicker::isDeviceSuitable(VkPhysicalDevice device, VkSurfaceKHR surfac
     bool swapChainAdequate = false;
     if (extensionsSupported)
     {
-        SwapChainSupportDetails swapChainSupport = SwapChainManager::querySwapChainSupport(device, surface);
+        SwapChainSupportDetails swapChainSupport = SwapChain::querySwapChainSupport(device, surface);
         // has some surface format and presentation mode
         swapChainAdequate = !swapChainSupport.formats.empty() && !swapChainSupport.presentModes.empty();
     }

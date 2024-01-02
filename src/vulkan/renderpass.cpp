@@ -6,8 +6,9 @@ RenderPass::RenderPass()
     reset();
 }
 
-void RenderPass::create()
+void RenderPass::create(VkDevice device)
 {
+    deviceForDispose = device;
     if (vkCreateRenderPass(deviceForDispose, &renderPassInfo, nullptr, &renderPass) != VK_SUCCESS)
     {
         throw std::runtime_error("failed to create render pass!");
@@ -33,6 +34,7 @@ void RenderPass::reset()
     colorAttachmentRef.attachment = 0; // index in pAttachments array
     colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
+    // TODO: abstract attachment setup
     subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
     subpass.colorAttachmentCount = 1;
     subpass.pColorAttachments = &colorAttachmentRef;
@@ -47,4 +49,40 @@ void RenderPass::reset()
 void RenderPass::setColorAttachmentFormat(VkFormat format)
 {
     colorAttachment.format = format;
+}
+
+void RenderPass::begin(VkCommandBuffer commandBuffer)
+{
+    renderPassBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+    renderPassBeginInfo.renderPass = renderPass;
+    renderPassBeginInfo.renderArea.offset = {0, 0};
+
+    // also need renderPassInfo.framebuffer and renderPassInfo.renderArea.extent
+
+    // set up the command buffer for this render pass
+    vkCmdBeginRenderPass(commandBuffer, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+    currentCommandBuffer = commandBuffer;
+}
+
+void RenderPass::clear(float r, float g, float b, float a)
+{
+    clearColor = {{{r, g, b, a}}};
+    renderPassBeginInfo.clearValueCount = 1;
+    renderPassBeginInfo.pClearValues = &clearColor;
+}
+
+void RenderPass::setFramebuffer(VkFramebuffer buffer)
+{
+    renderPassBeginInfo.framebuffer = buffer;
+}
+
+void RenderPass::setRenderAreaExtent(VkExtent2D extent)
+{
+    renderPassBeginInfo.renderArea.extent = extent;
+}
+
+void RenderPass::end()
+{
+    vkCmdEndRenderPass(currentCommandBuffer);
+    currentCommandBuffer = VK_NULL_HANDLE;
 }
