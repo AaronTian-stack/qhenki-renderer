@@ -31,7 +31,7 @@ void RenderPass::reset()
     colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
     colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 
-    colorAttachmentRef.attachment = 0; // index in pAttachments array
+    colorAttachmentRef.attachment = 0; // index in pAttachments array. used in the shader! (layout(location = 0) out vec4 outColor;)
     colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
     // TODO: abstract attachment setup
@@ -41,7 +41,7 @@ void RenderPass::reset()
 
     renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
     renderPassInfo.attachmentCount = 1;
-    renderPassInfo.pAttachments = &colorAttachment;
+    renderPassInfo.pAttachments = &colorAttachment; // TODO: allow for more attachments
     renderPassInfo.subpassCount = 1;
     renderPassInfo.pSubpasses = &subpass;
 }

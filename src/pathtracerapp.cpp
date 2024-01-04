@@ -97,6 +97,7 @@ void PathTracerApp::recordCommandBuffer(VkFramebuffer framebuffer)
 
     //// DRAW COMMAND(S)
     vkCmdDraw(commandBuffer, 3, 1, 0, 0);
+    ui->end(commandBuffer);
 
     //// END RENDER PASS
     renderPass.end(); // ends the render pass with the command buffer given in .begin()
@@ -133,7 +134,23 @@ void PathTracerApp::resize()
 
 }
 
-VulkanInstance PathTracerApp::getVulkanInstance()
+VulkanInstance& PathTracerApp::getVulkanInstance()
 {
     return vulkanInstance;
+}
+
+ImGuiCreateParameters PathTracerApp::getImGuiCreateParameters()
+{
+    ImGuiCreateParameters params{};
+    params.instance = &vulkanInstance;
+    params.devicePicker = &devicePicker;
+    params.renderPass = &renderPass;
+    params.framesInFlight = MAX_FRAMES_IN_FLIGHT;
+    params.queueManager = &queueManager;
+    return params;
+}
+
+CommandPool& PathTracerApp::getCommandPool()
+{
+    return commandPool;
 }

@@ -55,8 +55,8 @@ VkSubmitInfo Frame::getSubmitInfo()
     submitInfo.pWaitSemaphores = &imageAvailableSemaphore; // wait until the image has been acquired before drawing
     submitInfo.pWaitDstStageMask = waitStages;
 
-    submitInfo.commandBufferCount = 1;
-    submitInfo.pCommandBuffers = &commandBuffer;
+    submitInfo.commandBufferCount = 1; // TODO: probably needs to take in multiple command buffers at some point
+    submitInfo.pCommandBuffers = &commandBuffer; // TODO: move these two lines into another function, this should not return the struct
 
     //VkSemaphore signalSemaphores[] = {renderFinishedSemaphore};
     submitInfo.signalSemaphoreCount = 1;

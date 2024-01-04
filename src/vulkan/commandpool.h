@@ -3,6 +3,7 @@
 #include <vulkan/vulkan.h>
 #include "../disposable.h"
 #include "devicepicker.h"
+#include "queuemanager.h"
 
 class CommandPool : public Disposable
 {
@@ -17,4 +18,7 @@ public:
     VkCommandBuffer createCommandBuffer();
     VkCommandBuffer createCommandBuffer(const char* name);
     VkCommandBuffer getCommandBuffer(const char* name);
+
+    VkCommandBuffer beginSingleCommand();
+    void endSingleTimeCommands(QueueManager &queueManager, VkCommandBuffer commandBuffer);
 };

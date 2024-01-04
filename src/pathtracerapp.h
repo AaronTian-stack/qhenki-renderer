@@ -10,10 +10,12 @@
 #include "vulkan/commandpool.h"
 #include "vulkan/syncer.h"
 #include "vulkan/frame.h"
+#include "userinterface.h"
 
 class PathTracerApp : public Disposable
 {
 private:
+    // TODO: these below could be wrapped into another class
     VulkanInstance vulkanInstance;
     Debugger debugger;
     DevicePicker devicePicker;
@@ -43,5 +45,9 @@ public:
 
     void recordCommandBuffer(VkFramebuffer framebuffer); // TODO: NEED TO DELETE THIS LATER
 
-    VulkanInstance getVulkanInstance();
+    UserInterface *ui;
+    VulkanInstance& getVulkanInstance();
+    ImGuiCreateParameters getImGuiCreateParameters();
+
+    CommandPool& getCommandPool();
 };

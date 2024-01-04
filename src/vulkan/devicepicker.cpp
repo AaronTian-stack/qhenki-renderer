@@ -46,7 +46,7 @@ void DevicePicker::pickPhysicalDevice(VulkanInstance vkInstance, VkSurfaceKHR su
     }
 
     int deviceIndex = -1;
-    std::cout << "Pick a device (valid index): ";
+    std::cout << "Pick a device (type and enter a valid index): ";
     while (deviceIndex < 0 || deviceIndex >= deviceCount)
         std::cin >> deviceIndex;
 

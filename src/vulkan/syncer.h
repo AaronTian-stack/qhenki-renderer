@@ -26,5 +26,7 @@ public:
     void waitForFence(const char* name);
     void waitForFence(VkFence fence);
 
+
+
     void dispose() override;
 };

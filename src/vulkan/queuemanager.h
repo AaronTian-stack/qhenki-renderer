@@ -1,3 +1,5 @@
+#pragma once
+
 #include "vulkan/vulkan.h"
 #include "devicepicker.h"
 #include "swapchain.h"
@@ -18,11 +20,9 @@ public:
      */
     void initQueues(VkDevice device, QueueFamilyIndices indices);
 
-    // TODO: delete these getters
-    //VkQueue getGraphicsQueue() const { return graphicsQueue;}
-    //VkQueue getPresentQueue() const { return presentQueue; }
-
     void submitGraphics(VkSubmitInfo submitInfo, VkFence fence);
     void present(SwapChain &swapChain, const std::vector<VkSemaphore> &signalSemaphores);
 
+    friend class UserInterface;
+    friend class CommandPool;
 };

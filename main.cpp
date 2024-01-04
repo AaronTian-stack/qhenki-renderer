@@ -14,12 +14,23 @@ int main()
     PathTracerApp app;
     app.create(window);
 
+    UserInterface ui;
+    auto param = app.getImGuiCreateParameters();
+    param.window = &window;
+    ui.create(param, app.getCommandPool());
+
+    app.ui = &ui;
+
     while(!window.shouldClose())
     {
         glfwPollEvents();
-        app.render();
+
+        ui.begin();
+        ui.render();
+        app.render(); // ui.end() called in here since command buffer is needed
     }
 
+    ui.dispose();
     app.dispose();
     window.destroySurface(app.getVulkanInstance());
 
