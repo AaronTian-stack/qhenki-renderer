@@ -86,37 +86,16 @@ void UserInterface::render()
 
     ImGui::Begin("Pathtracer", nullptr, flags);
 
-    float test = 0.f;
-    ImGui::SliderFloat("FOV", &test, 5.0f, 90.0f);
+    ImGui::Text("FPS: %f", ImGui::GetIO().Framerate);
+    ImGui::Text("Frame Time: %f ms", ImGui::GetIO().DeltaTime);
 
-    bool about = false;
-    if (ImGui::BeginMainMenuBar())
-    {
-        if (ImGui::MenuItem("Quit"))
-        {
+    //float test = 0.f;
+    //ImGui::SliderFloat("FOV", &test, 5.0f, 90.0f);
 
-        }
+    renderMenuBar();
+    // get framerate fro imgui
 
-        if (ImGui::MenuItem("About"))
-            about = true;
-
-        // hack to get the menu to the right
-        ImGui::SameLine(ImGui::GetWindowWidth() - 126);
-        ImGui::Text("Aaron Tian 2024");
-        ImGui::EndMainMenuBar();
-    }
-
-    if (about)
-        ImGui::OpenPopup("instruction_popup");
-
-    if (ImGui::BeginPopup("instruction_popup"))
-    {
-        ImGui::Text("lorem ipsum");
-        ImGui::BulletText("todo");
-        ImGui::EndPopup();
-    }
-
-    //ImGui::ColorEdit3("Background Color", &*background_color);
+    /*//ImGui::ColorEdit3("Background Color", &*background_color);
 
     if (ImGui::CollapsingHeader("Data", ImGuiTreeNodeFlags_DefaultOpen))
     {
@@ -137,7 +116,7 @@ void UserInterface::render()
                      "a\0b\0c\0"))
     {
 
-    }
+    }*/
     ImGui::End();
 }
 
@@ -152,4 +131,34 @@ void UserInterface::end(VkCommandBuffer commandBuffer)
 {
     ImGui::Render();
     ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), commandBuffer);
+}
+
+void UserInterface::renderMenuBar()
+{
+    bool about = false;
+    if (ImGui::BeginMainMenuBar())
+    {
+        if (ImGui::MenuItem("Quit"))
+        {
+            // close the app
+        }
+
+        if (ImGui::MenuItem("About"))
+            about = true;
+
+        // hack to get the menu to the right
+        ImGui::SameLine(ImGui::GetWindowWidth() - 126);
+        ImGui::Text("Aaron Tian 2024");
+        ImGui::EndMainMenuBar();
+    }
+
+    if (about)
+        ImGui::OpenPopup("instruction_popup");
+
+    if (ImGui::BeginPopup("instruction_popup"))
+    {
+        ImGui::Text("lorem ipsum");
+        ImGui::BulletText("todo");
+        ImGui::EndPopup();
+    }
 }

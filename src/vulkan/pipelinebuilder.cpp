@@ -74,11 +74,19 @@ void PipelineBuilder::reset()
 
     //// PIPELINE LAYOUT ////
 
+    // TODO: make this optional
+    pushConstant.offset = 0;
+    pushConstant.size = sizeof(float);
+    pushConstant.stageFlags = VK_SHADER_STAGE_ALL;
+
+    pipelineLayoutInfo.pPushConstantRanges = &pushConstant;
+    pipelineLayoutInfo.pushConstantRangeCount = 1;
+
     pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
     pipelineLayoutInfo.setLayoutCount = 0; // Optional
     pipelineLayoutInfo.pSetLayouts = nullptr; // Optional
-    pipelineLayoutInfo.pushConstantRangeCount = 0; // Optional
-    pipelineLayoutInfo.pPushConstantRanges = nullptr; // Optional
+    //pipelineLayoutInfo.pushConstantRangeCount = 0; // Optional
+    //pipelineLayoutInfo.pPushConstantRanges = nullptr; // Optional
 }
 
 uPtr<Pipeline> PipelineBuilder::buildPipeline(VkDevice device, RenderPass* renderPass, Shader* shader)

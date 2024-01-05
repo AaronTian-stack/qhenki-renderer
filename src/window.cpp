@@ -1,5 +1,6 @@
 #include <iostream>
 #include "window.h"
+#include "imgui/imgui.h"
 
 Window::Window(unsigned int SCR_WIDTH, unsigned int SCR_HEIGHT) : SCR_WIDTH(SCR_WIDTH), SCR_HEIGHT(SCR_HEIGHT)
 {

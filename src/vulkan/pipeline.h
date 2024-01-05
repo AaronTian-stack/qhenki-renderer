@@ -16,6 +16,7 @@ public:
 
     void dispose() override;
     VkPipeline getGraphicsPipeline();
+    void setPushConstant(VkCommandBuffer commandBuffer, float constant);
 
     friend class PipelineBuilder;
 };

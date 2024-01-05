@@ -25,6 +25,7 @@ private:
     VkPipelineColorBlendStateCreateInfo colorBlending{};
 
     VkPipelineLayoutCreateInfo pipelineLayoutInfo{}; // TODO: add way to change this
+    VkPushConstantRange pushConstant; // TODO: make this more flexible
 
 public:
     PipelineBuilder();

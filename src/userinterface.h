@@ -22,6 +22,7 @@ class UserInterface : Disposable
 {
 private:
     VkDescriptorPool imguiPool;
+    void renderMenuBar();
 
 public:
     UserInterface();

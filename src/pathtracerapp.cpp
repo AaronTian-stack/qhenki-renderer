@@ -96,6 +96,7 @@ void PathTracerApp::recordCommandBuffer(VkFramebuffer framebuffer)
     ScreenUtils::setScissor(commandBuffer, swapChainExtent);
 
     //// DRAW COMMAND(S)
+    pipeline->setPushConstant(commandBuffer, (float)glfwGetTime());
     vkCmdDraw(commandBuffer, 3, 1, 0, 0);
     ui->end(commandBuffer);
 
