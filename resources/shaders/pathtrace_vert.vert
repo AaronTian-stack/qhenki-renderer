@@ -5,8 +5,8 @@ layout(location = 1) out vec2 uv;
 
 vec2 positions[3] = vec2[](
 vec2(-1.0, -1.0),
-vec2(2.0, -1.0),
-vec2(-1.0, 2.0)
+vec2(-1.0, 2.0),
+vec2(2.0, -1.0)
 );
 
 vec3 colors[3] = vec3[](

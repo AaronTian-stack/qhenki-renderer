@@ -1,6 +1,6 @@
-#include "pipelinebuilder.h"
+#include "pipelinefactory.h"
 
-PipelineBuilder::PipelineBuilder()
+PipelineBuilder::PipelineBuilder() : pushOffset(0)
 {
     dynamicState.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
     dynamicState.dynamicStateCount = static_cast<uint32_t>(dynamicStates.size());
@@ -10,6 +10,9 @@ PipelineBuilder::PipelineBuilder()
 
 void PipelineBuilder::reset()
 {
+    vertexInputBindings.clear();
+    vertexInputAttributes.clear();
+
     // NO VERTEX DATA!
     vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
     vertexInputInfo.vertexBindingDescriptionCount = 0;
@@ -31,8 +34,8 @@ void PipelineBuilder::reset()
     rasterizer.polygonMode = VK_POLYGON_MODE_FILL; // TODO: add option to change polygon mode (need to enable feature)
     rasterizer.lineWidth = 1.0f; // TODO: add option to change line width (need to enable feature)
     // TODO: add option to change culling mode
-    rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
-    rasterizer.frontFace = VK_FRONT_FACE_CLOCKWISE;
+    rasterizer.cullMode = VK_CULL_MODE_FRONT_BIT;
+    rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
 
     // built in bias maybe useful for shadow mapping
     rasterizer.depthBiasEnable = VK_FALSE;
@@ -74,19 +77,16 @@ void PipelineBuilder::reset()
 
     //// PIPELINE LAYOUT ////
 
-    // TODO: make this optional
-    pushConstant.offset = 0;
-    pushConstant.size = sizeof(float);
-    pushConstant.stageFlags = VK_SHADER_STAGE_ALL;
+    pushConstants.clear();
+    pushOffset = 0;
 
-    pipelineLayoutInfo.pPushConstantRanges = &pushConstant;
-    pipelineLayoutInfo.pushConstantRangeCount = 1;
+    // will be nothing and 0
+    pipelineLayoutInfo.pPushConstantRanges = pushConstants.data();
+    pipelineLayoutInfo.pushConstantRangeCount = pushConstants.size();
 
     pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
     pipelineLayoutInfo.setLayoutCount = 0; // Optional
     pipelineLayoutInfo.pSetLayouts = nullptr; // Optional
-    //pipelineLayoutInfo.pushConstantRangeCount = 0; // Optional
-    //pipelineLayoutInfo.pPushConstantRanges = nullptr; // Optional
 }
 
 uPtr<Pipeline> PipelineBuilder::buildPipeline(VkDevice device, RenderPass* renderPass, Shader* shader)
@@ -118,4 +118,33 @@ uPtr<Pipeline> PipelineBuilder::buildPipeline(VkDevice device, RenderPass* rende
     pipeline->createGraphicsPipeline(pipelineInfo);
 
     return pipeline;
+}
+
+void PipelineBuilder::addPushConstant(uint32_t size, VkShaderStageFlags stageFlags)
+{
+    // TODO: there seem to be issues if the stageFlags is anything besides VK_SHADER_STAGE_ALL
+    VkPushConstantRange pushConstant{};
+    pushConstant.offset = pushOffset;
+    pushConstant.size = size;
+    pushConstant.stageFlags = stageFlags;
+    pushConstants.push_back(pushConstant);
+
+    pushOffset += size; // alignment is done in order
+
+    pipelineLayoutInfo.pPushConstantRanges = pushConstants.data();
+    pipelineLayoutInfo.pushConstantRangeCount = pushConstants.size();
+}
+
+void PipelineBuilder::addVertexInputBinding(VkVertexInputBindingDescription binding)
+{
+    vertexInputBindings.push_back(binding);
+    vertexInputInfo.vertexBindingDescriptionCount = vertexInputBindings.size();
+    vertexInputInfo.pVertexBindingDescriptions = vertexInputBindings.data();
+}
+
+void PipelineBuilder::addVertexInputAttribute(VkVertexInputAttributeDescription attribute)
+{
+    vertexInputAttributes.push_back(attribute);
+    vertexInputInfo.vertexAttributeDescriptionCount = vertexInputAttributes.size();
+    vertexInputInfo.pVertexAttributeDescriptions = vertexInputAttributes.data();
 }

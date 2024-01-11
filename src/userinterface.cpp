@@ -43,15 +43,10 @@ void UserInterface::create(ImGuiCreateParameters param, CommandPool commandPool)
         throw std::runtime_error("failed to create imgui descriptor pool!");
     }
 
-    // 2: initialize imgui library
-
-    //this initializes the core structures of imgui
     ImGui::CreateContext();
 
-    //this initializes imgui for SDL
     ImGui_ImplGlfw_InitForVulkan(param.window->getWindow(), true);
 
-    //this initializes imgui for Vulkan
     ImGui_ImplVulkan_InitInfo init_info = {};
     init_info.Instance = param.instance->getInstance();
     init_info.PhysicalDevice = param.devicePicker->getPhysicalDevice();
@@ -61,6 +56,8 @@ void UserInterface::create(ImGuiCreateParameters param, CommandPool commandPool)
     init_info.MinImageCount = param.framesInFlight;
     init_info.ImageCount = param.framesInFlight;
     init_info.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
+
+    window = param.window;
 
     ImGui_ImplVulkan_Init(&init_info, param.renderPass->getRenderPass());
 
@@ -87,36 +84,32 @@ void UserInterface::render()
     ImGui::Begin("Pathtracer", nullptr, flags);
 
     ImGui::Text("FPS: %f", ImGui::GetIO().Framerate);
+
     ImGui::Text("Frame Time: %f ms", ImGui::GetIO().DeltaTime);
 
-    //float test = 0.f;
-    //ImGui::SliderFloat("FOV", &test, 5.0f, 90.0f);
-
-    renderMenuBar();
-    // get framerate fro imgui
-
-    /*//ImGui::ColorEdit3("Background Color", &*background_color);
-
-    if (ImGui::CollapsingHeader("Data", ImGuiTreeNodeFlags_DefaultOpen))
+    ImGui::Separator();
+    if (ImGui::Button("Options"))
     {
-
+        optionsOpen = true;
     }
 
-    ImGui::End();
+    if (optionsOpen)
+    {
+        ImGui::Begin("Options", &optionsOpen, ImGuiWindowFlags_AlwaysAutoResize);
+        ImGui::ColorEdit3("Clear Color", clearColor);
+        ImGui::End();
+    }
+
+    renderMenuBar();
 
     ImGui::SetNextWindowPos(ImVec2(ImGui::GetIO().DisplaySize.x, 18), 0, ImVec2(1.0f, 0));
     ImGui::Begin("Visual Options", nullptr, flags);
-    bool toggle = false;
-    if (ImGui::Checkbox("Toggle", &toggle))
+    if (ImGui::Combo("Shader", &currentShaderIndex,
+                     "Pathtrace\0Triangle\0"))
     {
 
     }
-    int drop = 0;
-    if (ImGui::Combo("Drop", &drop,
-                     "a\0b\0c\0"))
-    {
 
-    }*/
     ImGui::End();
 }
 
@@ -140,7 +133,7 @@ void UserInterface::renderMenuBar()
     {
         if (ImGui::MenuItem("Quit"))
         {
-            // close the app
+            glfwSetWindowShouldClose(window->getWindow(), GLFW_TRUE);
         }
 
         if (ImGui::MenuItem("About"))
@@ -161,4 +154,5 @@ void UserInterface::renderMenuBar()
         ImGui::BulletText("todo");
         ImGui::EndPopup();
     }
+    ImGui::End();
 }

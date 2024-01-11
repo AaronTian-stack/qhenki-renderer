@@ -6,26 +6,30 @@
 #include "vulkan/queuemanager.h"
 #include "vulkan/swapchain.h"
 #include "vulkan/pipeline.h"
-#include "vulkan/pipelinebuilder.h"
+#include "vulkan/pipelinefactory.h"
 #include "vulkan/commandpool.h"
 #include "vulkan/syncer.h"
 #include "vulkan/frame.h"
 #include "userinterface.h"
+#include "vulkan/vulkancontext.h"
+#include "gltfloader.h"
+#include "vulkan/bufferfactory.h"
 
 class PathTracerApp : public Disposable
 {
 private:
-    // TODO: these below could be wrapped into another class
-    VulkanInstance vulkanInstance;
-    Debugger debugger;
-    DevicePicker devicePicker;
-    QueueManager queueManager;
-    SwapChain swapChain;
+    uPtr<Buffer> buffer;
+
+    GLTFLoader gltfLoad;
+    BufferFactory bufferFactory;
+
+    VulkanContext vulkanContext;
 
     RenderPass renderPass;
-    PipelineBuilder pipelineBuilder;
-    uPtr<Pipeline> pipeline;
-    uPtr<Shader> shader;
+    PipelineBuilder pipelineFactory;
+
+    uPtr<Pipeline> pipeline1, pipeline2;
+    uPtr<Shader> shader1, shader2;
 
     CommandPool commandPool; // one pool per thread
     Syncer syncer;

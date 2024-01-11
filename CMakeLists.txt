@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.3)
+cmake_minimum_required(VERSION 3.5)
 project(vulkan_pathtracer)
 
 set(CMAKE_CXX_STANDARD 17)
@@ -7,7 +7,8 @@ set(CMAKE_CXX_STANDARD 17)
 file(GLOB_RECURSE SOURCE_FILES CONFIGURE_DEPENDS
         ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/*.h
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/*.c)
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/*.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/*.hpp)
 
 file(GLOB_RECURSE IMGUI CONFIGURE_DEPENDS
         ${CMAKE_CURRENT_SOURCE_DIR}/dependencies/include/imgui/*.cpp
@@ -25,8 +26,12 @@ find_package(Vulkan REQUIRED)
 target_include_directories(${PROJECT_NAME} PUBLIC ${Vulkan_INCLUDE_DIRS})
 target_link_libraries(${PROJECT_NAME} Vulkan::Vulkan)
 
-find_package(glfw3 REQUIRED)
-target_link_libraries(${PROJECT_NAME} glfw)
+if (APPLE)
+    find_package(glfw3 REQUIRED)
+    target_link_libraries(${PROJECT_NAME} glfw)
+elseif (WIN32)
+    # do windows stuff
+endif ()
 
 
 ####################
@@ -34,7 +39,7 @@ target_link_libraries(${PROJECT_NAME} glfw)
 set(SHADER_DIR ${CMAKE_CURRENT_SOURCE_DIR}/resources/shaders)
 
 # Find all .vert and .frag files in the shader directory
-file(GLOB_RECURSE SHADER_SOURCES "${SHADER_DIR}/*.vert" "${SHADER_DIR}/*.frag" "${SHADER_DIR}/*.glsl")
+file(GLOB_RECURSE SHADER_SOURCES "${SHADER_DIR}/*.vert" "${SHADER_DIR}/*.frag")
 
 # Compile shaders to SPIR-V using glslc
 foreach(SHADER_SOURCE ${SHADER_SOURCES})

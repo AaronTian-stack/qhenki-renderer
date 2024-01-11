@@ -1,20 +1,18 @@
 #include "pathtracerapp.h"
 #include "vulkan/screenutils.h"
+#include "glm/glm.hpp"
 
-PathTracerApp::PathTracerApp()
-{
-
-}
+PathTracerApp::PathTracerApp() {}
 
 PathTracerApp::~PathTracerApp()
 {
     // destroy instance last
-    vulkanInstance.dispose();
+    vulkanContext.vulkanInstance.dispose();
 }
 
 void PathTracerApp::dispose()
 {
-    vkDeviceWaitIdle(devicePicker.getDevice()); // wait for operations to finish before disposing
+    vkDeviceWaitIdle(vulkanContext.devicePicker.getDevice()); // wait for operations to finish before disposing
 
     for (auto &frame : frames)
         frame.dispose();
@@ -22,64 +20,76 @@ void PathTracerApp::dispose()
     syncer.dispose();
     commandPool.dispose();
 
-    pipeline->dispose();
-    shader->dispose(); // shader modules must be destroyed after pipeline
+    pipeline1->dispose();
+    shader1->dispose(); // shader modules must be destroyed after pipeline
+
+    pipeline2->dispose();
+    shader2->dispose();
+
     renderPass.dispose();
 
-    // destroy swap chain before the device
-    swapChain.dispose();
-    // destroy logical device
-    devicePicker.dispose();
-    // destroy debugger
-    debugger.dispose();
+    buffer->dispose();
+    bufferFactory.dispose();
+
+    vulkanContext.dispose();
 }
 
 void PathTracerApp::create(Window &window)
 {
-    VulkanInstance::listExtensions();
+    vulkanContext.create(window);
+    bufferFactory.create(vulkanContext);
 
-    const bool verbose = false;
-    // create instance, load extensions
-    vulkanInstance.create(verbose);
-    // create debugger, validation layers
-    debugger.create(vulkanInstance, verbose);
-    window.createSurface(vulkanInstance);
-    // pick physical device (with feature checking)
-    devicePicker.pickPhysicalDevice(vulkanInstance, window.getSurface());
-    // create queues, logical device
-    devicePicker.createLogicalDevice();
-    // retrieve queues
-    queueManager.initQueues(devicePicker.getDevice(), devicePicker.selectedDeviceFamily());
-
-    // create swap chain (the render pass needs the image formats)
-    // TODO: maybe refactor to extract properties before the swap chain creation (so that framebuffer creation is also part of createSwapChain)
-    swapChain.createSwapChain(devicePicker, window);
-
+    auto device = vulkanContext.devicePicker.getDevice();
     // create render pass
-    renderPass.setColorAttachmentFormat(swapChain.getFormat());
+    renderPass.setColorAttachmentFormat(vulkanContext.swapChain.getFormat());
     //// CALL CREATE LAST! OR ELSE STUFF WILL BE BROKEN!
-    renderPass.create(devicePicker.getDevice());
+    renderPass.create(device);
 
-    shader = mkU<Shader>(devicePicker.getDevice(), "shader_vert.spv", "shader_frag.spv");
+    shader1 = mkU<Shader>(device, "pathtrace_vert.spv", "pathtrace_frag.spv");
+    shader2 = mkU<Shader>(device, "tri_vert.spv", "tri_frag.spv");
 
-    pipeline = pipelineBuilder.buildPipeline(devicePicker.getDevice(), &renderPass, shader.get());
+    pipelineFactory.addPushConstant(sizeof(float));
 
-    swapChain.createFramebuffers(renderPass);
+    pipeline1 = pipelineFactory.buildPipeline(device, &renderPass, shader1.get());
 
-    commandPool.create(devicePicker.getDevice(), devicePicker.selectedDeviceFamily());
+    //// VERTEX INPUT
+    struct Vertex {
+        glm::vec2 pos;
+        glm::vec3 color;
+    };
+    const std::vector<Vertex> vertices = {
+            {{-0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}},
+            {{0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}},
+            {{0.0f, -0.5f}, {1.0f, 0.0f, 0.0f}},
+    };
+    buffer = bufferFactory.createBuffer(vertices.size() * sizeof(Vertex), VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
+    buffer->fill(vertices.data(), vertices.size() * sizeof(Vertex));
+
+    pipelineFactory.reset();
+    pipelineFactory.addVertexInputBinding({0, sizeof(Vertex), VK_VERTEX_INPUT_RATE_VERTEX});
+    pipelineFactory.addVertexInputAttribute({0, 0, VK_FORMAT_R32G32_SFLOAT, offsetof(Vertex, pos)});
+    pipelineFactory.addVertexInputAttribute({1, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(Vertex, color)});
+    pipeline2 = pipelineFactory.buildPipeline(device, &renderPass, shader2.get());
+    //// END VERTEX INPUT
+
+    vulkanContext.swapChain.createFramebuffers(renderPass);
+
+    commandPool.create(device, vulkanContext.devicePicker.selectedDeviceFamily());
     commandPool.createCommandBuffer("main");
 
-    syncer.create(devicePicker.getDevice());
+    syncer.create(device);
 
     for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
-        frames.emplace_back(devicePicker.getDevice(), commandPool, syncer);
+        frames.emplace_back(device, commandPool, syncer);
+
+    //gltfLoad.load();
 }
 
 void PathTracerApp::recordCommandBuffer(VkFramebuffer framebuffer)
 {
     auto &frame = frames[currentFrame];
     auto commandBuffer = frame.commandBuffer;
-    auto swapChainExtent = swapChain.getExtent();
+    auto swapChainExtent = vulkanContext.swapChain.getExtent();
 
     //// BEGIN RECORDING COMMAND BUFFER
     frame.begin(); // begins the frames command buffer. for secondary command buffer, need to modify the beginInfo struct
@@ -87,16 +97,20 @@ void PathTracerApp::recordCommandBuffer(VkFramebuffer framebuffer)
     //// BEGIN RENDER PASS
     renderPass.setFramebuffer(framebuffer);
     renderPass.setRenderAreaExtent(swapChainExtent);
-    renderPass.clear(0.0f, 0.0f, 0.0f, 1.0f);
+    renderPass.clear(ui->clearColor[0], ui->clearColor[1], ui->clearColor[2], 1.0f);
     renderPass.begin(commandBuffer);
 
+    auto pipeline = ui->currentShaderIndex == 0 ? pipeline1.get() : pipeline2.get();
     vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->getGraphicsPipeline());
+    pipeline1->setPushConstant(commandBuffer, (float)glfwGetTime());
+
 
     ScreenUtils::setViewport(commandBuffer, swapChainExtent.width, swapChainExtent.height);
     ScreenUtils::setScissor(commandBuffer, swapChainExtent);
 
     //// DRAW COMMAND(S)
-    pipeline->setPushConstant(commandBuffer, (float)glfwGetTime());
+    if (pipeline == pipeline2.get())
+        buffer->bind(commandBuffer);
     vkCmdDraw(commandBuffer, 3, 1, 0, 0);
     ui->end(commandBuffer);
 
@@ -114,12 +128,14 @@ void PathTracerApp::render()
 
     auto commandBuffer = frame.commandBuffer;
 
+    auto &swapChain = vulkanContext.swapChain;
     // gets next available image, returns the corresponding framebuffer and updates internal index to next image
     auto fb = swapChain.nextImage(frame.imageAvailableSemaphore);
 
     vkResetCommandBuffer(commandBuffer, /*VkCommandBufferResetFlagBits*/ 0);
     recordCommandBuffer(fb);
 
+    auto &queueManager = vulkanContext.queueManager;
     // lots of information about syncing in frame.getSubmitInfo() struct.
     queueManager.submitGraphics(frame.getSubmitInfo(), frame.inFlightFence); // signal fence when done
 
@@ -137,17 +153,17 @@ void PathTracerApp::resize()
 
 VulkanInstance& PathTracerApp::getVulkanInstance()
 {
-    return vulkanInstance;
+    return vulkanContext.vulkanInstance;
 }
 
 ImGuiCreateParameters PathTracerApp::getImGuiCreateParameters()
 {
     ImGuiCreateParameters params{};
-    params.instance = &vulkanInstance;
-    params.devicePicker = &devicePicker;
+    params.instance = &vulkanContext.vulkanInstance;
+    params.devicePicker = &vulkanContext.devicePicker;
     params.renderPass = &renderPass;
     params.framesInFlight = MAX_FRAMES_IN_FLIGHT;
-    params.queueManager = &queueManager;
+    params.queueManager = &vulkanContext.queueManager;
     return params;
 }
 

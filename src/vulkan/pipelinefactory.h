@@ -25,10 +25,23 @@ private:
     VkPipelineColorBlendStateCreateInfo colorBlending{};
 
     VkPipelineLayoutCreateInfo pipelineLayoutInfo{}; // TODO: add way to change this
-    VkPushConstantRange pushConstant; // TODO: make this more flexible
+
+    uint32_t pushOffset;
+    std::vector<VkPushConstantRange> pushConstants;
+
+    std::vector<VkVertexInputBindingDescription> vertexInputBindings;
+    std::vector<VkVertexInputAttributeDescription> vertexInputAttributes;
 
 public:
     PipelineBuilder();
     uPtr<Pipeline> buildPipeline(VkDevice device, RenderPass* renderPass, Shader* shader);
+    void addPushConstant(uint32_t size, VkShaderStageFlags stageFlags = VK_SHADER_STAGE_ALL);
+
+    // buffer
+    void addVertexInputBinding(VkVertexInputBindingDescription binding);
+
+    // attributes for buffer
+    void addVertexInputAttribute(VkVertexInputAttributeDescription attribute);
+
     void reset();
 };

@@ -45,10 +45,15 @@ void DevicePicker::pickPhysicalDevice(VulkanInstance vkInstance, VkSurfaceKHR su
         listQueueFamilies(device);
     }
 
-    int deviceIndex = -1;
-    std::cout << "Pick a device (type and enter a valid index): ";
-    while (deviceIndex < 0 || deviceIndex >= deviceCount)
-        std::cin >> deviceIndex;
+    // TODO: doesnt actually stop you from picking a bad device. need to fix
+    int deviceIndex = 0;
+    if (deviceCount > 1)
+    {
+        deviceIndex = -1;
+        std::cout << "Pick a device (type and enter a valid index): \n";
+        while (deviceIndex < 0 || deviceIndex >= deviceCount)
+            std::cin >> deviceIndex;
+    }
 
     physicalDevice = devices[deviceIndex];
 

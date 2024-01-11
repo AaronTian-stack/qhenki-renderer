@@ -22,11 +22,19 @@ class DevicePicker
 private:
 
     // required device extensions
+#if __APPLE__
+    const std::vector<const char*> deviceExtensions =
+            {
+                    "VK_KHR_portability_subset",
+                    VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+            };
+#else
     const std::vector<const char*> deviceExtensions =
     {
-            "VK_KHR_portability_subset",
             VK_KHR_SWAPCHAIN_EXTENSION_NAME,
     };
+#endif
+
 
     // note: theoretically, we could have multiple physical devices and run different operations on them
     // VkPhysicalDevice is implicitly destroyed with VkInstance

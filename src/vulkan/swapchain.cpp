@@ -47,7 +47,6 @@ VkPresentModeKHR SwapChain::chooseSwapPresentMode(const std::vector<VkPresentMod
 {
     for (const auto& availablePresentMode : availablePresentModes)
     {
-        // prefer triple buffering
         if (availablePresentMode == VK_PRESENT_MODE_MAILBOX_KHR)
         {
             return availablePresentMode;
