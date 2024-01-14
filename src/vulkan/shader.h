@@ -1,26 +1,26 @@
 #include "vulkan/vulkan.h"
-#include "../disposable.h"
+#include "../destroyable.h"
 #include <vector>
 
-class Shader : public Disposable
+class Shader : public Destroyable
 {
 private:
-    VkShaderModule vertShaderModule;
-    VkShaderModule fragShaderModule;
-    std::array<VkPipelineShaderStageCreateInfo, 2> shaderStages;
+    vk::ShaderModule vertShaderModule;
+    vk::ShaderModule fragShaderModule;
+    std::array<vk::PipelineShaderStageCreateInfo, 2> shaderStages;
 
     // vulkan wrapper for shader code
-    VkShaderModule createShaderModule(const std::string &filePath);
+    vk::ShaderModule createShaderModule(const std::string &filePath);
 
-    static VkPipelineShaderStageCreateInfo vertexStageInfo(const VkShaderModule &vertShaderModule);
-    static VkPipelineShaderStageCreateInfo fragmentStageInfo(const VkShaderModule &fragShaderModule);
+    static vk::PipelineShaderStageCreateInfo vertexStageInfo(const vk::ShaderModule &vertShaderModule);
+    static vk::PipelineShaderStageCreateInfo fragmentStageInfo(const vk::ShaderModule &fragShaderModule);
 
 public:
     static std::vector<char> readFile(const std::string &filename);
 
-    Shader(VkDevice device, const char* vertShaderPath, const char* fragShaderPath);
+    Shader(vk::Device device, const char* vertShaderPath, const char* fragShaderPath);
 
-    const std::array<VkPipelineShaderStageCreateInfo, 2> &getShaderStages() const { return shaderStages; }
+    const std::array<vk::PipelineShaderStageCreateInfo, 2> &getShaderStages() const { return shaderStages; }
 
-    void dispose() override;
+    void destroy() override;
 };

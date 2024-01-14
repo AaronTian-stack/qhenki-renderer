@@ -6,9 +6,18 @@
 
 UserInterface::UserInterface() {}
 
+UserInterface::~UserInterface()
+{
+    vkDeviceWaitIdle(device); // wait for operations to finish before disposing
+    ImGui_ImplVulkan_Shutdown();
+    vkDestroyDescriptorPool(device, imguiPool, nullptr); // must happen after ImGui_ImplVulkan_Shutdown
+    ImGui_ImplGlfw_Shutdown();
+    ImGui::DestroyContext();
+}
+
 void UserInterface::create(ImGuiCreateParameters param, CommandPool commandPool)
 {
-    deviceForDispose = param.devicePicker->getDevice();
+    this->device = param.context->device.logicalDevice;
 
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
@@ -38,7 +47,7 @@ void UserInterface::create(ImGuiCreateParameters param, CommandPool commandPool)
     pool_info.poolSizeCount = std::size(pool_sizes);
     pool_info.pPoolSizes = pool_sizes;
 
-    if (vkCreateDescriptorPool(deviceForDispose, &pool_info, nullptr, &imguiPool) != VK_SUCCESS)
+    if (vkCreateDescriptorPool(device, &pool_info, nullptr, &imguiPool) != VK_SUCCESS)
     {
         throw std::runtime_error("failed to create imgui descriptor pool!");
     }
@@ -48,10 +57,10 @@ void UserInterface::create(ImGuiCreateParameters param, CommandPool commandPool)
     ImGui_ImplGlfw_InitForVulkan(param.window->getWindow(), true);
 
     ImGui_ImplVulkan_InitInfo init_info = {};
-    init_info.Instance = param.instance->getInstance();
-    init_info.PhysicalDevice = param.devicePicker->getPhysicalDevice();
-    init_info.Device = deviceForDispose;
-    init_info.Queue = param.queueManager->graphicsQueue;
+    init_info.Instance = param.context->instance;
+    init_info.PhysicalDevice = param.context->device.physicalDevice;
+    init_info.Device = param.context->device.logicalDevice;
+    init_info.Queue = param.context->queueManager.graphicsQueue;
     init_info.DescriptorPool = imguiPool;
     init_info.MinImageCount = param.framesInFlight;
     init_info.ImageCount = param.framesInFlight;
@@ -63,14 +72,14 @@ void UserInterface::create(ImGuiCreateParameters param, CommandPool commandPool)
 
     auto commandBuffer = commandPool.beginSingleCommand();
     ImGui_ImplVulkan_CreateFontsTexture(commandBuffer);
-    commandPool.endSingleTimeCommands(*param.queueManager, commandBuffer);
+    commandPool.endSingleTimeCommands(param.context->queueManager, commandBuffer);
 }
 
-void UserInterface::dispose()
+void UserInterface::destroy()
 {
-    vkDeviceWaitIdle(deviceForDispose); // wait for operations to finish before disposing
+    vkDeviceWaitIdle(device); // wait for operations to finish before disposing
     ImGui_ImplVulkan_Shutdown();
-    vkDestroyDescriptorPool(deviceForDispose, imguiPool, nullptr); // must happen after ImGui_ImplVulkan_Shutdown
+    vkDestroyDescriptorPool(device, imguiPool, nullptr); // must happen after ImGui_ImplVulkan_Shutdown
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();
 }

@@ -1,35 +1,35 @@
 #pragma once
 
-#include <vulkan/vulkan.h>
-#include "../disposable.h"
+#include <vulkan/vulkan.hpp>
+#include "../destroyable.h"
 
-class RenderPass : public Disposable
+class RenderPass : public Destroyable
 {
 private:
-    VkCommandBuffer currentCommandBuffer = VK_NULL_HANDLE;
+    std::optional<vk::CommandBuffer> currentCommandBuffer;
 
-    VkRenderPass renderPass;
+    vk::RenderPass renderPass;
 
-    VkRenderPassCreateInfo renderPassInfo{};
-    VkAttachmentDescription colorAttachment{}; // TODO: add more attachment options
-    VkAttachmentReference colorAttachmentRef{}; // one ref per attachment... pair them in a container
+    vk::RenderPassCreateInfo renderPassInfo{};
+    vk::AttachmentDescription colorAttachment{}; // TODO: add more attachment options
+    vk::AttachmentReference colorAttachmentRef{}; // one ref per attachment... pair them in a container
 
-    VkSubpassDescription subpass{}; // the sub-passes are specified in this
+    vk::SubpassDescription subpass{}; // the sub-passes are specified in this
 
-    VkClearValue clearColor{};
-    VkRenderPassBeginInfo renderPassBeginInfo{};
+    vk::ClearValue clearColor{};
+    vk::RenderPassBeginInfo renderPassBeginInfo{};
 
 public:
     RenderPass();
-    void create(VkDevice device);
+    void create(vk::Device device);
     void reset();
-    void dispose() override;
+    void destroy() override;
 
-    VkRenderPass getRenderPass() { return renderPass; }
-    void setColorAttachmentFormat(VkFormat format);
+    vk::RenderPass getRenderPass() { return renderPass; }
+    void setColorAttachmentFormat(vk::Format format);
 
     void clear(float r, float g, float b, float a);
-    void begin(VkCommandBuffer commandBuffer);
+    void begin(vk::CommandBuffer commandBuffer);
     void end();
     void setFramebuffer(VkFramebuffer buffer);
     void setRenderAreaExtent(VkExtent2D extent);

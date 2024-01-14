@@ -2,31 +2,31 @@
 
 #include <vulkan/vulkan.h>
 #include <unordered_map>
-#include "../disposable.h"
+#include "../destroyable.h"
 
-class Syncer : public Disposable
+class Syncer : public Destroyable
 {
 private:
-    std::unordered_map<const char*, VkSemaphore> semaphores;
-    std::unordered_map<const char*, VkFence> fences;
+    std::unordered_map<const char*, vk::Semaphore> semaphores;
+    std::unordered_map<const char*, vk::Fence> fences;
 
 public:
-    void create(VkDevice device);
-    VkSemaphore createSemaphore();
-    VkSemaphore createSemaphore(const char* name);
+    void create(vk::Device device);
+    vk::Semaphore createSemaphore();
+    vk::Semaphore createSemaphore(const char* name);
 
-    VkFence createFence(bool startSignaled = false);
-    VkFence createFence(const char* name, bool startSignaled = false);
+    vk::Fence createFence(bool startSignaled = false);
+    vk::Fence createFence(const char* name, bool startSignaled = false);
 
-    VkSemaphore getSemaphore(const char* name);
-    VkFence getFence(const char* name);
+    vk::Semaphore getSemaphore(const char* name);
+    vk::Fence getFence(const char* name);
 
-    void resetFence(VkFence fence);
+    void resetFence(vk::Fence fence);
     void resetFence(const char* name);
     void waitForFence(const char* name);
-    void waitForFence(VkFence fence);
+    vk::Result waitForFence(vk::Fence fence);
 
 
 
-    void dispose() override;
+    void destroy() override;
 };

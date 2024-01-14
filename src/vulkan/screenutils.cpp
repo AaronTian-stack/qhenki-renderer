@@ -1,21 +1,23 @@
 #include "screenutils.h"
 
-void ScreenUtils::setViewport(VkCommandBuffer commandBuffer, uint32_t width, uint32_t height)
+void ScreenUtils::setViewport(vk::CommandBuffer commandBuffer, uint32_t width, uint32_t height)
 {
-    VkViewport viewport{};
+    vk::Viewport viewport{};
     viewport.x = 0.0f;
     viewport.y = 0.0f;
     viewport.width = static_cast<float>(width);
     viewport.height = static_cast<float>(height);
     viewport.minDepth = 0.0f;
     viewport.maxDepth = 1.0f;
-    vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
+    // see vkCmdSetViewport
+    commandBuffer.setViewport(0, 1, &viewport);
 }
 
-void ScreenUtils::setScissor(VkCommandBuffer commandBuffer, VkExtent2D extent)
+void ScreenUtils::setScissor(vk::CommandBuffer commandBuffer, vk::Extent2D extent)
 {
-    VkRect2D scissor{};
-    scissor.offset = {0, 0};
+    vk::Rect2D scissor{};
+    scissor.offset = vk::Offset2D{0, 0};
     scissor.extent = extent;
-    vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
+    // see vkCmdSetScissor
+    commandBuffer.setScissor(0, 1, &scissor);
 }

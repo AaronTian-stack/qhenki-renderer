@@ -5,9 +5,7 @@
 #include "instance.h"
 
 
-VulkanInstance::VulkanInstance() {}
-
-void VulkanInstance::create(bool verbose)
+vk::Instance Instance::create(bool verbose)
 {
     const std::vector<const char*> validationLayers =
     {
@@ -18,26 +16,29 @@ void VulkanInstance::create(bool verbose)
     {
         throw std::runtime_error("validation layers requested, but not available!");
     }
-    VkApplicationInfo appInfo{};
-    appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-    appInfo.pApplicationName = "Vulkan Application";
-    appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
-    appInfo.pEngineName = "No Engine";
-    appInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
-    // moltenvk goes up to 1.2
-    appInfo.apiVersion = VK_API_VERSION_1_2;
 
-    VkInstanceCreateInfo createInfo{};
-    createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
-    createInfo.pApplicationInfo = &appInfo;
+    auto appInfo = vk::ApplicationInfo(
+            "Vulkan Application",
+            VK_MAKE_VERSION(1, 0, 0),
+            "No Engine",
+            VK_MAKE_VERSION(1, 0, 0),
+            VK_API_VERSION_1_2
+            );
 
-    createInfo.flags |= VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR;
+    vk::InstanceCreateInfo createInfo(
+            {vk::InstanceCreateFlags(VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR)},
+            &appInfo);
 
     auto extensions = getRequiredExtensions();
+
     createInfo.enabledExtensionCount = static_cast<uint32_t>(extensions.size());
     createInfo.ppEnabledExtensionNames = extensions.data();
 
     VkDebugUtilsMessengerCreateInfoEXT debugCreateInfo = Debugger::debugMessengerCreateInfo(verbose);
+
+    createInfo.enabledLayerCount = 0;
+    createInfo.pNext = nullptr;
+
     if (enableValidationLayers)
     {
         createInfo.enabledLayerCount = static_cast<uint32_t>(validationLayers.size());
@@ -46,26 +47,14 @@ void VulkanInstance::create(bool verbose)
         // hook separate debug utils messenger into vkCreate and vkDestroy
         createInfo.pNext = (VkDebugUtilsMessengerCreateInfoEXT*) &debugCreateInfo;
     }
-    else
-    {
-        createInfo.enabledLayerCount = 0;
-        createInfo.pNext = nullptr;
-    }
 
-    VkResult result = vkCreateInstance(&createInfo, nullptr, &instance);
-    if (result != VK_SUCCESS)
-    {
-        std::cout << "error code " << result << std::endl;
-        throw std::runtime_error("failed to create instance!");
-    }
+    return vk::createInstance(createInfo);
 }
 
-void VulkanInstance::listExtensions()
+void Instance::listExtensions()
 {
-    uint32_t extensionCount = 0;
-    vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr);
-    std::vector<VkExtensionProperties> extensions(extensionCount);
-    vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, extensions.data());
+    auto extensions = vk::enumerateInstanceExtensionProperties();
+
     std::cout << "available instance extensions:\n";
 
     for (const auto &extension : extensions)
@@ -74,13 +63,9 @@ void VulkanInstance::listExtensions()
     }
 }
 
-bool VulkanInstance::checkValidationLayerSupport(std::vector<const char *> validationLayers)
+bool Instance::checkValidationLayerSupport(std::vector<const char *> validationLayers)
 {
-    uint32_t layerCount;
-    vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
-
-    std::vector<VkLayerProperties> availableLayers(layerCount);
-    vkEnumerateInstanceLayerProperties(&layerCount, availableLayers.data());
+    auto availableLayers = vk::enumerateInstanceLayerProperties();
 
     for (const char* layerName : validationLayers)
     {
@@ -104,7 +89,7 @@ bool VulkanInstance::checkValidationLayerSupport(std::vector<const char *> valid
     return true;
 }
 
-std::vector<const char *> VulkanInstance::getRequiredExtensions() const
+std::vector<const char *> Instance::getRequiredExtensions()
 {
     uint32_t glfwExtensionCount = 0;
     const char** glfwExtensions;
@@ -114,7 +99,9 @@ std::vector<const char *> VulkanInstance::getRequiredExtensions() const
 
     // macOS requires the VK_KHR_portability_subset extension to be enabled.
     // needs to be done for every vk instance.
+#ifdef __APPLE__
     extensions.emplace_back(VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME);
+#endif
     extensions.emplace_back(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME);
 
     if (enableValidationLayers)
@@ -123,14 +110,4 @@ std::vector<const char *> VulkanInstance::getRequiredExtensions() const
     }
 
     return extensions;
-}
-
-void VulkanInstance::dispose()
-{
-    vkDestroyInstance(instance, nullptr);
-}
-
-VkInstance VulkanInstance::getInstance() const
-{
-    return instance;
 }

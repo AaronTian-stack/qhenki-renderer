@@ -8,40 +8,40 @@
 class PipelineBuilder
 {
 private:
-    const std::vector<VkDynamicState> dynamicStates =
+    const std::vector<vk::DynamicState> dynamicStates =
     {
-        VK_DYNAMIC_STATE_VIEWPORT,
-        VK_DYNAMIC_STATE_SCISSOR
+        vk::DynamicState::eViewport,
+        vk::DynamicState::eScissor
     };
 
-    VkPipelineDynamicStateCreateInfo dynamicState{};
-    VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
-    VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
-    VkPipelineViewportStateCreateInfo viewportState{};
-    VkPipelineRasterizationStateCreateInfo rasterizer{};
-    VkPipelineMultisampleStateCreateInfo multisampling{};
-    VkPipelineDepthStencilStateCreateInfo depthStencil{}; // not used right now
-    VkPipelineColorBlendAttachmentState colorBlendAttachment{}; // you would make one of these for each attachment (specified in render pass)
-    VkPipelineColorBlendStateCreateInfo colorBlending{};
+    vk::PipelineDynamicStateCreateInfo dynamicState{};
+    vk::PipelineVertexInputStateCreateInfo vertexInputInfo{};
+    vk::PipelineInputAssemblyStateCreateInfo inputAssembly{};
+    vk::PipelineViewportStateCreateInfo viewportState{};
+    vk::PipelineRasterizationStateCreateInfo rasterizer{};
+    vk::PipelineMultisampleStateCreateInfo multisampling{};
+    vk::PipelineDepthStencilStateCreateInfo depthStencil{}; // not used right now
+    vk::PipelineColorBlendAttachmentState colorBlendAttachment{}; // you would make one of these for each attachment (specified in render pass)
+    vk::PipelineColorBlendStateCreateInfo colorBlending{};
 
-    VkPipelineLayoutCreateInfo pipelineLayoutInfo{}; // TODO: add way to change this
+    vk::PipelineLayoutCreateInfo pipelineLayoutInfo{}; // TODO: add way to change this
 
     uint32_t pushOffset;
-    std::vector<VkPushConstantRange> pushConstants;
+    std::vector<vk::PushConstantRange> pushConstants;
 
-    std::vector<VkVertexInputBindingDescription> vertexInputBindings;
-    std::vector<VkVertexInputAttributeDescription> vertexInputAttributes;
+    std::vector<vk::VertexInputBindingDescription> vertexInputBindings;
+    std::vector<vk::VertexInputAttributeDescription> vertexInputAttributes;
 
 public:
     PipelineBuilder();
-    uPtr<Pipeline> buildPipeline(VkDevice device, RenderPass* renderPass, Shader* shader);
-    void addPushConstant(uint32_t size, VkShaderStageFlags stageFlags = VK_SHADER_STAGE_ALL);
+    uPtr<Pipeline> buildPipeline(vk::Device device, RenderPass* renderPass, Shader* shader);
+    void addPushConstant(uint32_t size, vk::ShaderStageFlags stageFlags = vk::ShaderStageFlagBits::eAll);
 
     // buffer
-    void addVertexInputBinding(VkVertexInputBindingDescription binding);
+    void addVertexInputBinding(vk::VertexInputBindingDescription binding);
 
     // attributes for buffer
-    void addVertexInputAttribute(VkVertexInputAttributeDescription attribute);
+    void addVertexInputAttribute(vk::VertexInputAttributeDescription attribute);
 
     void reset();
 };

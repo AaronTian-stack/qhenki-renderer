@@ -2,7 +2,6 @@
 
 PipelineBuilder::PipelineBuilder() : pushOffset(0)
 {
-    dynamicState.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
     dynamicState.dynamicStateCount = static_cast<uint32_t>(dynamicStates.size());
     dynamicState.pDynamicStates = dynamicStates.data();
     reset();
@@ -14,28 +13,24 @@ void PipelineBuilder::reset()
     vertexInputAttributes.clear();
 
     // NO VERTEX DATA!
-    vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
     vertexInputInfo.vertexBindingDescriptionCount = 0;
     vertexInputInfo.pVertexBindingDescriptions = nullptr; // Optional
     vertexInputInfo.vertexAttributeDescriptionCount = 0;
     vertexInputInfo.pVertexAttributeDescriptions = nullptr; // Optional
 
     // TODO: add option to change primitive type
-    inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-    inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+    inputAssembly.topology = vk::PrimitiveTopology::eTriangleList;
     inputAssembly.primitiveRestartEnable = VK_FALSE;
 
-    viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
     viewportState.viewportCount = 1;
     viewportState.scissorCount = 1;
 
-    rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
     rasterizer.depthClampEnable = VK_FALSE;
-    rasterizer.polygonMode = VK_POLYGON_MODE_FILL; // TODO: add option to change polygon mode (need to enable feature)
+    rasterizer.polygonMode = vk::PolygonMode::eFill; // TODO: add option to change polygon mode (need to enable feature)
     rasterizer.lineWidth = 1.0f; // TODO: add option to change line width (need to enable feature)
     // TODO: add option to change culling mode
-    rasterizer.cullMode = VK_CULL_MODE_FRONT_BIT;
-    rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+    rasterizer.cullMode = vk::CullModeFlagBits::eFront;
+    rasterizer.frontFace = vk::FrontFace::eCounterClockwise;
 
     // built in bias maybe useful for shadow mapping
     rasterizer.depthBiasEnable = VK_FALSE;
@@ -44,9 +39,8 @@ void PipelineBuilder::reset()
     rasterizer.depthBiasSlopeFactor = 0.0f; // Optional
 
     // requires enabling feature
-    multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
     multisampling.sampleShadingEnable = VK_FALSE;
-    multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+    multisampling.rasterizationSamples = vk::SampleCountFlagBits::e1;
     multisampling.minSampleShading = 1.0f; // Optional
     multisampling.pSampleMask = nullptr; // Optional
     multisampling.alphaToCoverageEnable = VK_FALSE; // Optional
@@ -54,18 +48,17 @@ void PipelineBuilder::reset()
 
     // TODO: depth and stencil testing here
 
-    colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+    colorBlendAttachment.colorWriteMask = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA;
     colorBlendAttachment.blendEnable = VK_FALSE;
-    colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_ONE; // Optional
-    colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ZERO; // Optional
-    colorBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD; // Optional
-    colorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE; // Optional
-    colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO; // Optional
-    colorBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD; // Optional
+    colorBlendAttachment.srcColorBlendFactor = vk::BlendFactor::eOne; // Optional
+    colorBlendAttachment.dstColorBlendFactor = vk::BlendFactor::eZero; // Optional
+    colorBlendAttachment.colorBlendOp = vk::BlendOp::eAdd; // Optional
+    colorBlendAttachment.srcAlphaBlendFactor = vk::BlendFactor::eOne; // Optional
+    colorBlendAttachment.dstAlphaBlendFactor = vk::BlendFactor::eZero; // Optional
+    colorBlendAttachment.alphaBlendOp = vk::BlendOp::eAdd; // Optional
 
-    colorBlending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
     colorBlending.logicOpEnable = VK_FALSE;
-    colorBlending.logicOp = VK_LOGIC_OP_COPY; // Optional
+    colorBlending.logicOp = vk::LogicOp::eCopy; // Optional
     // number of color attachments
     colorBlending.attachmentCount = 1;
     // all the color attachments
@@ -84,17 +77,16 @@ void PipelineBuilder::reset()
     pipelineLayoutInfo.pPushConstantRanges = pushConstants.data();
     pipelineLayoutInfo.pushConstantRangeCount = pushConstants.size();
 
-    pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
     pipelineLayoutInfo.setLayoutCount = 0; // Optional
     pipelineLayoutInfo.pSetLayouts = nullptr; // Optional
 }
 
-uPtr<Pipeline> PipelineBuilder::buildPipeline(VkDevice device, RenderPass* renderPass, Shader* shader)
+uPtr<Pipeline> PipelineBuilder::buildPipeline(vk::Device device, RenderPass* renderPass, Shader* shader)
 {
     auto pipeline = mkU<Pipeline>(device);
 
-    VkGraphicsPipelineCreateInfo pipelineInfo{};
-    pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+    vk::GraphicsPipelineCreateInfo pipelineInfo{};
+
     pipelineInfo.stageCount = 2;
     pipelineInfo.pStages = shader->getShaderStages().data();
 
@@ -120,13 +112,15 @@ uPtr<Pipeline> PipelineBuilder::buildPipeline(VkDevice device, RenderPass* rende
     return pipeline;
 }
 
-void PipelineBuilder::addPushConstant(uint32_t size, VkShaderStageFlags stageFlags)
+void PipelineBuilder::addPushConstant(uint32_t size, vk::ShaderStageFlags stageFlags)
 {
     // TODO: there seem to be issues if the stageFlags is anything besides VK_SHADER_STAGE_ALL
-    VkPushConstantRange pushConstant{};
-    pushConstant.offset = pushOffset;
-    pushConstant.size = size;
-    pushConstant.stageFlags = stageFlags;
+    vk::PushConstantRange pushConstant(
+        stageFlags,
+        pushOffset,
+        size
+            );
+
     pushConstants.push_back(pushConstant);
 
     pushOffset += size; // alignment is done in order
@@ -135,16 +129,16 @@ void PipelineBuilder::addPushConstant(uint32_t size, VkShaderStageFlags stageFla
     pipelineLayoutInfo.pushConstantRangeCount = pushConstants.size();
 }
 
-void PipelineBuilder::addVertexInputBinding(VkVertexInputBindingDescription binding)
+void PipelineBuilder::addVertexInputBinding(vk::VertexInputBindingDescription binding)
 {
-    vertexInputBindings.push_back(binding);
+    vertexInputBindings.emplace_back(binding);
     vertexInputInfo.vertexBindingDescriptionCount = vertexInputBindings.size();
     vertexInputInfo.pVertexBindingDescriptions = vertexInputBindings.data();
 }
 
-void PipelineBuilder::addVertexInputAttribute(VkVertexInputAttributeDescription attribute)
+void PipelineBuilder::addVertexInputAttribute(vk::VertexInputAttributeDescription attribute)
 {
-    vertexInputAttributes.push_back(attribute);
+    vertexInputAttributes.emplace_back(attribute);
     vertexInputInfo.vertexAttributeDescriptionCount = vertexInputAttributes.size();
     vertexInputInfo.pVertexAttributeDescriptions = vertexInputAttributes.data();
 }

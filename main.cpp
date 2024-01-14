@@ -33,11 +33,6 @@ int main()
         app.render(); // ui.end() called in here since command buffer is needed
     }
 
-    ui.dispose();
-    app.dispose();
-    window.destroySurface(app.getVulkanInstance());
-
-    // vulkan instance is destroyed in destructor of app
-    // glfw destroys window in destructor
+    //ui.destroy(); // destructor does this
     return 0;
 }

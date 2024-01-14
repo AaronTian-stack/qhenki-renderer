@@ -1,34 +1,26 @@
 #include "pipeline.h"
 #include <stdexcept>
 
-Pipeline::Pipeline(VkDevice device) : Disposable(device) {}
+Pipeline::Pipeline(vk::Device device) : Destroyable(device) {}
 
-VkPipelineLayout Pipeline::createPipelineLayout(VkPipelineLayoutCreateInfo pipelineLayoutInfo)
-{;
-    if (vkCreatePipelineLayout(deviceForDispose, &pipelineLayoutInfo, nullptr, &pipelineLayout) != VK_SUCCESS)
-    {
-        throw std::runtime_error("failed to create pipeline layout!");
-    }
+vk::PipelineLayout Pipeline::createPipelineLayout(const vk::PipelineLayoutCreateInfo &pipelineLayoutInfo)
+{
+    auto layout = device.createPipelineLayout(pipelineLayoutInfo);
+    pipelineLayout = layout;
     return pipelineLayout;
 }
 
-void Pipeline::createGraphicsPipeline(const VkGraphicsPipelineCreateInfo &pipelineInfo)
+void Pipeline::createGraphicsPipeline(const vk::GraphicsPipelineCreateInfo &pipelineInfo)
 {
-    if (vkCreateGraphicsPipelines(deviceForDispose,
-                                  VK_NULL_HANDLE,
-                                  1,
-                                  &pipelineInfo,
-                                  nullptr,
-                                  &graphicsPipeline) != VK_SUCCESS)
-    {
-        throw std::runtime_error("failed to create graphics pipeline!");
-    }
+    // see vkCreateGraphicsPipelines
+    auto result = device.createGraphicsPipeline(nullptr, pipelineInfo);
+    graphicsPipeline = result.value;
 }
 
-void Pipeline::dispose()
+void Pipeline::destroy()
 {
-    vkDestroyPipeline(deviceForDispose, graphicsPipeline, nullptr);
-    vkDestroyPipelineLayout(deviceForDispose, pipelineLayout, nullptr);
+    device.destroyPipeline(graphicsPipeline);
+    device.destroyPipelineLayout(pipelineLayout);
 }
 
 VkPipeline Pipeline::getGraphicsPipeline()
@@ -36,8 +28,8 @@ VkPipeline Pipeline::getGraphicsPipeline()
     return graphicsPipeline;
 }
 
-void Pipeline::setPushConstant(VkCommandBuffer commandBuffer, float constant)
+void Pipeline::setPushConstant(vk::CommandBuffer commandBuffer, float constant)
 {
     // TODO: change this more generic data than just a single float idk. should also account for offset (if stuff not in one giant struct)
-    vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_ALL, 0, sizeof(float), &constant);
+    commandBuffer.pushConstants(pipelineLayout, vk::ShaderStageFlagBits::eAll, 0, sizeof(float), &constant);
 }

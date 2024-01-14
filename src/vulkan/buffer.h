@@ -2,22 +2,22 @@
 
 #include "vulkan/vulkan.h"
 #include "vma/vk_mem_alloc.h"
-#include "../disposable.h"
+#include "../destroyable.h"
 
-class Buffer : Disposable
+class Buffer
 {
 private:
     VmaAllocator allocator;
 
 public:
-    Buffer(VkBuffer buffer, VmaAllocation allocation, VmaAllocator allocator);
+    Buffer(vk::Buffer buffer, VmaAllocation allocation, VmaAllocator allocator);
 
     void fill(const void *data, size_t bufferSize);
 
-    void bind(VkCommandBuffer commandBuffer);
+    void bind(vk::CommandBuffer commandBuffer);
 
-    void dispose() override;
+    void destroy();
 
-    VkBuffer buffer;
+    vk::Buffer buffer;
     VmaAllocation allocation;
 };

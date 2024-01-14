@@ -6,67 +6,62 @@ RenderPass::RenderPass()
     reset();
 }
 
-void RenderPass::create(VkDevice device)
+void RenderPass::create(vk::Device device)
 {
-    deviceForDispose = device;
-    if (vkCreateRenderPass(deviceForDispose, &renderPassInfo, nullptr, &renderPass) != VK_SUCCESS)
-    {
-        throw std::runtime_error("failed to create render pass!");
-    }
+    this->device = device;
+    renderPass = device.createRenderPass(renderPassInfo);
 }
 
-void RenderPass::dispose()
+void RenderPass::destroy()
 {
-    vkDestroyRenderPass(deviceForDispose, renderPass, nullptr);
+    device.destroyRenderPass(renderPass);
 }
 
 void RenderPass::reset()
 {
-    colorAttachment.format = VK_FORMAT_A8B8G8R8_UINT_PACK32; // need to provide swapchain format
-    colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
-    colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-    colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-    colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-    colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-    colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-    colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+    colorAttachment.format = vk::Format::eA8B8G8R8UintPack32; // need to provide swapchain format
+    colorAttachment.samples = vk::SampleCountFlagBits::e1;
+    colorAttachment.loadOp = vk::AttachmentLoadOp::eClear;
+    colorAttachment.storeOp = vk::AttachmentStoreOp::eStore;
+    colorAttachment.stencilLoadOp = vk::AttachmentLoadOp::eDontCare;
+    colorAttachment.stencilStoreOp = vk::AttachmentStoreOp::eDontCare;
+    colorAttachment.initialLayout = vk::ImageLayout::eUndefined;
+    colorAttachment.finalLayout = vk::ImageLayout::ePresentSrcKHR;
 
-    colorAttachmentRef.attachment = 0; // index in pAttachments array. used in the shader! (layout(location = 0) out vec4 outColor;)
-    colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+    colorAttachmentRef.attachment = 0; // index in pAttachments array. used in the shader! (layout(location = 0) out vec4 outColor)
+    colorAttachmentRef.layout = vk::ImageLayout::eColorAttachmentOptimal; // TODO: allow for more attachments
 
     // TODO: abstract attachment setup
-    subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+    subpass.pipelineBindPoint = vk::PipelineBindPoint::eGraphics;
     subpass.colorAttachmentCount = 1;
     subpass.pColorAttachments = &colorAttachmentRef;
 
-    renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
     renderPassInfo.attachmentCount = 1;
     renderPassInfo.pAttachments = &colorAttachment; // TODO: allow for more attachments
     renderPassInfo.subpassCount = 1;
     renderPassInfo.pSubpasses = &subpass;
 }
 
-void RenderPass::setColorAttachmentFormat(VkFormat format)
+void RenderPass::setColorAttachmentFormat(vk::Format format)
 {
     colorAttachment.format = format;
 }
 
-void RenderPass::begin(VkCommandBuffer commandBuffer)
+void RenderPass::begin(vk::CommandBuffer commandBuffer)
 {
-    renderPassBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
     renderPassBeginInfo.renderPass = renderPass;
-    renderPassBeginInfo.renderArea.offset = {0, 0};
+    renderPassBeginInfo.renderArea.offset = vk::Offset2D{0, 0};
 
     // also need renderPassInfo.framebuffer and renderPassInfo.renderArea.extent
 
     // set up the command buffer for this render pass
-    vkCmdBeginRenderPass(commandBuffer, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+    commandBuffer.beginRenderPass(&renderPassBeginInfo, vk::SubpassContents::eInline);
     currentCommandBuffer = commandBuffer;
 }
 
 void RenderPass::clear(float r, float g, float b, float a)
 {
-    clearColor = {{{r, g, b, a}}};
+    clearColor = vk::ClearColorValue(std::array<float, 4>{r, g, b, a});
     renderPassBeginInfo.clearValueCount = 1;
     renderPassBeginInfo.pClearValues = &clearColor;
 }
@@ -83,6 +78,9 @@ void RenderPass::setRenderAreaExtent(VkExtent2D extent)
 
 void RenderPass::end()
 {
-    vkCmdEndRenderPass(currentCommandBuffer);
-    currentCommandBuffer = VK_NULL_HANDLE;
+    if (!currentCommandBuffer.has_value())
+        throw std::runtime_error("RenderPass::end() called without begin()!");
+
+    currentCommandBuffer->endRenderPass();
+    currentCommandBuffer = std::nullopt;
 }

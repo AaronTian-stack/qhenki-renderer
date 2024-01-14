@@ -1,24 +1,23 @@
 #pragma once
 
-#include "disposable.h"
+#include "destroyable.h"
 #include "vulkan/vulkan_core.h"
 #include "window.h"
 #include "vulkan/devicepicker.h"
 #include "vulkan/renderpass.h"
 #include "vulkan/queuemanager.h"
 #include "vulkan/commandpool.h"
+#include "vulkan/vulkancontext.h"
 
 struct ImGuiCreateParameters
 {
-    VulkanInstance *instance;
-    DevicePicker *devicePicker;
+    VulkanContext *context;
     Window *window;
     RenderPass *renderPass;
-    QueueManager *queueManager;
     int framesInFlight;
 };
 
-class UserInterface : Disposable
+class UserInterface : Destroyable
 {
 private:
     Window *window;
@@ -28,10 +27,11 @@ private:
 
 public:
     UserInterface();
+    ~UserInterface();
 
     void create(ImGuiCreateParameters param, CommandPool commandPool);
     void render();
-    void dispose() override;
+    void destroy() override;
 
     void begin();
     void end(VkCommandBuffer commandBuffer);

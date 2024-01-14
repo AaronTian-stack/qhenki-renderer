@@ -14,8 +14,9 @@
 #include "vulkan/vulkancontext.h"
 #include "gltfloader.h"
 #include "vulkan/bufferfactory.h"
+#include "glm/vec2.hpp"
 
-class PathTracerApp : public Disposable
+class PathTracerApp
 {
 private:
     uPtr<Buffer> buffer;
@@ -45,12 +46,10 @@ public:
     void create(Window &window);
     void render();
     void resize();
-    void dispose() override;
 
     void recordCommandBuffer(VkFramebuffer framebuffer); // TODO: NEED TO DELETE THIS LATER
 
     UserInterface *ui;
-    VulkanInstance& getVulkanInstance();
     ImGuiCreateParameters getImGuiCreateParameters();
 
     CommandPool& getCommandPool();

@@ -2,32 +2,29 @@
 
 QueueManager::QueueManager() {}
 
-void QueueManager::initQueues(VkDevice device, QueueFamilyIndices indices)
+void QueueManager::initQueues(vk::Device& device, QueueFamilyIndices indices)
 {
-    vkGetDeviceQueue(device, indices.graphicsFamily.value(), 0, &graphicsQueue);
-    vkGetDeviceQueue(device, indices.presentFamily.value(), 0, &presentQueue);
+    // since one queue per family just get the first queue
+    graphicsQueue = device.getQueue(indices.graphicsFamily.value(), 0);
+    presentQueue = device.getQueue(indices.presentFamily.value(), 0);
 }
 
-void QueueManager::submitGraphics(VkSubmitInfo submitInfo, VkFence fence)
+vk::Result QueueManager::submitGraphics(vk::SubmitInfo submitInfo, vk::Fence fence)
 {
-    if (vkQueueSubmit(graphicsQueue, 1, &submitInfo, fence) != VK_SUCCESS)
-    {
-        throw std::runtime_error("failed to submit draw command buffer!");
-    }
+    // see vkQueueSubmit
+    return graphicsQueue.submit(1, &submitInfo, fence);
 }
 
-void QueueManager::present(SwapChain &swapChain, const std::vector<VkSemaphore> &signalSemaphores)
+vk::Result QueueManager::present(SwapChain &swapChain, const std::vector<vk::Semaphore> &signalSemaphores)
 {
-    VkPresentInfoKHR presentInfo{};
-    presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+    auto presentInfo = vk::PresentInfoKHR(
+        signalSemaphores.size(),
+        signalSemaphores.data(), // wait for this semaphore to be signaled before presentation
+        1,
+        &swapChain.swapChain,
+        &swapChain.imageIndex
+    );
 
-    presentInfo.waitSemaphoreCount = signalSemaphores.size();
-    presentInfo.pWaitSemaphores = signalSemaphores.data(); // wait for this semaphore to be signaled before presentation
-
-    presentInfo.swapchainCount = 1;
-    presentInfo.pSwapchains = &swapChain.swapChain;
-    presentInfo.pImageIndices = &swapChain.imageIndex;
-
-    vkQueuePresentKHR(presentQueue, &presentInfo);
+    return presentQueue.presentKHR(presentInfo);
 }
 

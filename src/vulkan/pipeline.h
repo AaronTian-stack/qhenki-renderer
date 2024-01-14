@@ -1,22 +1,22 @@
 #pragma once
 
 #include <vulkan/vulkan.h>
-#include "../disposable.h"
+#include "../destroyable.h"
 
-class Pipeline : public Disposable
+class Pipeline : public Destroyable
 {
 private:
-    VkPipelineLayout pipelineLayout;
-    VkPipeline graphicsPipeline;
-    void createGraphicsPipeline(const VkGraphicsPipelineCreateInfo &pipelineInfo);
-    VkPipelineLayout createPipelineLayout(VkPipelineLayoutCreateInfo pipelineLayoutInfo);
+    vk::PipelineLayout pipelineLayout;
+    vk::Pipeline graphicsPipeline;
+    void createGraphicsPipeline(const vk::GraphicsPipelineCreateInfo &pipelineInfo);
+    vk::PipelineLayout createPipelineLayout(const vk::PipelineLayoutCreateInfo &pipelineLayoutInfo);
 
 public:
-    Pipeline(VkDevice device);
+    Pipeline(vk::Device device);
 
-    void dispose() override;
+    void destroy() override;
     VkPipeline getGraphicsPipeline();
-    void setPushConstant(VkCommandBuffer commandBuffer, float constant);
+    void setPushConstant(vk::CommandBuffer commandBuffer, float constant);
 
     friend class PipelineBuilder;
 };

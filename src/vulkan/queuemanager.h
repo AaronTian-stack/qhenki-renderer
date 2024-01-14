@@ -1,27 +1,20 @@
 #pragma once
 
-#include "vulkan/vulkan.h"
-#include "devicepicker.h"
 #include "swapchain.h"
 
 class QueueManager
 {
 private:
-    VkQueue graphicsQueue;
-    VkQueue presentQueue;
+    vk::Queue graphicsQueue;
+    vk::Queue presentQueue;
 
 public:
     QueueManager();
 
-    /*
-     * Initializes the queues for the device.
-     * @param device The device to get the queues from.
-     * @param indices The indices of the queue families corresponding to the device you are using.
-     */
-    void initQueues(VkDevice device, QueueFamilyIndices indices);
+    void initQueues(vk::Device &device, QueueFamilyIndices indices);
 
-    void submitGraphics(VkSubmitInfo submitInfo, VkFence fence);
-    void present(SwapChain &swapChain, const std::vector<VkSemaphore> &signalSemaphores);
+    vk::Result submitGraphics(vk::SubmitInfo submitInfo, vk::Fence fence);
+    vk::Result present(SwapChain &swapChain, const std::vector<vk::Semaphore> &signalSemaphores);
 
     friend class UserInterface;
     friend class CommandPool;

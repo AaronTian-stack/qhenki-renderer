@@ -1,23 +1,17 @@
 #include "syncer.h"
 
-void Syncer::create(VkDevice device)
+void Syncer::create(vk::Device device)
 {
-    deviceForDispose = device;
+    this->device = device;
 }
 
-VkSemaphore Syncer::createSemaphore()
+vk::Semaphore Syncer::createSemaphore()
 {
-    VkSemaphoreCreateInfo semaphoreInfo{};
-    semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-    auto sem = VkSemaphore();
-    if (vkCreateSemaphore(deviceForDispose, &semaphoreInfo, nullptr, &sem) != VK_SUCCESS)
-    {
-        throw std::runtime_error("failed to create semaphores!");
-    }
-    return sem;
+    vk::SemaphoreCreateInfo semaphoreInfo;
+    return device.createSemaphore(semaphoreInfo);
 }
 
-VkSemaphore Syncer::createSemaphore(const char* name)
+vk::Semaphore Syncer::createSemaphore(const char* name)
 {
     if (semaphores.find(name) != semaphores.end())
     {
@@ -28,20 +22,14 @@ VkSemaphore Syncer::createSemaphore(const char* name)
     return sem;
 }
 
-VkFence Syncer::createFence(bool startSignaled)
+vk::Fence Syncer::createFence(bool startSignaled)
 {
-    VkFenceCreateInfo fenceInfo{};
-    fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-    if (startSignaled) fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
-    auto fence = VkFence();
-    if (vkCreateFence(deviceForDispose, &fenceInfo, nullptr, &fence) != VK_SUCCESS)
-    {
-        throw std::runtime_error("failed to create fences!");
-    }
-    return fence;
+    vk::FenceCreateInfo fenceInfo;
+    if (startSignaled) fenceInfo.flags = vk::FenceCreateFlagBits::eSignaled;
+    return device.createFence(fenceInfo);
 }
 
-VkFence Syncer::createFence(const char* name, bool startSignaled)
+vk::Fence Syncer::createFence(const char* name, bool startSignaled)
 {
     if (fences.find(name) != fences.end())
     {
@@ -52,19 +40,19 @@ VkFence Syncer::createFence(const char* name, bool startSignaled)
     return fence;
 }
 
-VkSemaphore Syncer::getSemaphore(const char *name)
+vk::Semaphore Syncer::getSemaphore(const char *name)
 {
     return semaphores[name];
 }
 
-VkFence Syncer::getFence(const char* name)
+vk::Fence Syncer::getFence(const char* name)
 {
     return fences[name];
 }
 
-void Syncer::resetFence(VkFence fence)
+void Syncer::resetFence(vk::Fence fence)
 {
-    vkResetFences(deviceForDispose, 1, &fence);
+    device.resetFences(fence);
 }
 
 void Syncer::resetFence(const char* name)
@@ -72,9 +60,9 @@ void Syncer::resetFence(const char* name)
     resetFence(fences[name]);
 }
 
-void Syncer::waitForFence(VkFence fence)
+vk::Result Syncer::waitForFence(vk::Fence fence)
 {
-    vkWaitForFences(deviceForDispose, 1, &fence, VK_TRUE, UINT64_MAX);
+    return device.waitForFences(fence, VK_TRUE, UINT64_MAX);
 }
 
 void Syncer::waitForFence(const char *name)
@@ -83,14 +71,14 @@ void Syncer::waitForFence(const char *name)
     waitForFence(fence);
 }
 
-void Syncer::dispose()
+void Syncer::destroy()
 {
     for (auto semaphore : semaphores)
     {
-        vkDestroySemaphore(deviceForDispose, semaphore.second, nullptr);
+        device.destroySemaphore(semaphore.second); // see vkDestroySemaphore
     }
     for (auto fence : fences)
     {
-        vkDestroyFence(deviceForDispose, fence.second, nullptr);
+        device.destroyFence(fence.second); // see vkDestroyFence
     }
 }

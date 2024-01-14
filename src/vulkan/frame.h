@@ -1,31 +1,31 @@
 #include <vulkan/vulkan.h>
-#include "../disposable.h"
+#include "../destroyable.h"
 #include "syncer.h"
 #include "commandpool.h"
 
-class Frame : public Disposable
+class Frame : public Destroyable
 {
 private:
-    VkCommandBufferBeginInfo beginInfo{};
-    VkSubmitInfo submitInfo{};
+    vk::CommandBufferBeginInfo beginInfo{};
+    vk::SubmitInfo submitInfo{};
 
-    VkPipelineStageFlags waitStages[1] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
+    vk::PipelineStageFlags waitStages[1] = {vk::PipelineStageFlagBits::eColorAttachmentOutput};
 
 public:
 
-    VkCommandBuffer commandBuffer;
-    VkSemaphore imageAvailableSemaphore;
-    VkSemaphore renderFinishedSemaphore;
-    VkFence inFlightFence;
+    vk::CommandBuffer commandBuffer;
+    vk::Semaphore imageAvailableSemaphore;
+    vk::Semaphore renderFinishedSemaphore;
+    vk::Fence inFlightFence;
 
     Frame();
-    Frame(VkDevice device, CommandPool &pool, Syncer &sync);
-    void create(VkDevice device, CommandPool &pool, Syncer &sync);
-    void dispose() override;
+    Frame(vk::Device device, CommandPool &pool, Syncer &sync);
+
+    void destroy() override;
 
     void begin();
     void end();
 
-    VkSubmitInfo getSubmitInfo();
+    vk::SubmitInfo getSubmitInfo();
     void finish(Syncer &syncer);
 };

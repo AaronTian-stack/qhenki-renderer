@@ -1,28 +1,22 @@
 #pragma once
 
-#include "vulkan/vulkan.h"
-#include "../disposable.h"
+#include "vulkan/vulkan.hpp"
+#include "../destroyable.h"
 #include <vector>
 
-class VulkanInstance : public Disposable
+class Instance
 {
 private:
-    VkInstance instance;
+#ifdef NDEBUG
+    static inline const bool enableValidationLayers = false;
+#else
+    static inline const bool enableValidationLayers = true;
+#endif
+    static bool checkValidationLayerSupport(std::vector<const char*> validationLayers);
+    static std::vector<const char*> getRequiredExtensions();
 public:
 
-#ifdef NDEBUG
-    const bool enableValidationLayers = false;
-#else
-    const bool enableValidationLayers = true;
-#endif
-
-    VulkanInstance();
-    void create(bool verbose);
+    static vk::Instance create(bool verbose);
     static void listExtensions();
-    static bool checkValidationLayerSupport(std::vector<const char*> validationLayers);
-    std::vector<const char*> getRequiredExtensions() const;
-    void dispose() override;
-
-    VkInstance getInstance() const;
 
 };

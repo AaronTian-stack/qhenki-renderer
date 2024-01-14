@@ -29,25 +29,19 @@ std::vector<char> Shader::readFile(const std::string &filename)
     return {};
 }
 
-VkShaderModule Shader::createShaderModule(const std::string &filePath)
+vk::ShaderModule Shader::createShaderModule(const std::string &filePath)
 {
     std::vector<char> code = readFile(filePath);
-    VkShaderModuleCreateInfo createInfo{};
-    createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-    createInfo.codeSize = code.size();
-    createInfo.pCode = reinterpret_cast<const uint32_t*>(code.data());
-    VkShaderModule shaderModule;
-    if (vkCreateShaderModule(deviceForDispose, &createInfo, nullptr, &shaderModule) != VK_SUCCESS)
-    {
-        throw std::runtime_error("failed to create shader module!");
-    }
-    return shaderModule;
+    vk::ShaderModuleCreateInfo createInfo(
+    vk::ShaderModuleCreateFlags(),
+            code.size(),
+            reinterpret_cast<const uint32_t *>(code.data())
+    );
+    return device.createShaderModule(createInfo);
 }
 
-Shader::Shader(VkDevice device, const char* vertShaderPath, const char* fragShaderPath)
+Shader::Shader(vk::Device device, const char* vertShaderPath, const char* fragShaderPath) : Destroyable(device)
 {
-    deviceForDispose = device;
-
     vertShaderModule = createShaderModule(vertShaderPath);
     fragShaderModule = createShaderModule(fragShaderPath);
 
@@ -57,28 +51,28 @@ Shader::Shader(VkDevice device, const char* vertShaderPath, const char* fragShad
     shaderStages = {vertShaderStageInfo, fragShaderStageInfo};
 }
 
-VkPipelineShaderStageCreateInfo Shader::vertexStageInfo(const VkShaderModule &vertShaderModule)
+vk::PipelineShaderStageCreateInfo Shader::vertexStageInfo(const vk::ShaderModule &vertShaderModule)
 {
-    VkPipelineShaderStageCreateInfo vertShaderStageInfo{};
-    vertShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-    vertShaderStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT; // vertex shader
-    vertShaderStageInfo.module = vertShaderModule;
-    vertShaderStageInfo.pName = "main"; // entry point, could combine multiple shaders into one module. however not possible with GLSL
-    return vertShaderStageInfo;
+    return {
+        vk::PipelineShaderStageCreateFlags(),
+        vk::ShaderStageFlagBits::eVertex, // vertex shader
+        vertShaderModule,
+        "main" // entry point, could combine multiple shaders into one module. however not possible with GLSL
+    };
 }
 
-VkPipelineShaderStageCreateInfo Shader::fragmentStageInfo(VkShaderModule const &fragShaderModule)
+vk::PipelineShaderStageCreateInfo Shader::fragmentStageInfo(vk::ShaderModule const &fragShaderModule)
 {
-    VkPipelineShaderStageCreateInfo fragShaderStageInfo{};
-    fragShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-    fragShaderStageInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-    fragShaderStageInfo.module = fragShaderModule;
-    fragShaderStageInfo.pName = "main";
-    return fragShaderStageInfo;
+    return {
+        vk::PipelineShaderStageCreateFlags(),
+        vk::ShaderStageFlagBits::eFragment,
+        fragShaderModule,
+        "main"
+    };
 }
 
-void Shader::dispose()
+void Shader::destroy()
 {
-    vkDestroyShaderModule(deviceForDispose, fragShaderModule, nullptr);
-    vkDestroyShaderModule(deviceForDispose, vertShaderModule, nullptr);
+    device.destroyShaderModule(fragShaderModule);
+    device.destroyShaderModule(vertShaderModule);
 }

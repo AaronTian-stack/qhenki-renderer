@@ -26,20 +26,18 @@ bool Window::shouldClose()
     return glfwWindowShouldClose(window);
 }
 
-void Window::destroySurface(VulkanInstance vkInstance)
+vk::SurfaceKHR Window::createSurface(vk::Instance instance)
 {
-    vkDestroySurfaceKHR(vkInstance.getInstance(), surface, nullptr);
-}
-
-void Window::createSurface(VulkanInstance vkInstance)
-{
-    if (glfwCreateWindowSurface(vkInstance.getInstance(), window, nullptr, &surface) != VK_SUCCESS)
+    VkSurfaceKHR s;
+    if (glfwCreateWindowSurface(instance, window, nullptr, &s) != VK_SUCCESS)
     {
         throw std::runtime_error("failed to create window surface!");
     }
+    surface = vk::SurfaceKHR(s);
+    return surface;
 }
 
-VkSurfaceKHR Window::getSurface()
+vk::SurfaceKHR Window::getSurface()
 {
     return surface;
 }

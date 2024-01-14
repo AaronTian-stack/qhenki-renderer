@@ -14,7 +14,7 @@ private:
 public:
     void create(VulkanContext &context);
 
-    uPtr<Buffer> createBuffer(VkDeviceSize size, VkBufferUsageFlags usage);
+    uPtr<Buffer> createBuffer(vk::DeviceSize size, VkBufferUsageFlags usage);
 
-    void dispose();
+    void destroy();
 };

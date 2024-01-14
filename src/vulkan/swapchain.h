@@ -1,57 +1,53 @@
 #pragma once
 
 #include <vector>
-#include "vulkan/vulkan.h"
+#include <vulkan/vulkan.hpp>
 #include "devicepicker.h"
-#include "../window.h"
 #include "renderpass.h"
+#include "../window.h"
+#include "device.h"
 
 struct SwapChainSupportDetails
 {
-    VkSurfaceCapabilitiesKHR capabilities;
-    std::vector<VkSurfaceFormatKHR> formats;
-    std::vector<VkPresentModeKHR> presentModes;
+    vk::SurfaceCapabilitiesKHR capabilities;
+    std::vector<vk::SurfaceFormatKHR> formats;
+    std::vector<vk::PresentModeKHR> presentModes;
 };
 
-class vec2;
-
-class SwapChain : public Disposable
+class SwapChain : public Destroyable
 {
 private:
     uint32_t imageIndex; // for presentation
 
-    VkDevice deviceForDispose;
-    VkSwapchainKHR swapChain; // holds the images
+    //VkDevice deviceForDispose;
+    vk::SwapchainKHR swapChain; // holds the images
 
     // VkImage is a handle to an image object, multidimensional array of data. can be used as attachments, textures, etc.
-    std::vector<VkImage> swapChainImages;
-    std::vector<VkImageView> swapChainImageViews; // TODO: maybe abstraction that pairs image with image view?
+    std::vector<vk::Image> swapChainImages;
+    std::vector<vk::ImageView> swapChainImageViews; // TODO: maybe abstraction that pairs image with image view?
 
-    VkFormat swapChainImageFormat;
-    VkExtent2D swapChainExtent;
+    vk::Format swapChainImageFormat;
+    vk::Extent2D swapChainExtent;
 
     // wraps the image views
     std::vector<VkFramebuffer> swapChainFramebuffers;
 
-    // color channels, color space
-    VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats);
-    // buffering
-    VkPresentModeKHR chooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes);
-    // resolution of swap chain images
-    static VkExtent2D chooseSwapExtent(Window &window, const VkSurfaceCapabilitiesKHR& capabilities);
-    void createImageViews(DevicePicker &vkDevicePicker);
+    vk::SurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<vk::SurfaceFormatKHR>& availableFormats);
+    vk::PresentModeKHR chooseSwapPresentMode(const std::vector<vk::PresentModeKHR>& availablePresentModes);
+
+    static vk::Extent2D chooseSwapExtent(Window &window, const vk::SurfaceCapabilitiesKHR &capabilities);
+    void createImageViews(vk::Device &device);
 
 public:
-    static SwapChainSupportDetails querySwapChainSupport(VkPhysicalDevice device, VkSurfaceKHR surface);
-    VkFormat getFormat() const;
-    void createSwapChain(DevicePicker &vkDevicePicker, Window &window);
+    static SwapChainSupportDetails querySwapChainSupport(const vk::PhysicalDevice &device, VkSurfaceKHR surface);
+    vk::Format getFormat() const;
+    void createSwapChain(Device &device, Window &window);
     void createFramebuffers(RenderPass &renderPass);
-    void dispose() override;
+    void destroy() override;
 
-    VkExtent2D getExtent() const;
-    VkSwapchainKHR getSwapChain();
+    vk::Extent2D getExtent() const;
 
-    VkFramebuffer nextImage(VkSemaphore imageAvailable);
+    vk::Framebuffer nextImage(vk::Semaphore imageAvailable);
 
     friend class QueueManager;
 };
