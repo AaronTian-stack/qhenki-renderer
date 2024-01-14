@@ -1,3 +1,4 @@
+#include <limits>
 #include "swapchain.h"
 
 SwapChainSupportDetails SwapChain::querySwapChainSupport(const vk::PhysicalDevice &physicalDevice, VkSurfaceKHR surface)

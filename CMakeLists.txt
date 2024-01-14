@@ -32,6 +32,7 @@ if (APPLE)
     target_link_libraries(${PROJECT_NAME} glfw)
 elseif (WIN32)
     # do windows stuff
+    target_link_libraries(${PROJECT_NAME} ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/glfw3.dll)
 endif ()
 
 

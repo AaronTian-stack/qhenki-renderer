@@ -163,7 +163,7 @@ void DevicePicker::listQueueFamilies(const vk::PhysicalDevice &device)
     int i = 0;
     for (const auto &queueFamily : queueFamilies)
     {
-        std::cout << "\tfamily " << i << ": " << static_cast<uint>(queueFamily.queueFlags) << static_cast<uint>(queueFamily.queueCount) << std::endl;
+        std::cout << "\tfamily " << i << ": " << static_cast<unsigned int>(queueFamily.queueFlags) << static_cast<unsigned int>(queueFamily.queueCount) << std::endl;
         i++;
     }
 }
