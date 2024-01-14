@@ -31,6 +31,7 @@ void PathTracerApp::create(Window &window)
     vulkanContext.create(window);
 
     auto device = vulkanContext.device.logicalDevice;
+    commandPool.create(device, vulkanContext.device.queueFamilyIndices.graphicsFamily.value());
 
     bufferFactory.create(vulkanContext);
 
@@ -57,7 +58,17 @@ void PathTracerApp::create(Window &window)
             {{-0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}}
     };
 
-    buffer = bufferFactory.createBuffer(vertices.size() * sizeof(Vertex), VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
+    /*auto stagingBuffer = bufferFactory.createBuffer(
+            vertices.size() * sizeof(Vertex),
+            VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+            VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
+
+    stagingBuffer->fill(vertices.data(), vertices.size() * sizeof(Vertex));
+
+    buffer = bufferFactory.createBuffer(vertices.size() * sizeof(Vertex), VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
+    stagingBuffer->copyTo(*buffer, vulkanContext.queueManager, commandPool);*/
+
+    buffer = bufferFactory.createBuffer(vertices.size() * sizeof(Vertex), VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
     buffer->fill(vertices.data(), vertices.size() * sizeof(Vertex));
 
     pipelineFactory.reset();
@@ -70,11 +81,7 @@ void PathTracerApp::create(Window &window)
 
     vulkanContext.swapChain.createFramebuffers(renderPass);
 
-    commandPool.create(device, vulkanContext.device.queueFamilyIndices.graphicsFamily.value());
-    commandPool.createCommandBuffer("main");
-
     syncer.create(device);
-
     for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
         frames.emplace_back(device, commandPool, syncer);
 

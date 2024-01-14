@@ -8,6 +8,7 @@
 class CommandPool : public Destroyable
 {
 private:
+    vk::Fence singleCommandFence;
     vk::CommandPool commandPool;
     std::unordered_map<const char*, vk::CommandBuffer> commandBuffers;
 
@@ -20,5 +21,5 @@ public:
     vk::CommandBuffer getCommandBuffer(const char* name);
 
     vk::CommandBuffer beginSingleCommand();
-    void endSingleTimeCommands(QueueManager &queueManager, vk::CommandBuffer commandBuffer);
+    void endSingleTimeCommands(QueueManager &queueManager, std::vector<vk::CommandBuffer> commandBuffers);
 };

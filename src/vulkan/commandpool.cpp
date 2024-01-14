@@ -10,10 +10,12 @@ void CommandPool::create(vk::Device device, uint32_t familyIndex)
             familyIndex
             );
     commandPool = device.createCommandPool(poolInfo);
+    singleCommandFence = device.createFence(vk::FenceCreateInfo());
 }
 
 void CommandPool::destroy()
 {
+    device.destroyFence(singleCommandFence);
     device.destroy(commandPool);
 }
 
@@ -49,18 +51,22 @@ vk::CommandBuffer CommandPool::beginSingleCommand()
     return commandBuffer;
 }
 
-void CommandPool::endSingleTimeCommands(QueueManager &queueManager, vk::CommandBuffer commandBuffer)
+void CommandPool::endSingleTimeCommands(QueueManager &queueManager, std::vector<vk::CommandBuffer> commandBuffers)
 {
-    commandBuffer.end();
+    for (auto commandBuffer : commandBuffers)
+    {
+        commandBuffer.end();
+    }
 
     vk::SubmitInfo submitInfo{};
-    submitInfo.commandBufferCount = 1;
-    submitInfo.pCommandBuffers = &commandBuffer;
+    submitInfo.commandBufferCount = commandBuffers.size();
+    submitInfo.pCommandBuffers = commandBuffers.data();
 
-    queueManager.graphicsQueue.submit(1, &submitInfo, nullptr);
-    queueManager.graphicsQueue.waitIdle();
+    queueManager.graphicsQueue.submit(1, &submitInfo, singleCommandFence);
+    device.waitForFences(singleCommandFence, VK_TRUE, UINT64_MAX);
 
-    device.freeCommandBuffers(commandPool, 1, &commandBuffer);
+    device.freeCommandBuffers(commandPool, commandBuffers.size(), commandBuffers.data());
+    device.resetFences(singleCommandFence);
 }
 
 #pragma clang diagnostic pop

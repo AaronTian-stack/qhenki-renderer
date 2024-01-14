@@ -3,16 +3,20 @@
 #include "vulkan/vulkan.h"
 #include "vma/vk_mem_alloc.h"
 #include "../destroyable.h"
+#include "commandpool.h"
 
 class Buffer
 {
 private:
     VmaAllocator allocator;
+    vk::BufferCreateInfo info;
 
 public:
-    Buffer(vk::Buffer buffer, VmaAllocation allocation, VmaAllocator allocator);
+    Buffer(vk::Buffer buffer, vk::BufferCreateInfo info, VmaAllocation allocation, VmaAllocator allocator);
+    ~Buffer();
 
     void fill(const void *data, size_t bufferSize);
+    void copyTo(Buffer &destination, QueueManager &queueManager, CommandPool &commandPool);
 
     void bind(vk::CommandBuffer commandBuffer);
 
