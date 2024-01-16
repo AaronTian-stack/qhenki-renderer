@@ -31,6 +31,6 @@ public:
     void clear(float r, float g, float b, float a);
     void begin(vk::CommandBuffer commandBuffer);
     void end();
-    void setFramebuffer(VkFramebuffer buffer);
-    void setRenderAreaExtent(VkExtent2D extent);
+    void setFramebuffer(vk::Framebuffer buffer);
+    void setRenderAreaExtent(vk::Extent2D extent);
 };

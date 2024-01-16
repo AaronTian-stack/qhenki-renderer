@@ -53,7 +53,7 @@ vk::PhysicalDevice DevicePicker::pickPhysicalDevice(vk::Instance &instance, VkSu
 bool DevicePicker::isDeviceSuitable(const vk::PhysicalDevice &device, VkSurfaceKHR surface)
 {
     // can add more conditions in below function if wanted, such as geometry shader support
-    QueueFamilyIndices indices = findQueueFamilies(device, surface);
+    auto indices = findQueueFamilies(device, surface);
     //deviceToQueue[device] = indices;
     bool extensionsSupported = checkDeviceExtensionSupport(device);
 
@@ -71,9 +71,9 @@ bool DevicePicker::isDeviceSuitable(const vk::PhysicalDevice &device, VkSurfaceK
     return indices.isComplete() && extensionsSupported && swapChainAdequate;
 }
 
-QueueFamilyIndices DevicePicker::findQueueFamilies(const vk::PhysicalDevice &device, VkSurfaceKHR surface)
+VkStructs::QueueFamilyIndices DevicePicker::findQueueFamilies(const vk::PhysicalDevice &device, VkSurfaceKHR surface)
 {
-    QueueFamilyIndices indices;
+    VkStructs::QueueFamilyIndices indices;
 
     auto queueFamilies = device.getQueueFamilyProperties();
 
@@ -118,9 +118,9 @@ bool DevicePicker::checkDeviceExtensionSupport(const vk::PhysicalDevice &device)
     return requiredExtensions.empty();
 }
 
-std::pair<vk::Device, QueueFamilyIndices> DevicePicker::createLogicalDevice(vk::PhysicalDevice &physicalDevice, VkSurfaceKHR surface)
+std::pair<vk::Device, VkStructs::QueueFamilyIndices> DevicePicker::createLogicalDevice(vk::PhysicalDevice &physicalDevice, VkSurfaceKHR surface)
 {
-    QueueFamilyIndices indices = findQueueFamilies(physicalDevice, surface);
+    VkStructs::QueueFamilyIndices indices = findQueueFamilies(physicalDevice, surface);
 
     // create queue create info for each queue family
     std::vector<vk::DeviceQueueCreateInfo> queueCreateInfos;

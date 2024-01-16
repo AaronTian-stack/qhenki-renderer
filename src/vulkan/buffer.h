@@ -10,10 +10,11 @@ class Buffer
 private:
     VmaAllocator allocator;
     vk::BufferCreateInfo info;
+    void* mappedData;
+    const bool persistent;
 
 public:
-    Buffer(vk::Buffer buffer, vk::BufferCreateInfo info, VmaAllocation allocation, VmaAllocator allocator);
-    ~Buffer();
+    Buffer(vk::Buffer buffer, vk::BufferCreateInfo info, VmaAllocation allocation, VmaAllocator allocator, bool persistent);
 
     void fill(const void *data, size_t bufferSize);
     void copyTo(Buffer &destination, QueueManager &queueManager, CommandPool &commandPool);

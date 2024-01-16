@@ -2,6 +2,9 @@
 #include "../destroyable.h"
 #include "syncer.h"
 #include "commandpool.h"
+#include "buffer.h"
+#include "../smartpointer.h"
+#include "bufferfactory.h"
 
 class Frame : public Destroyable
 {
@@ -12,7 +15,6 @@ private:
     vk::PipelineStageFlags waitStages[1] = {vk::PipelineStageFlagBits::eColorAttachmentOutput};
 
 public:
-
     vk::CommandBuffer commandBuffer;
     vk::Semaphore imageAvailableSemaphore;
     vk::Semaphore renderFinishedSemaphore;

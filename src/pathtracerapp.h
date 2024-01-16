@@ -14,12 +14,13 @@
 #include "vulkan/vulkancontext.h"
 #include "gltfloader.h"
 #include "vulkan/bufferfactory.h"
-#include "glm/vec2.hpp"
+#include <glm/ext.hpp>
 
 class PathTracerApp
 {
 private:
     uPtr<Buffer> buffer;
+    uPtr<Buffer> indexBuffer;
 
     GLTFLoader gltfLoad;
     BufferFactory bufferFactory;
@@ -38,6 +39,7 @@ private:
     int currentFrame = 0;
     const int MAX_FRAMES_IN_FLIGHT = 2;
     std::vector<Frame> frames;
+    std::vector<uPtr<Buffer>> cameraBuffers;
 
 public:
     PathTracerApp();

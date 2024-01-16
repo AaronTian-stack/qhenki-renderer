@@ -1,10 +1,5 @@
 #include "syncer.h"
 
-void Syncer::create(vk::Device device)
-{
-    this->device = device;
-}
-
 vk::Semaphore Syncer::createSemaphore()
 {
     vk::SemaphoreCreateInfo semaphoreInfo;

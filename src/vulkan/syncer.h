@@ -11,7 +11,6 @@ private:
     std::unordered_map<const char*, vk::Fence> fences;
 
 public:
-    void create(vk::Device device);
     vk::Semaphore createSemaphore();
     vk::Semaphore createSemaphore(const char* name);
 

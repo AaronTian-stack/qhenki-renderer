@@ -10,5 +10,7 @@ protected:
 public:
     Destroyable() {}
     Destroyable(vk::Device device) : device(device) {}
+
+    virtual void create(vk::Device device) { this->device = device; }
     virtual void destroy() = 0;
 };

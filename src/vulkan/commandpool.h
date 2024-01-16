@@ -22,5 +22,5 @@ public:
     vk::CommandBuffer getCommandBuffer(const char* name);
 
     vk::CommandBuffer beginSingleCommand();
-    void endSingleTimeCommands(QueueManager &queueManager, std::vector<vk::CommandBuffer> commandBuffers);
+    void submitSingleTimeCommands(QueueManager &queueManager, std::vector<vk::CommandBuffer> commandBuffers);
 };

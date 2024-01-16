@@ -70,18 +70,17 @@ void PipelineBuilder::reset()
 
     //// PIPELINE LAYOUT ////
 
+    // will be nothing and 0
     pushConstants.clear();
     pushOffset = 0;
-
-    // will be nothing and 0
     pipelineLayoutInfo.pPushConstantRanges = pushConstants.data();
     pipelineLayoutInfo.pushConstantRangeCount = pushConstants.size();
 
-    pipelineLayoutInfo.setLayoutCount = 0; // Optional
-    pipelineLayoutInfo.pSetLayouts = nullptr; // Optional
+    pipelineLayoutInfo.setLayoutCount = 0;
+    pipelineLayoutInfo.pSetLayouts = nullptr;
 }
 
-uPtr<Pipeline> PipelineBuilder::buildPipeline(vk::Device device, RenderPass* renderPass, Shader* shader)
+uPtr<Pipeline> PipelineBuilder::buildPipeline(RenderPass* renderPass, Shader* shader)
 {
     auto pipeline = mkU<Pipeline>(device);
 
@@ -141,4 +140,122 @@ void PipelineBuilder::addVertexInputAttribute(vk::VertexInputAttributeDescriptio
     vertexInputAttributes.emplace_back(attribute);
     vertexInputInfo.vertexAttributeDescriptionCount = vertexInputAttributes.size();
     vertexInputInfo.pVertexAttributeDescriptions = vertexInputAttributes.data();
+}
+
+void PipelineBuilder::parseVertexShader(const char *filePath)
+{
+    // TODO: current assumes singular binding all attributes, might need to change
+
+    auto shaderCode = Shader::readFile(filePath);
+    auto spirvBytecode = reinterpret_cast<const uint32_t *>(shaderCode.data());
+
+    spirv_cross::CompilerGLSL glsl(spirvBytecode, shaderCode.size() / sizeof(uint32_t));
+    spirv_cross::ShaderResources resources = glsl.get_shader_resources();
+
+    uint32_t offset = 0;
+    for (const auto &input : resources.stage_inputs)
+    {
+        std::cout << "Vertex Input Attribute: " << input.name << std::endl;
+
+        // Get the layout information for the vertex input attribute
+        spirv_cross::SPIRType inputType = glsl.get_type(input.type_id);
+
+        uint32_t location = glsl.get_decoration(input.id, spv::DecorationLocation);
+
+        auto format = mapTypeToFormat(inputType);
+
+        addVertexInputAttribute({location, 0, format.first, offset});
+
+        // increment offset by format
+        offset += format.second;
+    }
+
+    //// CREATE DESCRIPTOR SET LAYOUT
+    std::vector<vk::DescriptorSetLayoutBinding> bindings;
+    for (const auto &uniformBuffer : resources.uniform_buffers)
+    {
+        // the descriptors for the uniform buffers
+        uint32_t binding = glsl.get_decoration(uniformBuffer.id, spv::DecorationBinding);
+        uint32_t set = glsl.get_decoration(uniformBuffer.id, spv::DecorationDescriptorSet);
+        bindings.emplace_back(binding,
+                           vk::DescriptorType::eUniformBuffer,
+                           1, // number of values in array
+                           vk::ShaderStageFlagBits::eVertex,
+                           nullptr // for images
+                           );
+    }
+
+    // combine all bindings into one layout (for now one layout for each set)
+    vk::DescriptorSetLayoutCreateInfo layoutInfo{};
+    layoutInfo.bindingCount = bindings.size(); // bindings in descriptor set
+    layoutInfo.pBindings = bindings.data();
+
+    descriptorSetLayout1 = device.createDescriptorSetLayout(layoutInfo);
+
+    pipelineLayoutInfo.setLayoutCount = 1;
+    pipelineLayoutInfo.pSetLayouts = &descriptorSetLayout1;
+}
+
+void PipelineBuilder::parseFragmentShader(const char *filePath)
+{
+    auto shaderCode = Shader::readFile(filePath);
+    auto spirvBytecode = reinterpret_cast<const uint32_t *>(shaderCode.data());
+
+    spirv_cross::CompilerGLSL glsl(spirvBytecode, shaderCode.size() / sizeof(uint32_t));
+    spirv_cross::ShaderResources resources = glsl.get_shader_resources();
+
+    for (auto &pushConstant : resources.push_constant_buffers)
+    {
+        // Get the layout information for the push constant block
+        spirv_cross::SPIRType pushConstantType = glsl.get_type(pushConstant.type_id);
+
+        std::cout << "Push Constant: " << pushConstant.name << std::endl;
+
+        for (uint32_t i = 0; i < pushConstantType.member_types.size(); ++i)
+        {
+            uint32_t offset = glsl.get_member_decoration(pushConstant.type_id, i, spv::DecorationOffset);
+            uint32_t size = glsl.get_declared_struct_member_size(pushConstantType, i);
+
+            addPushConstant(size, vk::ShaderStageFlagBits::eAll);
+        }
+    }
+}
+
+void PipelineBuilder::parseShader(const char *filePath1, const char *filePath2)
+{
+    parseFragmentShader(filePath1);
+    parseFragmentShader(filePath2);
+}
+
+std::pair<vk::Format, size_t> PipelineBuilder::mapTypeToFormat(const spirv_cross::SPIRType &type)
+{
+    switch (type.basetype)
+    {
+        case spirv_cross::SPIRType::Float:
+        switch (type.vecsize)
+        {
+            case 1:
+                return {vk::Format::eR32Sfloat, sizeof(float)};
+            case 2:
+                return {vk::Format::eR32G32Sfloat, sizeof(glm::vec2)};
+            case 3:
+                return {vk::Format::eR32G32B32Sfloat, sizeof(glm::vec3)};
+            case 4:
+                return {vk::Format::eR32G32B32A32Sfloat, sizeof(glm::vec4)};
+            default:
+                return {vk::Format::eUndefined, 0};
+        }
+        case spirv_cross::SPIRType::Int:
+            return {vk::Format::eR32Sint, sizeof(int32_t)};
+        case spirv_cross::SPIRType::UInt:
+            return {vk::Format::eR32Uint, sizeof(uint32_t)};
+            // Add cases for other types as needed
+        default:
+            return {vk::Format::eUndefined, 0};
+    }
+}
+
+void PipelineBuilder::destroy()
+{
+    device.destroy(descriptorSetLayout1);
 }

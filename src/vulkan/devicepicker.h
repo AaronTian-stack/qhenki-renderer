@@ -5,7 +5,7 @@
 
 #include "vulkan/vulkan.hpp"
 #include "device.h"
-#include "queuefamilyindices.h"
+#include "vkstructs.h"
 
 // responsible for picking the physical device and creating the logical device
 class DevicePicker
@@ -30,11 +30,11 @@ private:
     static bool checkDeviceExtensionSupport(const vk::PhysicalDevice &device);
 
     static vk::PhysicalDevice pickPhysicalDevice(vk::Instance &instance, VkSurfaceKHR surface);
-    static std::pair<vk::Device, QueueFamilyIndices> createLogicalDevice(vk::PhysicalDevice &physicalDevice, VkSurfaceKHR surface);
+    static std::pair<vk::Device, VkStructs::QueueFamilyIndices> createLogicalDevice(vk::PhysicalDevice &physicalDevice, VkSurfaceKHR surface);
 
 public:
     static Device createDevice(vk::Instance &instance, VkSurfaceKHR surface);
 
-    static QueueFamilyIndices findQueueFamilies(const vk::PhysicalDevice &device, VkSurfaceKHR surface);
+    static VkStructs::QueueFamilyIndices findQueueFamilies(const vk::PhysicalDevice &device, VkSurfaceKHR surface);
     static void listQueueFamilies(const vk::PhysicalDevice &device);
 };

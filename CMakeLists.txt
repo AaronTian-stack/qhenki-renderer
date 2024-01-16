@@ -8,11 +8,18 @@ file(GLOB_RECURSE SOURCE_FILES CONFIGURE_DEPENDS
         ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/*.h
         ${CMAKE_CURRENT_SOURCE_DIR}/src/*.c
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/*.hpp)
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/*.hpp
+)
 
 file(GLOB_RECURSE IMGUI CONFIGURE_DEPENDS
         ${CMAKE_CURRENT_SOURCE_DIR}/dependencies/include/imgui/*.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/dependencies/include/imgui/*.h)
+
+file(GLOB_RECURSE SPIRV CONFIGURE_DEPENDS
+        ${CMAKE_CURRENT_SOURCE_DIR}/dependencies/include/spirv_cross/*.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/dependencies/include/spirv_cross/*.h
+        ${CMAKE_CURRENT_SOURCE_DIR}/dependencies/include/spirv_cross/*.hpp
+)
 
 set(dir ${CMAKE_CURRENT_SOURCE_DIR})
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${dir}/build)
@@ -20,8 +27,7 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${dir}/build)
 #Include library files
 include_directories(dependencies/include)
 
-add_executable(${PROJECT_NAME} ${SOURCE_FILES} ${IMGUI} main.cpp
-        src/vulkan/queuefamilyindices.h)
+add_executable(${PROJECT_NAME} ${SOURCE_FILES} ${IMGUI} ${SPIRV} main.cpp)
 
 find_package(Vulkan REQUIRED)
 target_include_directories(${PROJECT_NAME} PUBLIC ${Vulkan_INCLUDE_DIRS})

@@ -23,4 +23,6 @@ public:
     const std::array<vk::PipelineShaderStageCreateInfo, 2> &getShaderStages() const { return shaderStages; }
 
     void destroy() override;
+
+    friend class PipelineBuilder;
 };

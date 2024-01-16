@@ -29,7 +29,7 @@ uPtr<Buffer> BufferFactory::createBuffer(vk::DeviceSize size, VkBufferUsageFlags
     if (vmaCreateBuffer(allocator, &bufferCreateInfo, &allocationCreateInfo, &buffer, &allocation, nullptr) != VK_SUCCESS)
         throw std::runtime_error("failed to create buffer");
 
-    return mkU<Buffer>(vk::Buffer(buffer), vk::BufferCreateInfo(bufferCreateInfo), allocation, allocator);
+    return mkU<Buffer>(vk::Buffer(buffer), vk::BufferCreateInfo(bufferCreateInfo), allocation, allocator, flags & VMA_ALLOCATION_CREATE_MAPPED_BIT);
 }
 
 void BufferFactory::destroy()

@@ -51,13 +51,8 @@ vk::CommandBuffer CommandPool::beginSingleCommand()
     return commandBuffer;
 }
 
-void CommandPool::endSingleTimeCommands(QueueManager &queueManager, std::vector<vk::CommandBuffer> commandBuffers)
+void CommandPool::submitSingleTimeCommands(QueueManager &queueManager, std::vector<vk::CommandBuffer> commandBuffers)
 {
-    for (auto commandBuffer : commandBuffers)
-    {
-        commandBuffer.end();
-    }
-
     vk::SubmitInfo submitInfo{};
     submitInfo.commandBufferCount = commandBuffers.size();
     submitInfo.pCommandBuffers = commandBuffers.data();

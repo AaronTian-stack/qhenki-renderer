@@ -27,7 +27,7 @@ vk::PresentModeKHR SwapChain::chooseSwapPresentMode(const std::vector<vk::Presen
 {
     for (const auto& availablePresentMode : availablePresentModes)
     {
-        if (availablePresentMode == vk::PresentModeKHR::eImmediate)
+        if (availablePresentMode == vk::PresentModeKHR::eMailbox)
         {
             return availablePresentMode;
         }
@@ -89,7 +89,7 @@ void SwapChain::createSwapChain(Device &device, Window &window)
     );
 
     // handling swap chain images used across multiple queue families
-    QueueFamilyIndices indices = DevicePicker::findQueueFamilies(device.physicalDevice, window.getSurface());
+    auto indices = DevicePicker::findQueueFamilies(device.physicalDevice, window.getSurface());
     uint32_t queueFamilyIndices[] = {indices.graphicsFamily.value(), indices.presentFamily.value()};
 
     if (indices.graphicsFamily != indices.presentFamily)
