@@ -2,7 +2,7 @@
 
 #include <vulkan/vulkan.h>
 #include <unordered_map>
-#include "../destroyable.h"
+#include "destroyable.h"
 #include "devicepicker.h"
 #include "queuemanager.h"
 

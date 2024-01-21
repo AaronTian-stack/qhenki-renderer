@@ -7,6 +7,7 @@
 #include "renderpass.h"
 #include "../smartpointer.h"
 #include "spirv_cross/spirv_glsl.hpp"
+#include "descriptors/descriptorlayoutcache.h"
 #include <iostream>
 #include <glm/glm.hpp>
 
@@ -29,7 +30,7 @@ private:
     vk::PipelineColorBlendAttachmentState colorBlendAttachment{}; // you would make one of these for each attachment (specified in render pass)
     vk::PipelineColorBlendStateCreateInfo colorBlending{};
 
-    vk::DescriptorSetLayout descriptorSetLayout1;
+    vk::DescriptorSetLayout descriptorSetLayout; // generic layout for setting
 
     vk::PipelineLayoutCreateInfo pipelineLayoutInfo{}; // TODO: add way to change this
 
@@ -49,7 +50,7 @@ public:
 
     void parseShader(const char *filePath1, const char *filePath2);
     // Does not do bindings
-    void parseVertexShader(const char *filePath);
+    void parseVertexShader(const char *filePath, DescriptorLayoutCache &layoutCache);
     void parseFragmentShader(const char *filePath);
 
     // buffer

@@ -1,5 +1,5 @@
 #include "vulkan/vulkan.h"
-#include "../destroyable.h"
+#include "destroyable.h"
 #include <vector>
 
 class Shader : public Destroyable

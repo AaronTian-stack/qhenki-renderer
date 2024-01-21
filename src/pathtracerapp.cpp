@@ -14,10 +14,10 @@ PathTracerApp::~PathTracerApp()
     syncer.destroy();
     commandPool.destroy();
 
-    pipeline1->destroy();
+    pathPipeline->destroy();
     shader1->destroy(); // shader modules must be destroyed after pipeline
 
-    pipeline2->destroy();
+    triPipeline->destroy();
     shader2->destroy();
 
     pipelineFactory.destroy();
@@ -36,6 +36,8 @@ PathTracerApp::~PathTracerApp()
 void PathTracerApp::create(Window &window)
 {
     vulkanContext.create(window);
+    layoutCache.create(vulkanContext.device.logicalDevice);
+    allocator.create(vulkanContext.device.logicalDevice);
 
     auto device = vulkanContext.device.logicalDevice;
     commandPool.create(device, vulkanContext.device.queueFamilyIndices.graphicsFamily.value());
@@ -54,7 +56,7 @@ void PathTracerApp::create(Window &window)
     //pipelineFactory.addPushConstant(sizeof(float));
     pipelineFactory.parseFragmentShader("pathtrace_frag.spv");
 
-    pipeline1 = pipelineFactory.buildPipeline(&renderPass, shader1.get());
+    pathPipeline = pipelineFactory.buildPipeline(&renderPass, shader1.get());
 
     //// VERTEX INPUT
     struct Vertex {
@@ -97,10 +99,10 @@ void PathTracerApp::create(Window &window)
     pipelineFactory.addVertexInputBinding({0, sizeof(Vertex), vk::VertexInputRate::eVertex});
     //pipelineFactory.addVertexInputAttribute({0, 0, vk::Format::eR32G32Sfloat, offsetof(Vertex, pos)});
     //pipelineFactory.addVertexInputAttribute({1, 0, vk::Format::eR32G32B32Sfloat, offsetof(Vertex, color)});
-    pipelineFactory.parseVertexShader("tri_vert.spv");
+    pipelineFactory.parseVertexShader("tri_vert.spv", layoutCache);
     //// END VERTEX INPUT
 
-    pipeline2 = pipelineFactory.buildPipeline(&renderPass, shader2.get());
+    triPipeline = pipelineFactory.buildPipeline(&renderPass, shader2.get());
 
     vulkanContext.swapChain.createFramebuffers(renderPass);
 
@@ -110,7 +112,7 @@ void PathTracerApp::create(Window &window)
         frames.emplace_back(device, commandPool, syncer);
         auto flags = static_cast<VmaAllocationCreateFlagBits>(VMA_ALLOCATION_CREATE_MAPPED_BIT |
                                                                                     VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
-        cameraBuffers.emplace_back(bufferFactory.createBuffer(sizeof(VkStructs::CameraMatrices),
+        cameraBuffers.emplace_back(bufferFactory.createBuffer(sizeof(CameraMatrices),
                                                               VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
                                                               flags));
     }
@@ -124,6 +126,8 @@ void PathTracerApp::recordCommandBuffer(VkFramebuffer framebuffer)
     auto commandBuffer = frame.commandBuffer;
     auto swapChainExtent = vulkanContext.swapChain.getExtent();
 
+    updateCameraBuffer();
+
     //// BEGIN RECORDING COMMAND BUFFER
     frame.begin(); // begins the frames command buffer. for secondary command buffer, need to modify the beginInfo struct
 
@@ -133,9 +137,9 @@ void PathTracerApp::recordCommandBuffer(VkFramebuffer framebuffer)
     renderPass.clear(ui->clearColor[0], ui->clearColor[1], ui->clearColor[2], 1.0f);
     renderPass.begin(commandBuffer);
 
-    auto pipeline = ui->currentShaderIndex == 0 ? pipeline1.get() : pipeline2.get();
+    auto pipeline = ui->currentShaderIndex == 0 ? pathPipeline.get() : triPipeline.get();
     commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, pipeline->getGraphicsPipeline());
-    pipeline1->setPushConstant(commandBuffer, (float)glfwGetTime());
+    pathPipeline->setPushConstant(commandBuffer, (float)glfwGetTime());
 
     ScreenUtils::setViewport(commandBuffer, swapChainExtent.width, swapChainExtent.height);
     ScreenUtils::setScissor(commandBuffer, swapChainExtent);
@@ -144,6 +148,21 @@ void PathTracerApp::recordCommandBuffer(VkFramebuffer framebuffer)
     {
         buffer->bind(commandBuffer);
         indexBuffer->bind(commandBuffer);
+
+        /*VkDescriptorBufferInfo bufferInfo{};
+        bufferInfo.buffer = cameraBuffers[currentFrame]->getBuffer();
+        bufferInfo.offset = 0;
+        bufferInfo.range = sizeof(UniformBufferObject);*/
+
+        auto bufferInfo = cameraMatrices.getBufferInfo(*cameraBuffers[currentFrame].get());
+
+        vk::DescriptorSet globalSet;
+        vk::DescriptorSetLayout layout;
+        DescriptorBuilder::begin(&layoutCache, &allocator)
+                .bindBuffer(0, &bufferInfo, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eVertex)
+                .build(globalSet, layout);
+
+        commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipeline->getPipelineLayout(), 0, {globalSet}, nullptr);
         commandBuffer.drawIndexed(6, 1, 0, 0, 0);
     }
     else
@@ -164,17 +183,6 @@ void PathTracerApp::render()
 {
     auto &frame = frames[currentFrame];
     frame.finish(syncer); // waits for fence to be signalled (finished frame) and resets the frames inFlightFence
-
-    VkStructs::CameraMatrices cameraMatrices{};
-    cameraMatrices.model = glm::mat4();
-    cameraMatrices.view = glm::lookAt(glm::vec3(0.0f, 0.0f, 2.0f),
-                                      glm::vec3(0.0f, 0.0f, 0.0f),
-                                      glm::vec3(0.0f, 1.0f, 0.0f));
-    cameraMatrices.proj = glm::perspective(glm::radians(45.0f),
-                                           vulkanContext.swapChain.getExtent().width / (float)vulkanContext.swapChain.getExtent().height,
-                                           0.1f, 10.0f);
-    cameraMatrices.proj[1][1] *= -1; // flip y coordinate
-    cameraBuffers[currentFrame]->fill(&cameraMatrices, sizeof(VkStructs::CameraMatrices));
 
     auto commandBuffer = frame.commandBuffer;
 
@@ -215,4 +223,17 @@ ImGuiCreateParameters PathTracerApp::getImGuiCreateParameters()
 CommandPool& PathTracerApp::getCommandPool()
 {
     return commandPool;
+}
+
+void PathTracerApp::updateCameraBuffer()
+{
+    cameraMatrices.model = glm::mat4();
+    cameraMatrices.view = glm::lookAt(glm::vec3(0.0f, 0.0f, 2.0f),
+                                      glm::vec3(0.0f, 0.0f, 0.0f),
+                                      glm::vec3(0.0f, 1.0f, 0.0f));
+    cameraMatrices.proj = glm::perspective(glm::radians(45.0f),
+                                           vulkanContext.swapChain.getExtent().width / (float)vulkanContext.swapChain.getExtent().height,
+                                           0.1f, 10.0f);
+    cameraMatrices.proj[1][1] *= -1; // flip y coordinate
+    cameraBuffers[currentFrame]->fill(&cameraMatrices, sizeof(CameraMatrices));
 }

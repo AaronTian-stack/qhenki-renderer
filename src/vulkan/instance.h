@@ -1,7 +1,7 @@
 #pragma once
 
 #include "vulkan/vulkan.hpp"
-#include "../destroyable.h"
+#include "destroyable.h"
 #include <vector>
 
 class Instance

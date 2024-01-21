@@ -2,7 +2,7 @@
 
 #include "vulkan/vulkan.h"
 #include "vma/vk_mem_alloc.h"
-#include "../destroyable.h"
+#include "destroyable.h"
 #include "commandpool.h"
 
 class Buffer
@@ -25,4 +25,6 @@ public:
 
     vk::Buffer buffer;
     VmaAllocation allocation;
+
+    friend class BufferStruct;
 };

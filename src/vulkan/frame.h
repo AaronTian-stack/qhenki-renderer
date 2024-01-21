@@ -1,5 +1,5 @@
 #include <vulkan/vulkan.h>
-#include "../destroyable.h"
+#include "destroyable.h"
 #include "syncer.h"
 #include "commandpool.h"
 #include "buffer.h"

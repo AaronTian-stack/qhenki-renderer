@@ -142,7 +142,7 @@ void PipelineBuilder::addVertexInputAttribute(vk::VertexInputAttributeDescriptio
     vertexInputInfo.pVertexAttributeDescriptions = vertexInputAttributes.data();
 }
 
-void PipelineBuilder::parseVertexShader(const char *filePath)
+void PipelineBuilder::parseVertexShader(const char *filePath, DescriptorLayoutCache &layoutCache)
 {
     // TODO: current assumes singular binding all attributes, might need to change
 
@@ -176,7 +176,7 @@ void PipelineBuilder::parseVertexShader(const char *filePath)
     {
         // the descriptors for the uniform buffers
         uint32_t binding = glsl.get_decoration(uniformBuffer.id, spv::DecorationBinding);
-        uint32_t set = glsl.get_decoration(uniformBuffer.id, spv::DecorationDescriptorSet);
+        uint32_t set = glsl.get_decoration(uniformBuffer.id, spv::DecorationDescriptorSet); // TODO: needs to keep track of all sets!
         bindings.emplace_back(binding,
                            vk::DescriptorType::eUniformBuffer,
                            1, // number of values in array
@@ -185,15 +185,16 @@ void PipelineBuilder::parseVertexShader(const char *filePath)
                            );
     }
 
-    // combine all bindings into one layout (for now one layout for each set)
+    // combine all bindings into one layout set
     vk::DescriptorSetLayoutCreateInfo layoutInfo{};
     layoutInfo.bindingCount = bindings.size(); // bindings in descriptor set
     layoutInfo.pBindings = bindings.data();
 
-    descriptorSetLayout1 = device.createDescriptorSetLayout(layoutInfo);
+    //descriptorSetLayout1 = device.createDescriptorSetLayout(layoutInfo);
+    descriptorSetLayout = layoutCache.createDescriptorLayout(&layoutInfo); // TODO: needs to be able to account for different sets!
 
     pipelineLayoutInfo.setLayoutCount = 1;
-    pipelineLayoutInfo.pSetLayouts = &descriptorSetLayout1;
+    pipelineLayoutInfo.pSetLayouts = &descriptorSetLayout;
 }
 
 void PipelineBuilder::parseFragmentShader(const char *filePath)
@@ -257,5 +258,5 @@ std::pair<vk::Format, size_t> PipelineBuilder::mapTypeToFormat(const spirv_cross
 
 void PipelineBuilder::destroy()
 {
-    device.destroy(descriptorSetLayout1);
+    //device.destroy(descriptorSetLayout1);
 }
