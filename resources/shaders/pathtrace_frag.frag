@@ -57,7 +57,7 @@ HitInfo hitSphere(Sphere sphere, Ray ray)
     hitInfo.didHit = false;
     if (discriminant >= 0.0)
     {
-        float dst = (-half_b - sqrt(discriminant) ) / a; // distance along vector we hit;
+        float dst = (-half_b - sqrt(discriminant) ) / a; // distance along vector we hit
         if (dst >= 0.0)
         {
             hitInfo.didHit = true;
