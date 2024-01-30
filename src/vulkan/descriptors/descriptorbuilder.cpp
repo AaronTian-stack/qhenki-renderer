@@ -87,6 +87,9 @@ bool DescriptorBuilder::build(vk::DescriptorSet &set, vk::DescriptorSetLayout &l
 
     alloc->device.updateDescriptorSets(writes, nullptr);
 
+    bindings.clear();
+    writes.clear();
+
     return true;
 }
 

@@ -156,6 +156,7 @@ void PathTracerApp::recordCommandBuffer(VkFramebuffer framebuffer)
 
         auto bufferInfo = cameraMatrices.getBufferInfo(*cameraBuffers[currentFrame].get());
 
+        //allocator.resetPools();
         vk::DescriptorSet globalSet;
         vk::DescriptorSetLayout layout;
         DescriptorBuilder::begin(&layoutCache, &allocator)
@@ -227,9 +228,9 @@ CommandPool& PathTracerApp::getCommandPool()
 
 void PathTracerApp::updateCameraBuffer()
 {
-    cameraMatrices.model = glm::mat4();
-    cameraMatrices.view = glm::lookAt(glm::vec3(0.0f, 0.0f, 2.0f),
-                                      glm::vec3(0.0f, 0.0f, 0.0f),
+    cameraMatrices.model = glm::mat4(1.f);
+    cameraMatrices.view = glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f),
+                                      glm::vec3(0.0f, 0.0f, 2.0f),
                                       glm::vec3(0.0f, 1.0f, 0.0f));
     cameraMatrices.proj = glm::perspective(glm::radians(45.0f),
                                            vulkanContext.swapChain.getExtent().width / (float)vulkanContext.swapChain.getExtent().height,
