@@ -47,7 +47,7 @@ private:
 
     CameraMatrices cameraMatrices;
     DescriptorLayoutCache layoutCache;
-    DescriptorAllocator allocator;
+    std::vector<DescriptorAllocator> allocators;
 
 public:
     PathTracerApp();

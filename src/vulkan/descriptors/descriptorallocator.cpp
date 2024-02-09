@@ -110,3 +110,6 @@ bool DescriptorAllocator::allocate(vk::DescriptorSet *set, vk::DescriptorSetLayo
 
     return false;
 }
+
+DescriptorAllocator::DescriptorAllocator(vk::Device device) : Destroyable(device)
+{}

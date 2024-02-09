@@ -29,7 +29,7 @@ void PipelineBuilder::reset()
     rasterizer.polygonMode = vk::PolygonMode::eFill; // TODO: add option to change polygon mode (need to enable feature)
     rasterizer.lineWidth = 1.0f; // TODO: add option to change line width (need to enable feature)
     // TODO: add option to change culling mode
-    rasterizer.cullMode = vk::CullModeFlagBits::eFront;
+    rasterizer.cullMode = vk::CullModeFlagBits::eNone;
     rasterizer.frontFace = vk::FrontFace::eCounterClockwise;
 
     // built in bias maybe useful for shadow mapping

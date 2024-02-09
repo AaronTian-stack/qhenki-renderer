@@ -31,6 +31,9 @@ private:
     std::vector<vk::DescriptorPool> freePools;
 
 public:
+    DescriptorAllocator() {};
+    DescriptorAllocator(vk::Device device);
+
     void resetPools();
     bool allocate(vk::DescriptorSet* set, vk::DescriptorSetLayout layout);
 

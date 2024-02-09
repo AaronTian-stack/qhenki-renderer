@@ -30,6 +30,9 @@ PathTracerApp::~PathTracerApp()
     for (auto &cameraBuffer : cameraBuffers)
         cameraBuffer->destroy();
 
+    for (auto &allocator : allocators)
+        allocator.destroy();
+
     bufferFactory.destroy();
 }
 
@@ -37,7 +40,7 @@ void PathTracerApp::create(Window &window)
 {
     vulkanContext.create(window);
     layoutCache.create(vulkanContext.device.logicalDevice);
-    allocator.create(vulkanContext.device.logicalDevice);
+    //allocators.emplace_back(vulkanContext.device.logicalDevice);
 
     auto device = vulkanContext.device.logicalDevice;
     commandPool.create(device, vulkanContext.device.queueFamilyIndices.graphicsFamily.value());
@@ -94,8 +97,6 @@ void PathTracerApp::create(Window &window)
 
     pipelineFactory.reset();
 
-    //pipelineFactory.addDescriptorSetLayout(*shader2); // TODO: testing
-
     pipelineFactory.addVertexInputBinding({0, sizeof(Vertex), vk::VertexInputRate::eVertex});
     //pipelineFactory.addVertexInputAttribute({0, 0, vk::Format::eR32G32Sfloat, offsetof(Vertex, pos)});
     //pipelineFactory.addVertexInputAttribute({1, 0, vk::Format::eR32G32B32Sfloat, offsetof(Vertex, color)});
@@ -115,6 +116,7 @@ void PathTracerApp::create(Window &window)
         cameraBuffers.emplace_back(bufferFactory.createBuffer(sizeof(CameraMatrices),
                                                               VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
                                                               flags));
+        allocators.emplace_back(vulkanContext.device.logicalDevice);
     }
 
     //gltfLoad.load();
@@ -149,14 +151,10 @@ void PathTracerApp::recordCommandBuffer(VkFramebuffer framebuffer)
         buffer->bind(commandBuffer);
         indexBuffer->bind(commandBuffer);
 
-        /*VkDescriptorBufferInfo bufferInfo{};
-        bufferInfo.buffer = cameraBuffers[currentFrame]->getBuffer();
-        bufferInfo.offset = 0;
-        bufferInfo.range = sizeof(UniformBufferObject);*/
-
         auto bufferInfo = cameraMatrices.getBufferInfo(*cameraBuffers[currentFrame].get());
 
-        //allocator.resetPools();
+        auto &allocator = allocators[currentFrame];
+        allocator.resetPools();
         vk::DescriptorSet globalSet;
         vk::DescriptorSetLayout layout;
         DescriptorBuilder::begin(&layoutCache, &allocator)
@@ -211,7 +209,6 @@ void PathTracerApp::resize()
 
 }
 
-
 ImGuiCreateParameters PathTracerApp::getImGuiCreateParameters()
 {
     ImGuiCreateParameters params{};
@@ -228,13 +225,10 @@ CommandPool& PathTracerApp::getCommandPool()
 
 void PathTracerApp::updateCameraBuffer()
 {
-    cameraMatrices.model = glm::mat4(1.f);
-    cameraMatrices.view = glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f),
-                                      glm::vec3(0.0f, 0.0f, 2.0f),
-                                      glm::vec3(0.0f, 1.0f, 0.0f));
-    cameraMatrices.proj = glm::perspective(glm::radians(45.0f),
-                                           vulkanContext.swapChain.getExtent().width / (float)vulkanContext.swapChain.getExtent().height,
-                                           0.1f, 10.0f);
-    cameraMatrices.proj[1][1] *= -1; // flip y coordinate
+    cameraMatrices.model = glm::rotate(glm::mat4(), glm::radians((float)glfwGetTime() * 5.f), glm::vec3(0.0f, 0.0f, 1.0f));
+    auto view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+    auto proj = glm::perspective(glm::radians(45.0f), vulkanContext.swapChain.getExtent().width / (float) vulkanContext.swapChain.getExtent().height, 0.1f, 10.0f);
+    proj[1][1] *= -1;
+    cameraMatrices.viewProj = proj * view;
     cameraBuffers[currentFrame]->fill(&cameraMatrices, sizeof(CameraMatrices));
 }

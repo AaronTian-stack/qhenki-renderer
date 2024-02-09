@@ -1,9 +1,9 @@
 #version 450
 
-layout(set = 0, binding = 0) uniform matrices {
+layout(std140, set = 0, binding = 0) uniform matrices {
     mat4 model;
-    mat4 view;
-    mat4 proj;
+    mat4 viewProj;
+    //mat4 proj;
 } ubo;
 
 /*layout(binding = 1) uniform foo {
@@ -18,7 +18,6 @@ layout(location = 1) in vec3 inColor;
 
 void main()
 {
-    //gl_Position = vec4(inPosition, 0.0, 1.0);
-    gl_Position = ubo.proj * ubo.view * ubo.model * vec4(inPosition, 0.0, 1.0);
+    gl_Position = ubo.viewProj * ubo.model * vec4(inPosition, 0.0, 1.0);
     fragColor = inColor;
 }
