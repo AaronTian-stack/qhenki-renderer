@@ -1,7 +1,7 @@
 #pragma once
 
 #include <vulkan/vulkan.hpp>
-#include "../destroyable.h"
+#include "destroyable.h"
 
 class RenderPass : public Destroyable
 {
@@ -21,7 +21,7 @@ private:
 
 public:
     RenderPass();
-    void create(vk::Device device);
+    void create(vk::Device device) override;
     void reset();
     void destroy() override;
 
@@ -31,6 +31,6 @@ public:
     void clear(float r, float g, float b, float a);
     void begin(vk::CommandBuffer commandBuffer);
     void end();
-    void setFramebuffer(VkFramebuffer buffer);
-    void setRenderAreaExtent(VkExtent2D extent);
+    void setFramebuffer(vk::Framebuffer buffer);
+    void setRenderAreaExtent(vk::Extent2D extent);
 };

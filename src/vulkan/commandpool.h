@@ -1,13 +1,15 @@
 #pragma once
 
 #include <vulkan/vulkan.h>
-#include "../destroyable.h"
+#include <unordered_map>
+#include "destroyable.h"
 #include "devicepicker.h"
 #include "queuemanager.h"
 
 class CommandPool : public Destroyable
 {
 private:
+    vk::Fence singleCommandFence;
     vk::CommandPool commandPool;
     std::unordered_map<const char*, vk::CommandBuffer> commandBuffers;
 
@@ -20,5 +22,5 @@ public:
     vk::CommandBuffer getCommandBuffer(const char* name);
 
     vk::CommandBuffer beginSingleCommand();
-    void endSingleTimeCommands(QueueManager &queueManager, vk::CommandBuffer commandBuffer);
+    void submitSingleTimeCommands(QueueManager &queueManager, std::vector<vk::CommandBuffer> commandBuffers);
 };

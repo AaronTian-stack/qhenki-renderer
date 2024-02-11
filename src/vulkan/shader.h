@@ -1,5 +1,5 @@
 #include "vulkan/vulkan.h"
-#include "../destroyable.h"
+#include "destroyable.h"
 #include <vector>
 
 class Shader : public Destroyable
@@ -23,4 +23,6 @@ public:
     const std::array<vk::PipelineShaderStageCreateInfo, 2> &getShaderStages() const { return shaderStages; }
 
     void destroy() override;
+
+    friend class PipelineBuilder;
 };

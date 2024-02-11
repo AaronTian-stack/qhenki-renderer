@@ -23,7 +23,13 @@ void Pipeline::destroy()
     device.destroyPipelineLayout(pipelineLayout);
 }
 
-VkPipeline Pipeline::getGraphicsPipeline()
+vk::PipelineLayout Pipeline::getPipelineLayout()
+{
+    return pipelineLayout;
+}
+
+
+vk::Pipeline Pipeline::getGraphicsPipeline()
 {
     return graphicsPipeline;
 }

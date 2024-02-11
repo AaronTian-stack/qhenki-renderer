@@ -1,11 +1,17 @@
+#pragma once
+
 #include <vulkan/vulkan.h>
 #include <vector>
 #include "pipeline.h"
 #include "shader.h"
 #include "renderpass.h"
 #include "../smartpointer.h"
+#include "spirv_cross/spirv_glsl.hpp"
+#include "descriptors/descriptorlayoutcache.h"
+#include <iostream>
+#include <glm/glm.hpp>
 
-class PipelineBuilder
+class PipelineBuilder : public Destroyable
 {
 private:
     const std::vector<vk::DynamicState> dynamicStates =
@@ -24,6 +30,8 @@ private:
     vk::PipelineColorBlendAttachmentState colorBlendAttachment{}; // you would make one of these for each attachment (specified in render pass)
     vk::PipelineColorBlendStateCreateInfo colorBlending{};
 
+    vk::DescriptorSetLayout descriptorSetLayout; // generic layout for setting
+
     vk::PipelineLayoutCreateInfo pipelineLayoutInfo{}; // TODO: add way to change this
 
     uint32_t pushOffset;
@@ -32,10 +40,18 @@ private:
     std::vector<vk::VertexInputBindingDescription> vertexInputBindings;
     std::vector<vk::VertexInputAttributeDescription> vertexInputAttributes;
 
+    std::pair<vk::Format, size_t> mapTypeToFormat(const spirv_cross::SPIRType &type);
+
 public:
     PipelineBuilder();
-    uPtr<Pipeline> buildPipeline(vk::Device device, RenderPass* renderPass, Shader* shader);
+
+    uPtr<Pipeline> buildPipeline(RenderPass* renderPass, Shader* shader);
     void addPushConstant(uint32_t size, vk::ShaderStageFlags stageFlags = vk::ShaderStageFlagBits::eAll);
+
+    void parseShader(const char *filePath1, const char *filePath2);
+
+    void parseVertexShader(const char *filePath, DescriptorLayoutCache &layoutCache);
+    void parseFragmentShader(const char *filePath);
 
     // buffer
     void addVertexInputBinding(vk::VertexInputBindingDescription binding);
@@ -44,4 +60,6 @@ public:
     void addVertexInputAttribute(vk::VertexInputAttributeDescription attribute);
 
     void reset();
+
+    void destroy() override;
 };

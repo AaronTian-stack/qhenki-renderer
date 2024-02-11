@@ -14,7 +14,7 @@ private:
 public:
     void create(VulkanContext &context);
 
-    uPtr<Buffer> createBuffer(vk::DeviceSize size, VkBufferUsageFlags usage);
+    uPtr<Buffer> createBuffer(vk::DeviceSize size, VkBufferUsageFlags usage, VmaAllocationCreateFlagBits flags = static_cast<VmaAllocationCreateFlagBits>(0));
 
     void destroy();
 };

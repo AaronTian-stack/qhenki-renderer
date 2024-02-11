@@ -1,4 +1,5 @@
 #include "frame.h"
+#include "bufferfactory.h"
 
 Frame::Frame() {}
 
@@ -8,7 +9,9 @@ Frame::Frame(vk::Device device, CommandPool &pool, Syncer &sync) :
         imageAvailableSemaphore(sync.createSemaphore()),
         renderFinishedSemaphore(sync.createSemaphore()),
         inFlightFence(sync.createFence(true))
-{}
+{
+
+}
 
 void Frame::destroy()
 {

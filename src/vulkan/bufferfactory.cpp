@@ -12,24 +12,24 @@ void BufferFactory::create(VulkanContext &context)
     vmaCreateAllocator(&allocatorCreateInfo, &allocator);
 }
 
-uPtr<Buffer> BufferFactory::createBuffer(vk::DeviceSize size, VkBufferUsageFlags usage)
+uPtr<Buffer> BufferFactory::createBuffer(vk::DeviceSize size, VkBufferUsageFlags usage, VmaAllocationCreateFlagBits flags)
 {
     // must use C api with VMA
-    VkBufferCreateInfo bufferCreateInfo = {};
+    VkBufferCreateInfo bufferCreateInfo{};
     bufferCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     bufferCreateInfo.size = size;
     bufferCreateInfo.usage = usage;
 
-    VmaAllocationCreateInfo allocationCreateInfo = {};
+    VmaAllocationCreateInfo allocationCreateInfo{};
     allocationCreateInfo.usage = VMA_MEMORY_USAGE_AUTO;
-    allocationCreateInfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
+    allocationCreateInfo.flags = flags; // VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT
 
     VkBuffer buffer;
     VmaAllocation allocation;
     if (vmaCreateBuffer(allocator, &bufferCreateInfo, &allocationCreateInfo, &buffer, &allocation, nullptr) != VK_SUCCESS)
         throw std::runtime_error("failed to create buffer");
 
-    return mkU<Buffer>(vk::Buffer(buffer), allocation, allocator);
+    return mkU<Buffer>(vk::Buffer(buffer), vk::BufferCreateInfo(bufferCreateInfo), allocation, allocator, flags & VMA_ALLOCATION_CREATE_MAPPED_BIT);
 }
 
 void BufferFactory::destroy()

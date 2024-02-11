@@ -14,12 +14,17 @@
 #include "vulkan/vulkancontext.h"
 #include "gltfloader.h"
 #include "vulkan/bufferfactory.h"
-#include "glm/vec2.hpp"
+#include "vulkan/descriptors/descriptorlayoutcache.h"
+#include "vulkan/descriptors/descriptorallocator.h"
+#include "vulkan/descriptors/descriptorbuilder.h"
+#include <glm/ext.hpp>
+#include "cameramatrices.h"
 
 class PathTracerApp
 {
 private:
     uPtr<Buffer> buffer;
+    uPtr<Buffer> indexBuffer;
 
     GLTFLoader gltfLoad;
     BufferFactory bufferFactory;
@@ -29,7 +34,7 @@ private:
     RenderPass renderPass;
     PipelineBuilder pipelineFactory;
 
-    uPtr<Pipeline> pipeline1, pipeline2;
+    uPtr<Pipeline> pathPipeline, triPipeline;
     uPtr<Shader> shader1, shader2;
 
     CommandPool commandPool; // one pool per thread
@@ -38,6 +43,11 @@ private:
     int currentFrame = 0;
     const int MAX_FRAMES_IN_FLIGHT = 2;
     std::vector<Frame> frames;
+    std::vector<uPtr<Buffer>> cameraBuffers;
+
+    CameraMatrices cameraMatrices;
+    DescriptorLayoutCache layoutCache;
+    std::vector<DescriptorAllocator> allocators;
 
 public:
     PathTracerApp();
@@ -47,6 +57,7 @@ public:
     void render();
     void resize();
 
+    void updateCameraBuffer();
     void recordCommandBuffer(VkFramebuffer framebuffer); // TODO: NEED TO DELETE THIS LATER
 
     UserInterface *ui;

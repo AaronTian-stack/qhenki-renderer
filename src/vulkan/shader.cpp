@@ -1,14 +1,12 @@
 #include "shader.h"
 #include <string>
 #include <fstream>
-#include <sstream>
 #include <iostream>
 
 std::vector<char> Shader::readFile(const std::string &filename)
 {
     std::ifstream file;
     file.exceptions(std::ifstream::failbit | std::ifstream::badbit);
-
     try
     {
         file.open(filename, std::ios::ate | std::ios::binary);
@@ -31,7 +29,7 @@ std::vector<char> Shader::readFile(const std::string &filename)
 
 vk::ShaderModule Shader::createShaderModule(const std::string &filePath)
 {
-    std::vector<char> code = readFile(filePath);
+    auto code = readFile(filePath);
     vk::ShaderModuleCreateInfo createInfo(
     vk::ShaderModuleCreateFlags(),
             code.size(),

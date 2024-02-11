@@ -2,7 +2,7 @@
 
 QueueManager::QueueManager() {}
 
-void QueueManager::initQueues(vk::Device& device, QueueFamilyIndices indices)
+void QueueManager::initQueues(vk::Device& device, VkStructs::QueueFamilyIndices indices)
 {
     // since one queue per family just get the first queue
     graphicsQueue = device.getQueue(indices.graphicsFamily.value(), 0);

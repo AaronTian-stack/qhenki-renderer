@@ -1,6 +1,6 @@
 #pragma once
 #include <vulkan/vulkan.h>
-#include "vulkan/device.h"
+#include "device.h"
 
 class Destroyable
 {
@@ -10,5 +10,7 @@ protected:
 public:
     Destroyable() {}
     Destroyable(vk::Device device) : device(device) {}
+
+    virtual void create(vk::Device device) { this->device = device; }
     virtual void destroy() = 0;
 };

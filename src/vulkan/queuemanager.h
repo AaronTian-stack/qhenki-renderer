@@ -11,7 +11,7 @@ private:
 public:
     QueueManager();
 
-    void initQueues(vk::Device &device, QueueFamilyIndices indices);
+    void initQueues(vk::Device &device, VkStructs::QueueFamilyIndices indices);
 
     vk::Result submitGraphics(vk::SubmitInfo submitInfo, vk::Fence fence);
     vk::Result present(SwapChain &swapChain, const std::vector<vk::Semaphore> &signalSemaphores);

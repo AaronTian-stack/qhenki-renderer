@@ -1,6 +1,5 @@
 #pragma once
 
-#include "destroyable.h"
 #include "vulkan/vulkan_core.h"
 #include "window.h"
 #include "vulkan/devicepicker.h"

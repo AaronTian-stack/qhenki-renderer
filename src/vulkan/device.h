@@ -1,13 +1,13 @@
 #pragma once
 
 #include <vulkan/vulkan.hpp>
-#include "queuefamilyindices.h"
+#include "vkstructs.h"
 
 struct Device
 {
     vk::PhysicalDevice physicalDevice;
     vk::Device logicalDevice;
-    QueueFamilyIndices queueFamilyIndices;
+    VkStructs::QueueFamilyIndices queueFamilyIndices;
 
     void destroy()
     {

@@ -1,3 +1,4 @@
+#include <limits>
 #include "swapchain.h"
 
 SwapChainSupportDetails SwapChain::querySwapChainSupport(const vk::PhysicalDevice &physicalDevice, VkSurfaceKHR surface)
@@ -88,7 +89,7 @@ void SwapChain::createSwapChain(Device &device, Window &window)
     );
 
     // handling swap chain images used across multiple queue families
-    QueueFamilyIndices indices = DevicePicker::findQueueFamilies(device.physicalDevice, window.getSurface());
+    auto indices = DevicePicker::findQueueFamilies(device.physicalDevice, window.getSurface());
     uint32_t queueFamilyIndices[] = {indices.graphicsFamily.value(), indices.presentFamily.value()};
 
     if (indices.graphicsFamily != indices.presentFamily)

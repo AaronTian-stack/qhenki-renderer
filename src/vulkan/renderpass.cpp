@@ -8,7 +8,7 @@ RenderPass::RenderPass()
 
 void RenderPass::create(vk::Device device)
 {
-    this->device = device;
+    Destroyable::create(device);
     renderPass = device.createRenderPass(renderPassInfo);
 }
 
@@ -66,12 +66,12 @@ void RenderPass::clear(float r, float g, float b, float a)
     renderPassBeginInfo.pClearValues = &clearColor;
 }
 
-void RenderPass::setFramebuffer(VkFramebuffer buffer)
+void RenderPass::setFramebuffer(vk::Framebuffer buffer)
 {
     renderPassBeginInfo.framebuffer = buffer;
 }
 
-void RenderPass::setRenderAreaExtent(VkExtent2D extent)
+void RenderPass::setRenderAreaExtent(vk::Extent2D extent)
 {
     renderPassBeginInfo.renderArea.extent = extent;
 }

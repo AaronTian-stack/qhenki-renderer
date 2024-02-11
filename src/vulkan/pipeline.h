@@ -1,7 +1,7 @@
 #pragma once
 
 #include <vulkan/vulkan.h>
-#include "../destroyable.h"
+#include "destroyable.h"
 
 class Pipeline : public Destroyable
 {
@@ -15,7 +15,9 @@ public:
     Pipeline(vk::Device device);
 
     void destroy() override;
-    VkPipeline getGraphicsPipeline();
+
+    vk::PipelineLayout getPipelineLayout();
+    vk::Pipeline getGraphicsPipeline();
     void setPushConstant(vk::CommandBuffer commandBuffer, float constant);
 
     friend class PipelineBuilder;
