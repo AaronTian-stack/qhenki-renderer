@@ -5,7 +5,7 @@ vk::DescriptorPool DescriptorAllocator::createPool(int count, vk::DescriptorPool
     std::vector<vk::DescriptorPoolSize> sizes;
     sizes.reserve(descriptorSizes.sizes.size());
     for (auto sz : descriptorSizes.sizes) {
-        sizes.push_back({sz.first, uint32_t(sz.second * count)});
+        sizes.emplace_back(sz.first, uint32_t(sz.second * count));
     }
 
     vk::DescriptorPoolCreateInfo poolInfo(

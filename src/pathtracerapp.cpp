@@ -81,7 +81,7 @@ void PathTracerApp::create(Window &window)
             VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
             VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
 
-    stagingBuffer->fill(vertices.data(), vertices.size() * sizeof(Vertex));
+    stagingBuffer->fill(vertices.data());
 
     buffer = bufferFactory.createBuffer(vertices.size() * sizeof(Vertex),
                                         VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
@@ -93,7 +93,7 @@ void PathTracerApp::create(Window &window)
 
     indexBuffer = bufferFactory.createBuffer(indices.size() * sizeof(uint16_t),
                                              VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
-    indexBuffer->fill(indices.data(), indices.size() * sizeof(uint16_t));
+    indexBuffer->fill(indices.data());
 
     pipelineFactory.reset();
 
@@ -230,5 +230,5 @@ void PathTracerApp::updateCameraBuffer()
     auto proj = glm::perspective(glm::radians(45.0f), vulkanContext.swapChain.getExtent().width / (float) vulkanContext.swapChain.getExtent().height, 0.1f, 10.0f);
     proj[1][1] *= -1;
     cameraMatrices.viewProj = proj * view;
-    cameraBuffers[currentFrame]->fill(&cameraMatrices, sizeof(CameraMatrices));
+    cameraBuffers[currentFrame]->fill(&cameraMatrices);
 }

@@ -16,7 +16,7 @@ private:
 public:
     Buffer(vk::Buffer buffer, vk::BufferCreateInfo info, VmaAllocation allocation, VmaAllocator allocator, bool persistent);
 
-    void fill(const void *data, size_t bufferSize);
+    void fill(const void *data);
     void copyTo(Buffer &destination, QueueManager &queueManager, CommandPool &commandPool);
 
     void bind(vk::CommandBuffer commandBuffer);

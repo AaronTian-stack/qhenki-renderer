@@ -49,7 +49,7 @@ public:
     void addPushConstant(uint32_t size, vk::ShaderStageFlags stageFlags = vk::ShaderStageFlagBits::eAll);
 
     void parseShader(const char *filePath1, const char *filePath2);
-    // Does not do bindings
+
     void parseVertexShader(const char *filePath, DescriptorLayoutCache &layoutCache);
     void parseFragmentShader(const char *filePath);
 

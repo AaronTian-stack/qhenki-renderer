@@ -233,30 +233,50 @@ std::pair<vk::Format, size_t> PipelineBuilder::mapTypeToFormat(const spirv_cross
     switch (type.basetype)
     {
         case spirv_cross::SPIRType::Float:
-        switch (type.vecsize)
-        {
-            case 1:
-                return {vk::Format::eR32Sfloat, sizeof(float)};
-            case 2:
-                return {vk::Format::eR32G32Sfloat, sizeof(glm::vec2)};
-            case 3:
-                return {vk::Format::eR32G32B32Sfloat, sizeof(glm::vec3)};
-            case 4:
-                return {vk::Format::eR32G32B32A32Sfloat, sizeof(glm::vec4)};
-            default:
-                return {vk::Format::eUndefined, 0};
-        }
+            switch (type.vecsize)
+            {
+                case 1:
+                    return {vk::Format::eR32Sfloat, sizeof(float)};
+                case 2:
+                    return {vk::Format::eR32G32Sfloat, sizeof(glm::vec2)};
+                case 3:
+                    return {vk::Format::eR32G32B32Sfloat, sizeof(glm::vec3)};
+                case 4:
+                    return {vk::Format::eR32G32B32A32Sfloat, sizeof(glm::vec4)};
+                default:
+                    return {vk::Format::eUndefined, 0};
+            }
         case spirv_cross::SPIRType::Int:
-            return {vk::Format::eR32Sint, sizeof(int32_t)};
+            switch(type.vecsize)
+            {
+                case 1:
+                    return {vk::Format::eR32Sint, sizeof(int32_t)};
+                case 2:
+                    return {vk::Format::eR32G32Sint, sizeof(glm::ivec2)};
+                case 3:
+                    return {vk::Format::eR32G32B32Sint, sizeof(glm::ivec3)};
+                case 4:
+                    return {vk::Format::eR32G32B32A32Sint, sizeof(glm::ivec4)};
+                default:
+                    return {vk::Format::eUndefined, 0};
+            }
         case spirv_cross::SPIRType::UInt:
-            return {vk::Format::eR32Uint, sizeof(uint32_t)};
-            // Add cases for other types as needed
+            switch (type.vecsize)
+            {
+                case 1:
+                    return {vk::Format::eR32Uint, sizeof(uint32_t)};
+                case 2:
+                    return {vk::Format::eR32G32Uint, sizeof(glm::uvec2)};
+                case 3:
+                    return {vk::Format::eR32G32B32Uint, sizeof(glm::uvec3)};
+                case 4:
+                    return {vk::Format::eR32G32B32A32Uint, sizeof(glm::uvec4)};
+                default:
+                    return {vk::Format::eUndefined, 0};
+            }
         default:
             return {vk::Format::eUndefined, 0};
     }
 }
 
-void PipelineBuilder::destroy()
-{
-    //device.destroy(descriptorSetLayout1);
-}
+void PipelineBuilder::destroy() {}

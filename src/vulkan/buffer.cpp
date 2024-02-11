@@ -10,17 +10,17 @@ Buffer::Buffer(vk::Buffer buffer, vk::BufferCreateInfo info, VmaAllocation alloc
     }
 }
 
-void Buffer::fill(const void *data, size_t bufferSize)
+void Buffer::fill(const void *data)
 {
     if (persistent)
     {
-        memcpy(mappedData, data, bufferSize);
+        memcpy(mappedData, data, info.size);
     }
     else
     {
         void* mappedData;
         vmaMapMemory(allocator, allocation, &mappedData);
-        memcpy(mappedData, data, bufferSize);
+        memcpy(mappedData, data, info.size);
         vmaUnmapMemory(allocator, allocation);
     }
 }
