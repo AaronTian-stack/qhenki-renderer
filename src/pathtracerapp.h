@@ -19,6 +19,8 @@
 #include "vulkan/descriptors/descriptorbuilder.h"
 #include <glm/ext.hpp>
 #include "cameramatrices.h"
+#include "camera.h"
+#include "inputprocesser.h"
 
 class PathTracerApp
 {
@@ -45,6 +47,7 @@ private:
     std::vector<Frame> frames;
     std::vector<uPtr<Buffer>> cameraBuffers;
 
+    Camera camera;
     CameraMatrices cameraMatrices;
     DescriptorLayoutCache layoutCache;
     std::vector<DescriptorAllocator> allocators;

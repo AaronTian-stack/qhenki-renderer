@@ -1,8 +1,9 @@
 #include "pathtracerapp.h"
 #include "vulkan/screenutils.h"
 #include "glm/glm.hpp"
+#include "inputprocesser.h"
 
-PathTracerApp::PathTracerApp() {}
+PathTracerApp::PathTracerApp() : camera({0, 2.f, 2.f}) {}
 
 PathTracerApp::~PathTracerApp()
 {
@@ -38,6 +39,7 @@ PathTracerApp::~PathTracerApp()
 
 void PathTracerApp::create(Window &window)
 {
+    InputProcesser::create(window);
     vulkanContext.create(window);
     layoutCache.create(vulkanContext.device.logicalDevice);
     //allocators.emplace_back(vulkanContext.device.logicalDevice);
@@ -183,6 +185,8 @@ void PathTracerApp::render()
     auto &frame = frames[currentFrame];
     frame.finish(syncer); // waits for fence to be signalled (finished frame) and resets the frames inFlightFence
 
+    camera.update(0.01f);
+
     auto commandBuffer = frame.commandBuffer;
 
     auto &swapChain = vulkanContext.swapChain;
@@ -225,9 +229,12 @@ CommandPool& PathTracerApp::getCommandPool()
 
 void PathTracerApp::updateCameraBuffer()
 {
-    cameraMatrices.model = glm::rotate(glm::mat4(), glm::radians((float)glfwGetTime() * 5.f), glm::vec3(0.0f, 0.0f, 1.0f));
-    auto view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-    auto proj = glm::perspective(glm::radians(45.0f), vulkanContext.swapChain.getExtent().width / (float) vulkanContext.swapChain.getExtent().height, 0.1f, 10.0f);
+    auto const options = camera.options;
+    //cameraMatrices.model = glm::rotate(glm::mat4(), glm::radians((float)glfwGetTime() * 5.f), glm::vec3(0.0f, 1.0f, 0.0f));
+    //auto view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+    auto view = camera.getViewMatrix();
+    float aspect = vulkanContext.swapChain.getExtent().width / (float) vulkanContext.swapChain.getExtent().height;
+    auto proj = glm::perspective(glm::radians(options.fov), aspect, options.nearClip, options.farClip);
     proj[1][1] *= -1;
     cameraMatrices.viewProj = proj * view;
     cameraBuffers[currentFrame]->fill(&cameraMatrices);
