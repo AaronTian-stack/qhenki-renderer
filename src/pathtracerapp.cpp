@@ -40,7 +40,6 @@ PathTracerApp::~PathTracerApp()
 
 void PathTracerApp::create(Window &window)
 {
-    glfwSetWindowUserPointer(window.getWindow(), &camera);
     InputProcesser::setCallbacks(window);
     vulkanContext.create(window);
     layoutCache.create(vulkanContext.device.logicalDevice);
@@ -67,14 +66,14 @@ void PathTracerApp::create(Window &window)
 
     //// VERTEX INPUT
     struct Vertex {
-        glm::vec2 pos;
+        glm::vec3 pos;
         glm::vec3 color;
     };
     const std::vector<Vertex> vertices = {
-            {{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},
-            {{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}},
-            {{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}},
-            {{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}}
+            {{-0.5f, -0.5f, 0.f}, {1.0f, 0.0f, 0.0f}},
+            {{0.5f, -0.5f, 0.f}, {0.0f, 1.0f, 0.0f}},
+            {{0.5f, 0.5f, 0.f}, {0.0f, 0.0f, 1.0f}},
+            {{-0.5f, 0.5f, 0.f}, {1.0f, 1.0f, 1.0f}}
     };
     const std::vector<uint16_t> indices = {
             0, 1, 2, 2, 3, 0
@@ -185,6 +184,7 @@ void PathTracerApp::recordCommandBuffer(VkFramebuffer framebuffer)
 void PathTracerApp::render()
 {
     handleInput();
+    camera.lerp(ImGui::GetIO().DeltaTime);
 
     auto &frame = frames[currentFrame];
     frame.finish(syncer); // waits for fence to be signalled (finished frame) and resets the frames inFlightFence
@@ -245,11 +245,17 @@ void PathTracerApp::updateCameraBuffer()
 void PathTracerApp::handleInput()
 {
     ImGuiIO& io = ImGui::GetIO();
-    if ((InputProcesser::mouseButtons[GLFW_MOUSE_BUTTON_LEFT] ||
-            InputProcesser::mouseButtons[GLFW_MOUSE_BUTTON_RIGHT]) && !io.WantCaptureMouse) {
-        InputProcesser::disableCursor();
+    if (io.WantCaptureMouse) {
+        InputProcesser::setUserPointer(nullptr);
     }
-    else if (InputProcesser::getCursorState() == GLFW_CURSOR_DISABLED) {
-        InputProcesser::enableCursor();
+    else {
+        InputProcesser::setUserPointer(&camera);
+        if (InputProcesser::mouseButtons[GLFW_MOUSE_BUTTON_LEFT] ||
+             InputProcesser::mouseButtons[GLFW_MOUSE_BUTTON_RIGHT]) {
+            InputProcesser::disableCursor();
+        }
+        else if (InputProcesser::getCursorState() == GLFW_CURSOR_DISABLED) {
+            InputProcesser::enableCursor();
+        }
     }
 }

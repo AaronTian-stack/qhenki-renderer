@@ -22,7 +22,14 @@ void InputProcesser::mouse_callback(GLFWwindow *window, double xposIn, double yp
     // update camera based of glfw user pointer
     auto* obj = static_cast<Camera*>(glfwGetWindowUserPointer(window));
     if (obj)
-        obj->update(0.0f);
+        obj->update();
+}
+
+void InputProcesser::scroll_callback(GLFWwindow *window, double xoffset, double yoffset)
+{
+    auto* obj = static_cast<Camera*>(glfwGetWindowUserPointer(window));
+    if (obj)
+        obj->zoom(yoffset);
 }
 
 void InputProcesser::setCallbacks(Window &window)
@@ -30,6 +37,7 @@ void InputProcesser::setCallbacks(Window &window)
     InputProcesser::window = window.getWindow();
     glfwSetCursorPosCallback(InputProcesser::window, mouse_callback);
     glfwSetMouseButtonCallback(InputProcesser::window, mouse_button_callback);
+    glfwSetScrollCallback(InputProcesser::window, scroll_callback);
 }
 
 void InputProcesser::disableCursor()
@@ -45,4 +53,9 @@ void InputProcesser::enableCursor()
 int InputProcesser::getCursorState()
 {
     return glfwGetInputMode(InputProcesser::window, GLFW_CURSOR);
+}
+
+void InputProcesser::setUserPointer(void *ptr)
+{
+    glfwSetWindowUserPointer(InputProcesser::window, ptr);
 }
