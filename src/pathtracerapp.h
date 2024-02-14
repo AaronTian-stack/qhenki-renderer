@@ -60,6 +60,7 @@ public:
     void render();
     void resize();
 
+    void handleInput();
     void updateCameraBuffer();
     void recordCommandBuffer(VkFramebuffer framebuffer); // TODO: NEED TO DELETE THIS LATER
 

@@ -23,9 +23,10 @@ int main()
 
     app.ui = &ui;
 
-    while (!window.shouldClose())
-    {
+    while (!window.shouldClose()) {
         glfwPollEvents();
+        if (glfwGetKey(window.getWindow(), GLFW_KEY_ESCAPE) == GLFW_PRESS)
+            break;
 
         ui.begin();
         ui.render();

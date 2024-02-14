@@ -13,15 +13,21 @@ struct CameraOptions
     float zoom{};
 };
 
+struct CameraFields
+{
+    glm::vec3 position;
+    glm::vec3 target;
+    float theta;
+    float phi = 90.f;
+    float targetDistance = 5.f;
+};
+
 class Camera
 {
 private:
     const glm::vec3 worldUp = {0.f, 1.f, 0.f};
     glm::vec3 forward, right, up;
-    glm::vec3 position;
-    glm::vec3 target;
-    float theta, phi;
-    float targetDistance;
+    CameraFields regular, smooth;
 
 public:
     CameraOptions options;

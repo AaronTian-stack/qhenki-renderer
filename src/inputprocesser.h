@@ -8,16 +8,21 @@
 class InputProcesser
 {
 private:
+    inline static GLFWwindow *window;
     inline static glm::vec2 lastMousePos;
 
 public:
-    static void create(Window &window);
+    static void setCallbacks(Window &window);
 
     inline static glm::vec2 deltaMouse;
-    inline static std::unordered_map<int, bool> justClickedMouseButtons;
-    inline static std::unordered_map<int, bool> mouseButtons;
+    inline static std::unordered_map<int, int> mouseButtons;
 
+    static void mouse_button_callback(GLFWwindow* window, int button, int action, int mods);
     static void mouse_callback(GLFWwindow* window, double xposIn, double yposIn);
+
+    static void disableCursor();
+    static void enableCursor();
+    static int getCursorState();
 
     inline static float SENSITIVITY = 0.05f;
 };

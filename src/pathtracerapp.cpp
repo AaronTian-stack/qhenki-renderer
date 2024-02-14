@@ -2,6 +2,7 @@
 #include "vulkan/screenutils.h"
 #include "glm/glm.hpp"
 #include "inputprocesser.h"
+#include "imgui/imgui.h"
 
 PathTracerApp::PathTracerApp() : camera({0, 2.f, 2.f}) {}
 
@@ -39,7 +40,8 @@ PathTracerApp::~PathTracerApp()
 
 void PathTracerApp::create(Window &window)
 {
-    InputProcesser::create(window);
+    glfwSetWindowUserPointer(window.getWindow(), &camera);
+    InputProcesser::setCallbacks(window);
     vulkanContext.create(window);
     layoutCache.create(vulkanContext.device.logicalDevice);
     //allocators.emplace_back(vulkanContext.device.logicalDevice);
@@ -182,10 +184,10 @@ void PathTracerApp::recordCommandBuffer(VkFramebuffer framebuffer)
 
 void PathTracerApp::render()
 {
+    handleInput();
+
     auto &frame = frames[currentFrame];
     frame.finish(syncer); // waits for fence to be signalled (finished frame) and resets the frames inFlightFence
-
-    camera.update(0.01f);
 
     auto commandBuffer = frame.commandBuffer;
 
@@ -238,4 +240,16 @@ void PathTracerApp::updateCameraBuffer()
     proj[1][1] *= -1;
     cameraMatrices.viewProj = proj * view;
     cameraBuffers[currentFrame]->fill(&cameraMatrices);
+}
+
+void PathTracerApp::handleInput()
+{
+    ImGuiIO& io = ImGui::GetIO();
+    if ((InputProcesser::mouseButtons[GLFW_MOUSE_BUTTON_LEFT] ||
+            InputProcesser::mouseButtons[GLFW_MOUSE_BUTTON_RIGHT]) && !io.WantCaptureMouse) {
+        InputProcesser::disableCursor();
+    }
+    else if (InputProcesser::getCursorState() == GLFW_CURSOR_DISABLED) {
+        InputProcesser::enableCursor();
+    }
 }
