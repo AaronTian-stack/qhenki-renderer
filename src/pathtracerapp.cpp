@@ -1,8 +1,10 @@
 #include "pathtracerapp.h"
 #include "vulkan/screenutils.h"
 #include "glm/glm.hpp"
+#include "inputprocesser.h"
+#include "imgui/imgui.h"
 
-PathTracerApp::PathTracerApp() {}
+PathTracerApp::PathTracerApp() : camera({0, 2.f, 2.f}) {}
 
 PathTracerApp::~PathTracerApp()
 {
@@ -38,6 +40,7 @@ PathTracerApp::~PathTracerApp()
 
 void PathTracerApp::create(Window &window)
 {
+    InputProcesser::setCallbacks(window);
     vulkanContext.create(window);
     layoutCache.create(vulkanContext.device.logicalDevice);
     //allocators.emplace_back(vulkanContext.device.logicalDevice);
@@ -63,14 +66,14 @@ void PathTracerApp::create(Window &window)
 
     //// VERTEX INPUT
     struct Vertex {
-        glm::vec2 pos;
+        glm::vec3 pos;
         glm::vec3 color;
     };
     const std::vector<Vertex> vertices = {
-            {{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},
-            {{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}},
-            {{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}},
-            {{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}}
+            {{-0.5f, -0.5f, 0.f}, {1.0f, 0.0f, 0.0f}},
+            {{0.5f, -0.5f, 0.f}, {0.0f, 1.0f, 0.0f}},
+            {{0.5f, 0.5f, 0.f}, {0.0f, 0.0f, 1.0f}},
+            {{-0.5f, 0.5f, 0.f}, {1.0f, 1.0f, 1.0f}}
     };
     const std::vector<uint16_t> indices = {
             0, 1, 2, 2, 3, 0
@@ -180,6 +183,9 @@ void PathTracerApp::recordCommandBuffer(VkFramebuffer framebuffer)
 
 void PathTracerApp::render()
 {
+    handleInput();
+    camera.lerp(ImGui::GetIO().DeltaTime);
+
     auto &frame = frames[currentFrame];
     frame.finish(syncer); // waits for fence to be signalled (finished frame) and resets the frames inFlightFence
 
@@ -225,10 +231,31 @@ CommandPool& PathTracerApp::getCommandPool()
 
 void PathTracerApp::updateCameraBuffer()
 {
-    cameraMatrices.model = glm::rotate(glm::mat4(), glm::radians((float)glfwGetTime() * 5.f), glm::vec3(0.0f, 0.0f, 1.0f));
-    auto view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-    auto proj = glm::perspective(glm::radians(45.0f), vulkanContext.swapChain.getExtent().width / (float) vulkanContext.swapChain.getExtent().height, 0.1f, 10.0f);
+    auto const options = camera.options;
+    //cameraMatrices.model = glm::rotate(glm::mat4(), glm::radians((float)glfwGetTime() * 5.f), glm::vec3(0.0f, 1.0f, 0.0f));
+    //auto view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+    auto view = camera.getViewMatrix();
+    float aspect = vulkanContext.swapChain.getExtent().width / (float) vulkanContext.swapChain.getExtent().height;
+    auto proj = glm::perspective(glm::radians(options.fov), aspect, options.nearClip, options.farClip);
     proj[1][1] *= -1;
     cameraMatrices.viewProj = proj * view;
     cameraBuffers[currentFrame]->fill(&cameraMatrices);
+}
+
+void PathTracerApp::handleInput()
+{
+    ImGuiIO& io = ImGui::GetIO();
+    if (io.WantCaptureMouse) {
+        InputProcesser::setUserPointer(nullptr);
+    }
+    else {
+        InputProcesser::setUserPointer(&camera);
+        if (InputProcesser::mouseButtons[GLFW_MOUSE_BUTTON_LEFT] ||
+             InputProcesser::mouseButtons[GLFW_MOUSE_BUTTON_RIGHT]) {
+            InputProcesser::disableCursor();
+        }
+        else if (InputProcesser::getCursorState() == GLFW_CURSOR_DISABLED) {
+            InputProcesser::enableCursor();
+        }
+    }
 }
