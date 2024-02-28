@@ -22,9 +22,9 @@
 class VulkanApp
 {
 private:
-    //uPtr<Buffer> buffer;
-    //uPtr<Buffer> colorBuffer;
-    //uPtr<Buffer> indexBuffer;
+    uPtr<Buffer> buffer;
+    uPtr<Buffer> colorBuffer;
+    uPtr<Buffer> indexBuffer;
 
     GLTFLoader gltfLoad;
     BufferFactory bufferFactory;
@@ -34,7 +34,7 @@ private:
     RenderPass renderPass;
     PipelineBuilder pipelineFactory;
 
-    uPtr<Pipeline> pathPipeline;//, triPipeline;
+    uPtr<Pipeline> pathPipeline, triPipeline;
     uPtr<Shader> shader1, shader2;
 
     CommandPool commandPool; // one pool per thread

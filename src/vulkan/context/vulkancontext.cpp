@@ -5,6 +5,10 @@ bool VulkanContext::create(Window &window)
 {
     vkb::InstanceBuilder builder;
     auto severity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT;
+    std::vector extensions = {VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME};
+#if __APPLE__
+    extensions.push_back(VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME);
+#endif
     auto inst_ret = builder.set_app_name("Vulkan PBR").request_validation_layers()
             .set_debug_messenger_severity(severity)
             .set_debug_callback (
@@ -16,7 +20,7 @@ bool VulkanContext::create(Window &window)
                 std::cerr << "validation layer: " << pCallbackData->pMessage << std::endl;
                 return VK_FALSE;
             }
-    ).build();
+    ).enable_extensions(extensions).build();
 
     if (!inst_ret) {
         std::cerr << "Failed to create Vulkan instance. Error: " << inst_ret.error().message() << "\n";
@@ -56,15 +60,13 @@ bool VulkanContext::create(Window &window)
 
     vkb_device.get_queue_index(vkb::QueueType::graphics).value();
 
-    // Get the VkDevice handle used in the rest of a vulkan application
     this->device = {
         vkb_device,
         vk::PhysicalDevice(vkb_device.physical_device),
         vk::Device(vkb_device.device)
     };
 
-    // Get the graphics queue with a helper function
-    auto graphicsQueueOpt = vkb_device.get_queue (vkb::QueueType::graphics);
+    auto graphicsQueueOpt = vkb_device.get_queue(vkb::QueueType::graphics);
     if (!graphicsQueueOpt) {
         std::cerr << "Failed to get graphics queue. Error: " << graphicsQueueOpt.error().message() << "\n";
         return false;
@@ -74,10 +76,10 @@ bool VulkanContext::create(Window &window)
         std::cerr << "Failed to get present queue. Error: " << presentQueueOpt.error().message() << "\n";
         return false;
     }
-    auto graphics_queue = vk::Queue(graphicsQueueOpt.value());
+    auto graphicsQueue = vk::Queue(graphicsQueueOpt.value());
     auto presentQueue = vk::Queue(presentQueueOpt.value());
 
-    queueManager.initQueues(graphics_queue, presentQueue);
+    queueManager.initQueues(graphicsQueue, presentQueue);
 
     vkb::SwapchainBuilder swapchain_builder{ vkb_device };
     auto swap_ret = swapchain_builder.build();
@@ -85,7 +87,8 @@ bool VulkanContext::create(Window &window)
         std::cerr << "Failed to create swap chain. Error: " << swap_ret.error().message() << "\n";
         return false;
     }
-    this->swapChain = mkU<SwapChain>(swap_ret.value());
+    auto swap = swap_ret.value();
+    this->swapChain = mkU<SwapChain>(swap);
 
     return true;
 }

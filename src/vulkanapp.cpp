@@ -36,10 +36,8 @@ VulkanApp::~VulkanApp()
         allocator.destroy();
 
     layoutCache.destroy();
-    //bufferFactory.destroy();
+    bufferFactory.destroy();
 }
-
-//#define test
 
 void VulkanApp::create(Window &window)
 {
@@ -54,7 +52,7 @@ void VulkanApp::create(Window &window)
     commandPool.create(vulkanContext.device);
     pipelineFactory.create(device);
 
-    //bufferFactory.create(vulkanContext);
+    bufferFactory.create(vulkanContext);
 
     // create render pass
     renderPass.setColorAttachmentFormat(vulkanContext.swapChain->getFormat());
@@ -85,7 +83,7 @@ void VulkanApp::create(Window &window)
             0, 1, 2, 2, 3, 0
     };
 
-    /*auto stagingBuffer = bufferFactory.createBuffer(
+    auto stagingBuffer = bufferFactory.createBuffer(
             vertices.size() * sizeof(Vertex),
             VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
             VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
@@ -95,23 +93,23 @@ void VulkanApp::create(Window &window)
     buffer = bufferFactory.createBuffer(vertices.size() * sizeof(Vertex),
                                         VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
     stagingBuffer->copyTo(*buffer, vulkanContext.queueManager, commandPool);
-    stagingBuffer->destroy();*/
+    stagingBuffer->destroy();
 
-    /*buffer = bufferFactory.createBuffer(vertices.size() * sizeof(Vertex), VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
+    buffer = bufferFactory.createBuffer(vertices.size() * sizeof(Vertex), VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
     buffer->fill(vertices.data());
 
     indexBuffer = bufferFactory.createBuffer(indices.size() * sizeof(uint16_t),
                                              VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
-    indexBuffer->fill(indices.data());*/
+    indexBuffer->fill(indices.data());
 
 
     //pipelineFactory.reset();
 
-    //pipelineFactory.addVertexInputBinding({0, sizeof(Vertex), vk::VertexInputRate::eVertex});
-    //pipelineFactory.parseVertexShader("tri_vert.spv", layoutCache);
+    pipelineFactory.addVertexInputBinding({0, sizeof(Vertex), vk::VertexInputRate::eVertex});
+    pipelineFactory.parseVertexShader("tri_vert.spv", layoutCache);
     //// END VERTEX INPUT
 
-    //triPipeline = pipelineFactory.buildPipeline(&renderPass, shader2.get());
+    triPipeline = pipelineFactory.buildPipeline(&renderPass, shader2.get());
 
     vulkanContext.swapChain->createFramebuffers(renderPass.getRenderPass());
 
@@ -121,9 +119,9 @@ void VulkanApp::create(Window &window)
         frames.emplace_back(device, commandPool, syncer);
         auto flags = static_cast<VmaAllocationCreateFlagBits>(VMA_ALLOCATION_CREATE_MAPPED_BIT |
                                                                                     VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
-        //cameraBuffers.emplace_back(bufferFactory.createBuffer(sizeof(CameraMatrices),
-        //                                                      VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-        //                                                      flags));
+        cameraBuffers.emplace_back(bufferFactory.createBuffer(sizeof(CameraMatrices),
+                                                              VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+                                                              flags));
         allocators.emplace_back(vulkanContext.device.logicalDevice);
     }
 
@@ -147,8 +145,8 @@ void VulkanApp::recordCommandBuffer(VkFramebuffer framebuffer)
     renderPass.clear(ui->clearColor[0], ui->clearColor[1], ui->clearColor[2], 1.0f);
     renderPass.begin(commandBuffer);
 
-    //auto pipeline = ui->currentShaderIndex == 0 ? pathPipeline.get() : triPipeline.get();
-    commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, pathPipeline->getGraphicsPipeline());
+    auto pipeline = ui->currentShaderIndex == 0 ? pathPipeline.get() : triPipeline.get();
+    commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, pipeline->getGraphicsPipeline());
     float time = (float)glfwGetTime();
     pathPipeline->setPushConstant(commandBuffer, &time, sizeof(float));
 
@@ -157,7 +155,7 @@ void VulkanApp::recordCommandBuffer(VkFramebuffer framebuffer)
 
     if (ui->currentShaderIndex == 1)
     {
-        /*triPipeline->setPushConstant(commandBuffer, &modelTransform, sizeof(glm::mat4));
+        triPipeline->setPushConstant(commandBuffer, &modelTransform, sizeof(glm::mat4));
 
         buffer->bind(commandBuffer);
         indexBuffer->bind(commandBuffer);
@@ -173,7 +171,7 @@ void VulkanApp::recordCommandBuffer(VkFramebuffer framebuffer)
                 .build(globalSet, layout);
 
         commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipeline->getPipelineLayout(), 0, {globalSet}, nullptr);
-        commandBuffer.drawIndexed(6, 1, 0, 0, 0);*/
+        commandBuffer.drawIndexed(6, 1, 0, 0, 0);
     }
     else
         commandBuffer.draw(3, 1, 0, 0);

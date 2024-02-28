@@ -3,9 +3,7 @@
 
 SwapChain::SwapChain(vkb::Swapchain vkbSwapchain)
 : vkbSwapchain(vkbSwapchain), swapChain(vkbSwapchain.swapchain)
-{
-
-}
+{}
 
 vk::Format SwapChain::getFormat() const
 {
@@ -54,7 +52,10 @@ void SwapChain::destroy()
     for (auto &frameBuffer : frameBuffers)
     {
         device.destroy(frameBuffer.framebuffer);
+        for (auto &attachment : frameBuffer.attachments)
+        {
+            device.destroyImageView(attachment.imageView);
+        }
     }
-    vkbSwapchain.destroy_image_views(vkbSwapchain.get_image_views().value());
     vkb::destroy_swapchain(vkbSwapchain);
 }
