@@ -1,10 +1,10 @@
 #pragma once
 
-#include <vulkan/vulkan.h>
+#include <vulkan/vulkan.hpp>
 #include <unordered_map>
 #include "destroyable.h"
-#include "devicepicker.h"
 #include "queuemanager.h"
+#include "context/vulkancontext.h"
 
 class CommandPool : public Destroyable
 {
@@ -14,7 +14,7 @@ private:
     std::unordered_map<const char*, vk::CommandBuffer> commandBuffers;
 
 public:
-    void create(vk::Device device, uint32_t familyIndex);
+    void create(Device &device);
     void destroy() override;
 
     vk::CommandBuffer createCommandBuffer();

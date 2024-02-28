@@ -3,6 +3,7 @@
 #include "imgui/imgui_impl_vulkan.h"
 #include <vulkan/vulkan.h>
 #include <iterator>
+#include <filesystem>
 
 UserInterface::UserInterface() {}
 
@@ -22,6 +23,8 @@ void UserInterface::create(ImGuiCreateParameters param, CommandPool commandPool)
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO();
+    if (std::filesystem::exists("Roboto-Medium.ttf"))
+        io.Fonts->AddFontFromFileTTF("Roboto-Medium.ttf", 16);
     io.ConfigWindowsMoveFromTitleBarOnly = true;
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
 
@@ -57,7 +60,7 @@ void UserInterface::create(ImGuiCreateParameters param, CommandPool commandPool)
     ImGui_ImplGlfw_InitForVulkan(param.window->getWindow(), true);
 
     ImGui_ImplVulkan_InitInfo init_info = {};
-    init_info.Instance = param.context->instance;
+    init_info.Instance = param.context->vkbInstance.instance;
     init_info.PhysicalDevice = param.context->device.physicalDevice;
     init_info.Device = param.context->device.logicalDevice;
     init_info.Queue = param.context->queueManager.graphicsQueue;
@@ -87,11 +90,12 @@ void UserInterface::destroy()
 
 void UserInterface::render()
 {
+    const int y = 20;
     //ImGui::ShowDemoWindow();
-    ImGui::SetNextWindowPos(ImVec2(0, 18));
+    ImGui::SetNextWindowPos(ImVec2(0, y));
     auto flags = ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove;
 
-    ImGui::Begin("Pathtracer", nullptr, flags);
+    ImGui::Begin("Stats", nullptr, flags);
 
     ImGui::Text("FPS: %f", ImGui::GetIO().Framerate);
 
@@ -112,7 +116,7 @@ void UserInterface::render()
 
     renderMenuBar();
 
-    ImGui::SetNextWindowPos(ImVec2(ImGui::GetIO().DisplaySize.x, 18), 0, ImVec2(1.0f, 0));
+    ImGui::SetNextWindowPos(ImVec2(ImGui::GetIO().DisplaySize.x, y), 0, ImVec2(1.0f, 0));
     ImGui::Begin("Visual Options", nullptr, flags);
     if (ImGui::Combo("Shader", &currentShaderIndex,
                      "Pathtrace\0Triangle\0"))
@@ -150,7 +154,7 @@ void UserInterface::renderMenuBar()
             about = true;
 
         // hack to get the menu to the right
-        ImGui::SameLine(ImGui::GetWindowWidth() - 126);
+        ImGui::SameLine(ImGui::GetWindowWidth() - 120);
         ImGui::Text("Aaron Tian 2024");
         ImGui::EndMainMenuBar();
     }

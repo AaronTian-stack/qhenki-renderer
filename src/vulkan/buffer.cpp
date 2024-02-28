@@ -53,3 +53,20 @@ void Buffer::copyTo(Buffer &destination, QueueManager &queueManager, CommandPool
     commandBuffer.end();
     commandPool.submitSingleTimeCommands(queueManager, {commandBuffer});
 }
+
+void bind(vk::CommandBuffer commandBuffer, const std::vector<Buffer>& buffers)
+{
+    for (auto &buffer : buffers)
+    {
+        if (!(buffer.info.usage & vk::BufferUsageFlagBits::eVertexBuffer))
+            throw std::runtime_error("Buffer is not a vertex buffer");
+    }
+    // collect vector of raw buffer objects
+    std::vector<vk::Buffer> rawBuffers;
+    rawBuffers.reserve(buffers.size());
+    for (auto &buffer : buffers)
+    {
+        rawBuffers.push_back(buffer.buffer);
+    }
+    commandBuffer.bindVertexBuffers(0, rawBuffers.size(), rawBuffers.data(), nullptr);
+}

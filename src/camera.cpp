@@ -60,6 +60,11 @@ void Camera::lerp(float delta)
     smooth.position = sphericalToCartesian(smooth.theta, smooth.phi, smooth.targetDistance) + smooth.target;
 }
 
+glm::vec3 Camera::getPosition() const
+{
+    return glm::vec3();
+}
+
 glm::vec3 sphericalToCartesian(float theta, float phi, float radius)
 {
     float x = radius * glm::sin(glm::radians(phi)) * glm::sin(glm::radians(theta));

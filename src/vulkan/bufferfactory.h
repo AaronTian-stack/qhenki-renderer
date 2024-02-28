@@ -2,7 +2,7 @@
 
 #include "vulkan/vulkan.h"
 #include "vma/vk_mem_alloc.h"
-#include "vulkancontext.h"
+#include "context/vulkancontext.h"
 #include "buffer.h"
 #include "../smartpointer.h"
 

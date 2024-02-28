@@ -1,17 +1,14 @@
 #pragma once
 
 #include "smartpointer.h"
-#include "vulkan/debugger.h"
-#include "vulkan/devicepicker.h"
 #include "vulkan/queuemanager.h"
-#include "vulkan/swapchain.h"
-#include "vulkan/pipeline.h"
-#include "vulkan/pipelinefactory.h"
+#include "vulkan/pipeline/pipeline.h"
+#include "vulkan/pipeline/pipelinefactory.h"
 #include "vulkan/commandpool.h"
 #include "vulkan/syncer.h"
 #include "vulkan/frame.h"
 #include "userinterface.h"
-#include "vulkan/vulkancontext.h"
+#include "vulkan/context/vulkancontext.h"
 #include "gltfloader.h"
 #include "vulkan/bufferfactory.h"
 #include "vulkan/descriptors/descriptorlayoutcache.h"
@@ -22,10 +19,11 @@
 #include "camera.h"
 #include "inputprocesser.h"
 
-class PathTracerApp
+class VulkanApp
 {
 private:
     uPtr<Buffer> buffer;
+    uPtr<Buffer> colorBuffer;
     uPtr<Buffer> indexBuffer;
 
     GLTFLoader gltfLoad;
@@ -52,9 +50,11 @@ private:
     DescriptorLayoutCache layoutCache;
     std::vector<DescriptorAllocator> allocators;
 
+    glm::mat4 modelTransform;
+
 public:
-    PathTracerApp();
-    ~PathTracerApp();
+    VulkanApp();
+    ~VulkanApp();
 
     void create(Window &window);
     void render();

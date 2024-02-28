@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../destroyable.h"
+#include <vulkan/vulkan.hpp>
 
 class DescriptorLayoutCache : public Destroyable
 {

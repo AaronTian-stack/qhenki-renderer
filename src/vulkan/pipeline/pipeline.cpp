@@ -34,8 +34,7 @@ vk::Pipeline Pipeline::getGraphicsPipeline()
     return graphicsPipeline;
 }
 
-void Pipeline::setPushConstant(vk::CommandBuffer commandBuffer, float constant)
+void Pipeline::setPushConstant(vk::CommandBuffer commandBuffer, void *value, size_t size)
 {
-    // TODO: change this more generic data than just a single float idk. should also account for offset (if stuff not in one giant struct)
-    commandBuffer.pushConstants(pipelineLayout, vk::ShaderStageFlagBits::eAll, 0, sizeof(float), &constant);
+    commandBuffer.pushConstants(pipelineLayout, vk::ShaderStageFlagBits::eAll, 0, size, value);
 }

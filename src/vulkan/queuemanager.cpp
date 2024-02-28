@@ -2,11 +2,10 @@
 
 QueueManager::QueueManager() {}
 
-void QueueManager::initQueues(vk::Device& device, VkStructs::QueueFamilyIndices indices)
+void QueueManager::initQueues(vk::Queue graphicsQueue, vk::Queue presentQueue)
 {
-    // since one queue per family just get the first queue
-    graphicsQueue = device.getQueue(indices.graphicsFamily.value(), 0);
-    presentQueue = device.getQueue(indices.presentFamily.value(), 0);
+    this->graphicsQueue = graphicsQueue;
+    this->presentQueue = presentQueue;
 }
 
 vk::Result QueueManager::submitGraphics(vk::SubmitInfo submitInfo, vk::Fence fence)
@@ -15,14 +14,14 @@ vk::Result QueueManager::submitGraphics(vk::SubmitInfo submitInfo, vk::Fence fen
     return graphicsQueue.submit(1, &submitInfo, fence);
 }
 
-vk::Result QueueManager::present(SwapChain &swapChain, const std::vector<vk::Semaphore> &signalSemaphores)
+vk::Result QueueManager::present(const uPtr<SwapChain> &swapChain, const std::vector<vk::Semaphore> &signalSemaphores)
 {
     auto presentInfo = vk::PresentInfoKHR(
         signalSemaphores.size(),
         signalSemaphores.data(), // wait for this semaphore to be signaled before presentation
         1,
-        &swapChain.swapChain,
-        &swapChain.imageIndex
+        &swapChain->swapChain,
+        &swapChain->imageIndex
     );
 
     return presentQueue.presentKHR(presentInfo);
