@@ -20,7 +20,7 @@ bool VulkanContext::create(Window &window)
                 std::cerr << "validation layer: " << pCallbackData->pMessage << std::endl;
                 return VK_FALSE;
             }
-    ).enable_extensions(extensions).build();
+    ).require_api_version(1, 2).enable_extensions(extensions).build();
 
     if (!inst_ret) {
         std::cerr << "Failed to create Vulkan instance. Error: " << inst_ret.error().message() << "\n";

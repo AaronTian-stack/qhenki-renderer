@@ -3,7 +3,7 @@
 void BufferFactory::create(VulkanContext &context)
 {
     VmaAllocatorCreateInfo allocatorCreateInfo = {};
-    allocatorCreateInfo.vulkanApiVersion = VK_API_VERSION_1_1;
+    allocatorCreateInfo.vulkanApiVersion = VK_API_VERSION_1_2;
     allocatorCreateInfo.physicalDevice = context.device.physicalDevice;
     allocatorCreateInfo.device = context.device.logicalDevice;
     allocatorCreateInfo.instance = context.vkbInstance.instance;

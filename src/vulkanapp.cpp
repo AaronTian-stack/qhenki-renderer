@@ -19,15 +19,15 @@ VulkanApp::~VulkanApp()
     pathPipeline->destroy();
     shader1->destroy(); // shader modules must be destroyed after pipeline
 
-    //triPipeline->destroy();
+    triPipeline->destroy();
     shader2->destroy();
 
     pipelineFactory.destroy();
 
     renderPass.destroy();
 
-    //buffer->destroy();
-    //indexBuffer->destroy();
+    buffer->destroy();
+    indexBuffer->destroy();
 
     for (auto &cameraBuffer : cameraBuffers)
         cameraBuffer->destroy();
@@ -62,7 +62,6 @@ void VulkanApp::create(Window &window)
     shader1 = mkU<Shader>(device, "pathtrace_vert.spv", "pathtrace_frag.spv");
     shader2 = mkU<Shader>(device, "tri_vert.spv", "tri_frag.spv");
 
-    //pipelineFactory.addPushConstant(sizeof(float));
     pipelineFactory.parseFragmentShader("pathtrace_frag.spv");
 
     pathPipeline = pipelineFactory.buildPipeline(&renderPass, shader1.get());
@@ -95,15 +94,15 @@ void VulkanApp::create(Window &window)
     stagingBuffer->copyTo(*buffer, vulkanContext.queueManager, commandPool);
     stagingBuffer->destroy();
 
-    buffer = bufferFactory.createBuffer(vertices.size() * sizeof(Vertex), VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
-    buffer->fill(vertices.data());
+    //buffer = bufferFactory.createBuffer(vertices.size() * sizeof(Vertex), VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
+    //buffer->fill(vertices.data());
 
     indexBuffer = bufferFactory.createBuffer(indices.size() * sizeof(uint16_t),
                                              VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
     indexBuffer->fill(indices.data());
 
 
-    //pipelineFactory.reset();
+    pipelineFactory.reset();
 
     pipelineFactory.addVertexInputBinding({0, sizeof(Vertex), vk::VertexInputRate::eVertex});
     pipelineFactory.parseVertexShader("tri_vert.spv", layoutCache);
@@ -134,7 +133,7 @@ void VulkanApp::recordCommandBuffer(VkFramebuffer framebuffer)
     auto commandBuffer = frame.commandBuffer;
     auto swapChainExtent = vulkanContext.swapChain->getExtent();
 
-    //updateCameraBuffer();
+    updateCameraBuffer();
 
     //// BEGIN RECORDING COMMAND BUFFER
     frame.begin(); // begins the frames command buffer. for secondary command buffer, need to modify the beginInfo struct
@@ -217,7 +216,7 @@ void VulkanApp::render()
 
 void VulkanApp::resize()
 {
-
+    // recreate swap chain
 }
 
 ImGuiCreateParameters VulkanApp::getImGuiCreateParameters()

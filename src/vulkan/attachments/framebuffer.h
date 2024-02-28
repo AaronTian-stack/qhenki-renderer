@@ -1,6 +1,6 @@
 #pragma once
 
-#include "FrameBufferAttachment.h"
+#include "framebufferattachment.h"
 
 struct FrameBuffer
 {

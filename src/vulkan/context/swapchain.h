@@ -4,7 +4,7 @@
 #include <vulkan/vulkan.hpp>
 #include "../renderpass.h"
 #include "VkBootstrap.h"
-#include "../attachments/FrameBuffer.h"
+#include "../attachments/framebuffer.h"
 
 class SwapChain
 {
