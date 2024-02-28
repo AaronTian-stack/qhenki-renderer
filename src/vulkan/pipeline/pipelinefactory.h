@@ -1,15 +1,15 @@
 #pragma once
 
-#include <vulkan/vulkan.h>
+#include "vulkan/vulkan.h"
 #include <vector>
 #include "pipeline.h"
 #include "shader.h"
-#include "renderpass.h"
-#include "../smartpointer.h"
+#include "../renderpass.h"
+#include "../../smartpointer.h"
 #include "spirv_cross/spirv_glsl.hpp"
-#include "descriptors/descriptorlayoutcache.h"
+#include "../descriptors/descriptorlayoutcache.h"
 #include <iostream>
-#include <glm/glm.hpp>
+#include "glm/glm.hpp"
 
 class PipelineBuilder : public Destroyable
 {
@@ -30,7 +30,7 @@ private:
     vk::PipelineColorBlendAttachmentState colorBlendAttachment{}; // you would make one of these for each attachment (specified in render pass)
     vk::PipelineColorBlendStateCreateInfo colorBlending{};
 
-    vk::DescriptorSetLayout descriptorSetLayout; // generic layout for setting
+    std::vector<vk::DescriptorSetLayout> descriptorSetLayouts;
 
     vk::PipelineLayoutCreateInfo pipelineLayoutInfo{}; // TODO: add way to change this
 

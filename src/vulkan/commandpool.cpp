@@ -1,16 +1,14 @@
 #include "commandpool.h"
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wunused-result"
-void CommandPool::create(vk::Device device, uint32_t familyIndex)
+void CommandPool::create(Device &device)
 {
-    this->device = device;
+    this->device = vk::Device(device.vkbDevice.device);
     auto poolInfo = vk::CommandPoolCreateInfo(
             vk::CommandPoolCreateFlagBits::eResetCommandBuffer,
-            familyIndex
+            device.vkbDevice.get_queue_index(vkb::QueueType::graphics).value()
             );
-    commandPool = device.createCommandPool(poolInfo);
-    singleCommandFence = device.createFence(vk::FenceCreateInfo());
+    commandPool = this->device.createCommandPool(poolInfo);
+    singleCommandFence = this->device.createFence(vk::FenceCreateInfo());
 }
 
 void CommandPool::destroy()
@@ -57,11 +55,17 @@ void CommandPool::submitSingleTimeCommands(QueueManager &queueManager, std::vect
     submitInfo.commandBufferCount = commandBuffers.size();
     submitInfo.pCommandBuffers = commandBuffers.data();
 
-    queueManager.graphicsQueue.submit(1, &submitInfo, singleCommandFence);
-    device.waitForFences(singleCommandFence, VK_TRUE, UINT64_MAX);
+    auto result = queueManager.graphicsQueue.submit(1, &submitInfo, singleCommandFence);
+    if (result != vk::Result::eSuccess)
+    {
+        throw std::runtime_error("failed to submit single time command buffer!");
+    }
+    auto wait = device.waitForFences(singleCommandFence, VK_TRUE, UINT64_MAX);
+    if (wait != vk::Result::eSuccess)
+    {
+        throw std::runtime_error("failed to wait for fence!");
+    }
 
     device.freeCommandBuffers(commandPool, commandBuffers.size(), commandBuffers.data());
     device.resetFences(singleCommandFence);
 }
-
-#pragma clang diagnostic pop

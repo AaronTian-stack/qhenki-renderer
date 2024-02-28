@@ -9,7 +9,6 @@ class Buffer
 {
 private:
     VmaAllocator allocator;
-    vk::BufferCreateInfo info;
     void* mappedData;
     const bool persistent;
 
@@ -25,6 +24,7 @@ public:
 
     vk::Buffer buffer;
     VmaAllocation allocation;
-
-    friend class BufferStruct;
+    vk::BufferCreateInfo info;
 };
+
+void bind(vk::CommandBuffer commandBuffer, const std::vector<Buffer>& buffers);

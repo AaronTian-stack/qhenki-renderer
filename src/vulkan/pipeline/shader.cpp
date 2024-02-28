@@ -43,6 +43,8 @@ Shader::Shader(vk::Device device, const char* vertShaderPath, const char* fragSh
     vertShaderModule = createShaderModule(vertShaderPath);
     fragShaderModule = createShaderModule(fragShaderPath);
 
+    // TODO: inline these two functions
+
     auto vertShaderStageInfo = vertexStageInfo(vertShaderModule);
     auto fragShaderStageInfo = fragmentStageInfo(fragShaderModule);
 

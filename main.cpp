@@ -7,13 +7,13 @@
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
 
 #include <iostream>
-#include "src/pathtracerapp.h"
+#include "src/vulkanapp.h"
 
 Window window(1024, 768);
 
 int main()
 {
-    PathTracerApp app;
+    VulkanApp app;
     app.create(window);
 
     UserInterface ui;

@@ -70,12 +70,12 @@ void PipelineBuilder::reset()
 
     //// PIPELINE LAYOUT ////
 
-    // will be nothing and 0
     pushConstants.clear();
     pushOffset = 0;
     pipelineLayoutInfo.pPushConstantRanges = pushConstants.data();
     pipelineLayoutInfo.pushConstantRangeCount = pushConstants.size();
 
+    descriptorSetLayouts.clear();
     pipelineLayoutInfo.setLayoutCount = 0;
     pipelineLayoutInfo.pSetLayouts = nullptr;
 }
@@ -144,8 +144,6 @@ void PipelineBuilder::addVertexInputAttribute(vk::VertexInputAttributeDescriptio
 
 void PipelineBuilder::parseVertexShader(const char *filePath, DescriptorLayoutCache &layoutCache)
 {
-    // TODO: current assumes singular binding all attributes, might need to change
-
     auto shaderCode = Shader::readFile(filePath);
     auto spirvBytecode = reinterpret_cast<const uint32_t *>(shaderCode.data());
 
@@ -170,31 +168,50 @@ void PipelineBuilder::parseVertexShader(const char *filePath, DescriptorLayoutCa
         offset += format.second;
     }
 
+    for (auto &pushConstant : resources.push_constant_buffers)
+    {
+        // Get the layout information for the push constant block
+        spirv_cross::SPIRType pushConstantType = glsl.get_type(pushConstant.type_id);
+
+        std::cout << "Push Constant: " << pushConstant.name << std::endl;
+
+        for (uint32_t i = 0; i < pushConstantType.member_types.size(); ++i)
+        {
+            uint32_t size = glsl.get_declared_struct_member_size(pushConstantType, i);
+
+            addPushConstant(size, vk::ShaderStageFlagBits::eAll);
+        }
+    }
+
     //// CREATE DESCRIPTOR SET LAYOUT
-    std::vector<vk::DescriptorSetLayoutBinding> bindings;
+    std::unordered_map<uint32_t, std::vector<vk::DescriptorSetLayoutBinding>> bindingsMap;
+    //std::vector<vk::DescriptorSetLayoutBinding> bindings;
     for (const auto &uniformBuffer : resources.uniform_buffers)
     {
         // the descriptors for the uniform buffers
-        uint32_t binding = glsl.get_decoration(uniformBuffer.id, spv::DecorationBinding);
+        uint32_t bindingNum = glsl.get_decoration(uniformBuffer.id, spv::DecorationBinding);
         uint32_t set = glsl.get_decoration(uniformBuffer.id, spv::DecorationDescriptorSet); // TODO: needs to keep track of all sets!
-        bindings.emplace_back(binding,
+
+        bindingsMap[set].emplace_back(bindingNum,
                            vk::DescriptorType::eUniformBuffer,
-                           1, // number of values in array
+                           1, // number of values in array // TODO: get this via reflection
                            vk::ShaderStageFlagBits::eVertex,
                            nullptr // for images
                            );
     }
+    // TODO: might want to do something eventually for storage buffers
 
-    // combine all bindings into one layout set
-    vk::DescriptorSetLayoutCreateInfo layoutInfo{};
-    layoutInfo.bindingCount = bindings.size(); // bindings in descriptor set
-    layoutInfo.pBindings = bindings.data();
+    // loop over all sets and create the descriptor set layouts
+    for (auto &set : bindingsMap)
+    {
+        vk::DescriptorSetLayoutCreateInfo layoutInfo{};
+        layoutInfo.bindingCount = set.second.size(); // bindings in descriptor set
+        layoutInfo.pBindings = set.second.data();
+        descriptorSetLayouts.push_back(layoutCache.createDescriptorLayout(&layoutInfo));
+    }
 
-    //descriptorSetLayout1 = device.createDescriptorSetLayout(layoutInfo);
-    descriptorSetLayout = layoutCache.createDescriptorLayout(&layoutInfo); // TODO: needs to be able to account for different sets!
-
-    pipelineLayoutInfo.setLayoutCount = 1;
-    pipelineLayoutInfo.pSetLayouts = &descriptorSetLayout;
+    pipelineLayoutInfo.setLayoutCount = descriptorSetLayouts.size();
+    pipelineLayoutInfo.pSetLayouts = descriptorSetLayouts.data();
 }
 
 void PipelineBuilder::parseFragmentShader(const char *filePath)

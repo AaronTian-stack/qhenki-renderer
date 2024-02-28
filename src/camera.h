@@ -38,6 +38,7 @@ public:
     void lerp(float delta);
 
     glm::mat4 getViewMatrix() const;
+    glm::vec3 getPosition() const;
 };
 
 glm::vec3 sphericalToCartesian(float theta, float phi, float radius);
