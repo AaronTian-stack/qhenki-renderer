@@ -66,14 +66,13 @@ void VulkanApp::create(Window &window)
 
     pathPipeline = pipelineFactory.buildPipeline(&renderPass, shader1.get());
 
-
     //// VERTEX INPUT
     struct Vertex {
         glm::vec3 pos;
         glm::vec3 color;
     };
     const std::vector<Vertex> vertices = {
-            {{-0.5f, -0.5f, 0.f}, {1.0f, 0.0f, 0.0f}},
+            {{-0.5f, -0.5f, 1.f}, {1.0f, 0.0f, 0.0f}},
             {{0.5f, -0.5f, 0.f}, {0.0f, 1.0f, 0.0f}},
             {{0.5f, 0.5f, 0.f}, {0.0f, 0.0f, 1.0f}},
             {{-0.5f, 0.5f, 0.f}, {1.0f, 1.0f, 1.0f}}
@@ -84,13 +83,13 @@ void VulkanApp::create(Window &window)
 
     auto stagingBuffer = bufferFactory.createBuffer(
             vertices.size() * sizeof(Vertex),
-            VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+            vk::BufferUsageFlagBits::eTransferSrc,
             VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
 
     stagingBuffer->fill(vertices.data());
 
     buffer = bufferFactory.createBuffer(vertices.size() * sizeof(Vertex),
-                                        VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
+                                        vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst);
     stagingBuffer->copyTo(*buffer, vulkanContext.queueManager, commandPool);
     stagingBuffer->destroy();
 
@@ -98,7 +97,7 @@ void VulkanApp::create(Window &window)
     //buffer->fill(vertices.data());
 
     indexBuffer = bufferFactory.createBuffer(indices.size() * sizeof(uint16_t),
-                                             VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
+                                             vk::BufferUsageFlagBits::eIndexBuffer, VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
     indexBuffer->fill(indices.data());
 
 
@@ -119,7 +118,7 @@ void VulkanApp::create(Window &window)
         auto flags = static_cast<VmaAllocationCreateFlagBits>(VMA_ALLOCATION_CREATE_MAPPED_BIT |
                                                                                     VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
         cameraBuffers.emplace_back(bufferFactory.createBuffer(sizeof(CameraMatrices),
-                                                              VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+                                                              vk::BufferUsageFlagBits::eUniformBuffer,
                                                               flags));
         allocators.emplace_back(vulkanContext.device.logicalDevice);
     }

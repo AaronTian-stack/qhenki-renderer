@@ -41,7 +41,8 @@ void SwapChain::createFramebuffers(vk::RenderPass renderPass)
                 extent.height,
                 1);
         auto framebuffer = device.createFramebuffer(createInfo);
-        FrameBuffer fb = {framebuffer, {{images[i], imageViews[i], getFormat(), vk::DeviceMemory()}}};
+        auto attachment = FrameBufferAttachment(images[i], imageViews[i], getFormat());
+        auto fb = FrameBuffer(device, framebuffer, {attachment});
         frameBuffers.push_back(fb);
     }
 }
@@ -57,5 +58,6 @@ void SwapChain::destroy()
             device.destroyImageView(attachment.imageView);
         }
     }
+    // images are destroyed with the swapchain
     vkb::destroy_swapchain(vkbSwapchain);
 }

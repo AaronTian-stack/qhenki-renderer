@@ -8,7 +8,8 @@
 class Buffer
 {
 private:
-    VmaAllocator allocator;
+    const VmaAllocator allocator;
+    const VmaAllocation allocation;
     void* mappedData;
     const bool persistent;
 
@@ -23,7 +24,6 @@ public:
     void destroy();
 
     vk::Buffer buffer;
-    VmaAllocation allocation;
     vk::BufferCreateInfo info;
 };
 
