@@ -36,7 +36,7 @@ bool VulkanContext::create(Window &window)
 #endif
 
     vkb::PhysicalDeviceSelector selector{ vkbInstance };
-    auto phys_ret = selector.set_surface (surface)
+    auto phys_ret = selector.set_surface(surface)
             .set_minimum_version (1, 2)
             .add_required_extensions(deviceExtensions)
             .prefer_gpu_device_type(vkb::PreferredDeviceType::discrete)

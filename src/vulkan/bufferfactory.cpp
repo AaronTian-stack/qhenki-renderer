@@ -72,8 +72,9 @@ vk::ImageViewCreateInfo BufferFactory::imageViewInfo(vk::Image image, vk::Format
     return info;
 }
 
-FrameBufferAttachment BufferFactory::createAttachment(vk::Format format, vk::Extent3D extent,
-                                                      vk::ImageUsageFlagBits imageUsage, vk::ImageAspectFlagBits aspectFlags)
+FrameBufferAttachment BufferFactory::createAttachment(
+    vk::Format format, vk::Extent3D extent,
+    vk::ImageUsageFlagBits imageUsage, vk::ImageAspectFlagBits aspectFlags)
 {
     /*vk::Extent3D depthImageExtent = {
             1280,
@@ -99,6 +100,6 @@ FrameBufferAttachment BufferFactory::createAttachment(vk::Format format, vk::Ext
     if (result != vk::Result::eSuccess)
         throw std::runtime_error("failed to create image view");
 
-    return {image, imageView, format};
+    return {allocator, allocation, image, imageView, format};
 }
 

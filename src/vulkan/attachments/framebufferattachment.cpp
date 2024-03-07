@@ -2,7 +2,13 @@
 
 FrameBufferAttachment::FrameBufferAttachment(
         vk::Image image, vk::ImageView imageView, vk::Format format)
-: image(image), imageView(imageView), format(format)
+: allocator(nullptr), allocation(nullptr), image(image), imageView(imageView), format(format)
+{}
+
+FrameBufferAttachment::FrameBufferAttachment(
+        VmaAllocator allocator, VmaAllocation allocation,
+        vk::Image image, vk::ImageView imageView, vk::Format format)
+: allocator(allocator), allocation(allocation), image(image), imageView(imageView), format(format)
 {}
 
 void FrameBufferAttachment::destroy()

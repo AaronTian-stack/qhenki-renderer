@@ -7,13 +7,14 @@
 class FrameBufferAttachment : public Destroyable
 {
 private:
-    VmaAllocator allocator;
-    VmaAllocation allocation;
+    const VmaAllocator allocator;
+    const VmaAllocation allocation;
 
 public:
     const vk::Image image;
     const vk::ImageView imageView;
     const vk::Format format;
     FrameBufferAttachment(vk::Image image, vk::ImageView imageView, vk::Format format);
+    FrameBufferAttachment(VmaAllocator allocator, VmaAllocation allocation, vk::Image image, vk::ImageView imageView, vk::Format format);
     void destroy() override;
 };

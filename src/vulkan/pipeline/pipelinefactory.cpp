@@ -296,4 +296,5 @@ std::pair<vk::Format, size_t> PipelineBuilder::mapTypeToFormat(const spirv_cross
     }
 }
 
-void PipelineBuilder::destroy() {}
+void PipelineBuilder::destroy()
+{}

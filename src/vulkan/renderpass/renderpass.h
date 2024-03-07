@@ -1,7 +1,8 @@
 #pragma once
 
-#include <vulkan/vulkan.hpp>
-#include "destroyable.h"
+#include <optional>
+#include "vulkan/vulkan.hpp"
+#include "../destroyable.h"
 
 class RenderPass : public Destroyable
 {
@@ -10,23 +11,14 @@ private:
 
     vk::RenderPass renderPass;
 
-    vk::RenderPassCreateInfo renderPassInfo{};
-    vk::AttachmentDescription colorAttachment{}; // TODO: add more attachment options
-    vk::AttachmentReference colorAttachmentRef{}; // one ref per attachment... pair them in a container
-
-    vk::SubpassDescription subpass{}; // the sub-passes are specified in this
-
     vk::ClearValue clearColor{};
     vk::RenderPassBeginInfo renderPassBeginInfo{};
 
 public:
-    RenderPass();
-    void create(vk::Device device) override;
-    void reset();
+    RenderPass(vk::Device device, vk::RenderPass renderPass);
     void destroy() override;
 
     vk::RenderPass getRenderPass() { return renderPass; }
-    void setColorAttachmentFormat(vk::Format format);
 
     void clear(float r, float g, float b, float a);
     void begin(vk::CommandBuffer commandBuffer);

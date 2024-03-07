@@ -18,6 +18,7 @@
 #include "cameramatrices.h"
 #include "camera.h"
 #include "inputprocesser.h"
+#include "vulkan/renderpass/renderpassbuilder.h"
 
 class VulkanApp
 {
@@ -31,7 +32,9 @@ private:
 
     VulkanContext vulkanContext;
 
-    RenderPass renderPass;
+    RenderPassBuilder renderPassBuilder;
+    uPtr<RenderPass> renderPass;
+
     PipelineBuilder pipelineFactory;
 
     uPtr<Pipeline> pathPipeline, triPipeline;

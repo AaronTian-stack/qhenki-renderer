@@ -24,7 +24,8 @@ VulkanApp::~VulkanApp()
 
     pipelineFactory.destroy();
 
-    renderPass.destroy();
+    renderPass->destroy();
+    renderPassBuilder.destroy();
 
     buffer->destroy();
     indexBuffer->destroy();
@@ -53,18 +54,24 @@ void VulkanApp::create(Window &window)
     pipelineFactory.create(device);
 
     bufferFactory.create(vulkanContext);
+    renderPassBuilder.create(vulkanContext.device.logicalDevice);
 
     // create render pass
-    renderPass.setColorAttachmentFormat(vulkanContext.swapChain->getFormat());
+    //renderPass.setColorAttachmentFormat(vulkanContext.swapChain->getFormat());
+
+    renderPassBuilder.addColorAttachment(vulkanContext.swapChain->getFormat());
+    renderPassBuilder.addSubPass({0});
+    renderPass = renderPassBuilder.buildRenderPass();
+
     //// CALL CREATE LAST! OR ELSE STUFF WILL BE BROKEN!
-    renderPass.create(device);
+    //renderPass->create(device);
 
     shader1 = mkU<Shader>(device, "pathtrace_vert.spv", "pathtrace_frag.spv");
     shader2 = mkU<Shader>(device, "tri_vert.spv", "tri_frag.spv");
 
     pipelineFactory.parseFragmentShader("pathtrace_frag.spv");
 
-    pathPipeline = pipelineFactory.buildPipeline(&renderPass, shader1.get());
+    pathPipeline = pipelineFactory.buildPipeline(renderPass.get(), shader1.get());
 
     //// VERTEX INPUT
     struct Vertex {
@@ -107,9 +114,9 @@ void VulkanApp::create(Window &window)
     pipelineFactory.parseVertexShader("tri_vert.spv", layoutCache);
     //// END VERTEX INPUT
 
-    triPipeline = pipelineFactory.buildPipeline(&renderPass, shader2.get());
+    triPipeline = pipelineFactory.buildPipeline(renderPass.get(), shader2.get());
 
-    vulkanContext.swapChain->createFramebuffers(renderPass.getRenderPass());
+    vulkanContext.swapChain->createFramebuffers(renderPass->getRenderPass());
 
     syncer.create(device);
     for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
@@ -138,10 +145,10 @@ void VulkanApp::recordCommandBuffer(VkFramebuffer framebuffer)
     frame.begin(); // begins the frames command buffer. for secondary command buffer, need to modify the beginInfo struct
 
     //// BEGIN RENDER PASS
-    renderPass.setFramebuffer(framebuffer);
-    renderPass.setRenderAreaExtent(swapChainExtent);
-    renderPass.clear(ui->clearColor[0], ui->clearColor[1], ui->clearColor[2], 1.0f);
-    renderPass.begin(commandBuffer);
+    renderPass->setFramebuffer(framebuffer);
+    renderPass->setRenderAreaExtent(swapChainExtent);
+    renderPass->clear(ui->clearColor[0], ui->clearColor[1], ui->clearColor[2], 1.0f);
+    renderPass->begin(commandBuffer);
 
     auto pipeline = ui->currentShaderIndex == 0 ? pathPipeline.get() : triPipeline.get();
     commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, pipeline->getGraphicsPipeline());
@@ -179,7 +186,7 @@ void VulkanApp::recordCommandBuffer(VkFramebuffer framebuffer)
     ui->end(commandBuffer);
 
     //// END RENDER PASS
-    renderPass.end(); // ends the render pass with the command buffer given in .begin()
+    renderPass->end(); // ends the render pass with the command buffer given in .begin()
 
     //// END RECORDING COMMAND BUFFER
     frame.end(); // ends the frames command buffer
@@ -222,7 +229,7 @@ ImGuiCreateParameters VulkanApp::getImGuiCreateParameters()
 {
     ImGuiCreateParameters params{};
     params.context = &vulkanContext;
-    params.renderPass = &renderPass;
+    params.renderPass = renderPass.get();
     params.framesInFlight = MAX_FRAMES_IN_FLIGHT;
     return params;
 }

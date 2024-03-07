@@ -4,7 +4,7 @@
 #include <vector>
 #include "pipeline.h"
 #include "shader.h"
-#include "../renderpass.h"
+#include "../renderpass/renderpass.h"
 #include "../../smartpointer.h"
 #include "spirv_cross/spirv_glsl.hpp"
 #include "../descriptors/descriptorlayoutcache.h"
