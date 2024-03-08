@@ -16,7 +16,7 @@ private:
 
 public:
     SwapChain(vkb::Swapchain vkbSwapchain);
-    void createFramebuffers(vk::RenderPass renderPass);
+    void createFramebuffers(vk::RenderPass renderPass, vk::ImageView depthImageView = nullptr);
     vk::Format getFormat() const;
     vk::Extent2D getExtent() const;
     vk::Framebuffer nextImage(vk::Semaphore imageAvailable);

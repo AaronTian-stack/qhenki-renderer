@@ -15,9 +15,10 @@ private:
 public:
 
     void addColorAttachment(vk::Format format);
+    void addDepthAttachment(vk::Format format);
     void addAttachment(vk::AttachmentDescription *attachment, vk::ImageLayout layout);
 
-    void addSubPass(const std::vector<uint32_t> &indices);
+    void addSubPass(const std::vector<uint32_t> &indices, int depthIndex = -1);
     //void addDependency(vk::SubpassDependency dependency);
 
     uPtr<RenderPass> buildRenderPass();

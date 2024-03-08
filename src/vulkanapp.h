@@ -24,8 +24,10 @@ class VulkanApp
 {
 private:
     uPtr<Buffer> buffer;
-    uPtr<Buffer> colorBuffer;
+    //uPtr<Buffer> colorBuffer;
     uPtr<Buffer> indexBuffer;
+
+    uPtr<FrameBufferAttachment> depthBuffer;
 
     GLTFLoader gltfLoad;
     BufferFactory bufferFactory;

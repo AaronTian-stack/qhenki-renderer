@@ -72,7 +72,7 @@ vk::ImageViewCreateInfo BufferFactory::imageViewInfo(vk::Image image, vk::Format
     return info;
 }
 
-FrameBufferAttachment BufferFactory::createAttachment(
+uPtr<FrameBufferAttachment> BufferFactory::createAttachment(
     vk::Format format, vk::Extent3D extent,
     vk::ImageUsageFlagBits imageUsage, vk::ImageAspectFlagBits aspectFlags)
 {
@@ -100,6 +100,6 @@ FrameBufferAttachment BufferFactory::createAttachment(
     if (result != vk::Result::eSuccess)
         throw std::runtime_error("failed to create image view");
 
-    return {allocator, allocation, image, imageView, format};
+    return mkU<FrameBufferAttachment>(device, allocator, allocation, image, imageView, format);
 }
 

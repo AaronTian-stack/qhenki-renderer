@@ -27,6 +27,8 @@ VulkanApp::~VulkanApp()
     renderPass->destroy();
     renderPassBuilder.destroy();
 
+    depthBuffer->destroy();
+
     buffer->destroy();
     indexBuffer->destroy();
 
@@ -54,17 +56,18 @@ void VulkanApp::create(Window &window)
     pipelineFactory.create(device);
 
     bufferFactory.create(vulkanContext);
+    auto extent = vulkanContext.swapChain->getExtent();
+    depthBuffer = bufferFactory.createAttachment(vk::Format::eD32Sfloat, {extent.width, extent.height, 1},
+                                                   vk::ImageUsageFlagBits::eDepthStencilAttachment,
+                                                   vk::ImageAspectFlagBits::eDepth);
+
     renderPassBuilder.create(vulkanContext.device.logicalDevice);
 
     // create render pass
-    //renderPass.setColorAttachmentFormat(vulkanContext.swapChain->getFormat());
-
     renderPassBuilder.addColorAttachment(vulkanContext.swapChain->getFormat());
-    renderPassBuilder.addSubPass({0});
+    renderPassBuilder.addDepthAttachment(depthBuffer->format);
+    renderPassBuilder.addSubPass({0}, 1);
     renderPass = renderPassBuilder.buildRenderPass();
-
-    //// CALL CREATE LAST! OR ELSE STUFF WILL BE BROKEN!
-    //renderPass->create(device);
 
     shader1 = mkU<Shader>(device, "pathtrace_vert.spv", "pathtrace_frag.spv");
     shader2 = mkU<Shader>(device, "tri_vert.spv", "tri_frag.spv");
@@ -107,7 +110,6 @@ void VulkanApp::create(Window &window)
                                              vk::BufferUsageFlagBits::eIndexBuffer, VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
     indexBuffer->fill(indices.data());
 
-
     pipelineFactory.reset();
 
     pipelineFactory.addVertexInputBinding({0, sizeof(Vertex), vk::VertexInputRate::eVertex});
@@ -116,7 +118,7 @@ void VulkanApp::create(Window &window)
 
     triPipeline = pipelineFactory.buildPipeline(renderPass.get(), shader2.get());
 
-    vulkanContext.swapChain->createFramebuffers(renderPass->getRenderPass());
+    vulkanContext.swapChain->createFramebuffers(renderPass->getRenderPass(), depthBuffer->imageView);
 
     syncer.create(device);
     for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
@@ -152,7 +154,7 @@ void VulkanApp::recordCommandBuffer(VkFramebuffer framebuffer)
 
     auto pipeline = ui->currentShaderIndex == 0 ? pathPipeline.get() : triPipeline.get();
     commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, pipeline->getGraphicsPipeline());
-    float time = (float)glfwGetTime();
+    auto time = (float)glfwGetTime();
     pathPipeline->setPushConstant(commandBuffer, &time, sizeof(float));
 
     ScreenUtils::setViewport(commandBuffer, swapChainExtent.width, swapChainExtent.height);

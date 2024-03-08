@@ -1,8 +1,22 @@
 #include "renderpass.h"
 #include <stdexcept>
 
-RenderPass::RenderPass(vk::Device device, vk::RenderPass renderPass) : Destroyable(device), renderPass(renderPass)
-{}
+RenderPass::RenderPass(vk::Device device, vk::RenderPass renderPass, std::vector<vk::Format> formats)
+: Destroyable(device), renderPass(renderPass)
+{
+    // determine clear values based off formats
+    for (auto &format : formats)
+    {
+        if (format == vk::Format::eD32Sfloat)
+        {
+            clearValues.emplace_back(vk::ClearDepthStencilValue(1.0f, 0));
+        }
+        else
+        {
+            clearValues.emplace_back(vk::ClearColorValue(std::array<float, 4>{0.0f, 0.0f, 0.0f, 1.0f}));
+        }
+    }
+}
 
 void RenderPass::destroy()
 {
@@ -21,9 +35,17 @@ void RenderPass::begin(vk::CommandBuffer commandBuffer)
 
 void RenderPass::clear(float r, float g, float b, float a)
 {
-    clearColor = vk::ClearColorValue(std::array<float, 4>{r, g, b, a});
-    renderPassBeginInfo.clearValueCount = 1;
-    renderPassBeginInfo.pClearValues = &clearColor;
+    for (auto &clearValue : clearValues)
+    {
+        // if depth and stencil clear is 0
+        // should be a color clear
+        if (clearValue.depthStencil.depth == 0.0f && clearValue.depthStencil.stencil == 0)
+        {
+            clearValue.color = vk::ClearColorValue(std::array<float, 4>{r, g, b, a});
+        }
+    }
+    renderPassBeginInfo.clearValueCount = clearValues.size();
+    renderPassBeginInfo.pClearValues = clearValues.data();
 }
 
 void RenderPass::setFramebuffer(vk::Framebuffer buffer)

@@ -17,8 +17,8 @@ public:
     void create(VulkanContext &context);
 
     uPtr<Buffer> createBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage, VmaAllocationCreateFlagBits flags = static_cast<VmaAllocationCreateFlagBits>(0));
-    FrameBufferAttachment createAttachment(vk::Format format, vk::Extent3D extent,
-                                           vk::ImageUsageFlagBits imageUsage, vk::ImageAspectFlagBits aspectFlags);
+    uPtr<FrameBufferAttachment> createAttachment(vk::Format format, vk::Extent3D extent,
+                                                 vk::ImageUsageFlagBits imageUsage, vk::ImageAspectFlagBits aspectFlags);
 
     void destroy();
 };

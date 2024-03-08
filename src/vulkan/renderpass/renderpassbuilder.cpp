@@ -17,6 +17,20 @@ void RenderPassBuilder::addColorAttachment(vk::Format format)
     addAttachment(&colorAttachment, vk::ImageLayout::eColorAttachmentOptimal);
 }
 
+void RenderPassBuilder::addDepthAttachment(vk::Format format)
+{
+    vk::AttachmentDescription depthAttachment{};
+    depthAttachment.format = format;
+    depthAttachment.samples = vk::SampleCountFlagBits::e1;
+    depthAttachment.loadOp = vk::AttachmentLoadOp::eClear;
+    depthAttachment.storeOp = vk::AttachmentStoreOp::eDontCare;
+    depthAttachment.stencilLoadOp = vk::AttachmentLoadOp::eDontCare;
+    depthAttachment.stencilStoreOp = vk::AttachmentStoreOp::eDontCare;
+    depthAttachment.initialLayout = vk::ImageLayout::eUndefined;
+    depthAttachment.finalLayout = vk::ImageLayout::eDepthStencilAttachmentOptimal;
+    addAttachment(&depthAttachment, vk::ImageLayout::eDepthStencilAttachmentOptimal);
+}
+
 void RenderPassBuilder::addAttachment(vk::AttachmentDescription *attachment, vk::ImageLayout layout)
 {
     vk::AttachmentReference attachmentRef{
@@ -27,7 +41,7 @@ void RenderPassBuilder::addAttachment(vk::AttachmentDescription *attachment, vk:
     attachmentRefs.push_back(attachmentRef);
 }
 
-void RenderPassBuilder::addSubPass(const std::vector<uint32_t> &indices)
+void RenderPassBuilder::addSubPass(const std::vector<uint32_t> &indices, int depthIndex)
 {
     // attachments subpass is writing to
     vk::SubpassDescription description{};
@@ -40,6 +54,8 @@ void RenderPassBuilder::addSubPass(const std::vector<uint32_t> &indices)
     description.pipelineBindPoint = vk::PipelineBindPoint::eGraphics;
     description.colorAttachmentCount = refs.size();
     description.pColorAttachments = refs.data();
+    if (depthIndex != -1)
+        description.pDepthStencilAttachment = &attachmentRefs[depthIndex];
     subPasses.push_back(description);
 }
 
@@ -51,7 +67,12 @@ uPtr<RenderPass> RenderPassBuilder::buildRenderPass()
     renderPassInfo.subpassCount = subPasses.size();
     renderPassInfo.pSubpasses = subPasses.data();
     vk::RenderPass renderPass = device.createRenderPass(renderPassInfo);
-    return mkU<RenderPass>(device, renderPass);
+    std::vector<vk::Format> formats(attachments.size());
+    for (int i = 0; i < attachments.size(); i++)
+    {
+        formats[i] = attachments[i].format;
+    }
+    return mkU<RenderPass>(device, renderPass, formats);
 }
 
 void RenderPassBuilder::reset()

@@ -11,11 +11,11 @@ private:
 
     vk::RenderPass renderPass;
 
-    vk::ClearValue clearColor{};
+    std::vector<vk::ClearValue> clearValues;
     vk::RenderPassBeginInfo renderPassBeginInfo{};
 
 public:
-    RenderPass(vk::Device device, vk::RenderPass renderPass);
+    RenderPass(vk::Device device, vk::RenderPass renderPass, std::vector<vk::Format> formats);
     void destroy() override;
 
     vk::RenderPass getRenderPass() { return renderPass; }
