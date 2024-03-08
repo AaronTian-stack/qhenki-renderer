@@ -2,7 +2,7 @@
 #include <stdexcept>
 
 RenderPass::RenderPass(vk::Device device, vk::RenderPass renderPass, std::vector<vk::Format> formats)
-: Destroyable(device), renderPass(renderPass)
+: Destroyable(device), renderPass(renderPass), formats(formats)
 {
     // determine clear values based off formats
     for (auto &format : formats)
@@ -35,13 +35,15 @@ void RenderPass::begin(vk::CommandBuffer commandBuffer)
 
 void RenderPass::clear(float r, float g, float b, float a)
 {
-    for (auto &clearValue : clearValues)
+    for (int i = 0; i < clearValues.size(); i++)
     {
-        // if depth and stencil clear is 0
-        // should be a color clear
-        if (clearValue.depthStencil.depth == 0.0f && clearValue.depthStencil.stencil == 0)
+        if (formats[i] == vk::Format::eD32Sfloat)
         {
-            clearValue.color = vk::ClearColorValue(std::array<float, 4>{r, g, b, a});
+            clearValues[i] = vk::ClearDepthStencilValue(1.0f, 0);
+        }
+        else
+        {
+            clearValues[i] = vk::ClearColorValue(std::array<float, 4>{r, g, b, a});
         }
     }
     renderPassBeginInfo.clearValueCount = clearValues.size();

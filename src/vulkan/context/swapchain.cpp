@@ -30,7 +30,8 @@ void SwapChain::createFramebuffers(vk::RenderPass renderPass, vk::ImageView dept
     auto images = vkbSwapchain.get_images().value();
     auto imageViews = vkbSwapchain.get_image_views().value();
     frameBuffers.reserve(imageViews.size());
-    for (size_t i = 0; i < imageViews.size(); i++) {
+    for (size_t i = 0; i < imageViews.size(); i++)
+    {
         vk::ImageView attachments[] = {imageViews[i], depthImageView};
         int attachmentCount = depthImageView ? 2 : 1;
         vk::FramebufferCreateInfo createInfo(

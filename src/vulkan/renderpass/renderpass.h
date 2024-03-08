@@ -11,6 +11,7 @@ private:
 
     vk::RenderPass renderPass;
 
+    std::vector<vk::Format> formats;
     std::vector<vk::ClearValue> clearValues;
     vk::RenderPassBeginInfo renderPassBeginInfo{};
 
