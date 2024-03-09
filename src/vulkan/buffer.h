@@ -10,6 +10,7 @@ class Buffer
 private:
     const VmaAllocator allocator;
     const VmaAllocation allocation;
+  
     void* mappedData;
     const bool persistent;
 
