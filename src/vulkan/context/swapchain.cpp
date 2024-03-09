@@ -23,25 +23,28 @@ vk::Framebuffer SwapChain::nextImage(vk::Semaphore imageAvailable)
     return frameBuffers[imageIndex].framebuffer;
 }
 
-void SwapChain::createFramebuffers(vk::RenderPass renderPass)
+void SwapChain::createFramebuffers(vk::RenderPass renderPass, vk::ImageView depthImageView)
 {
     auto device = vk::Device(this->vkbSwapchain.device);
     auto extent = getExtent();
     auto images = vkbSwapchain.get_images().value();
     auto imageViews = vkbSwapchain.get_image_views().value();
     frameBuffers.reserve(imageViews.size());
-    for (size_t i = 0; i < imageViews.size(); i++) {
-        vk::ImageView attachments[] = {imageViews[i]};
+    for (size_t i = 0; i < imageViews.size(); i++)
+    {
+        vk::ImageView attachments[] = {imageViews[i], depthImageView};
+        int attachmentCount = depthImageView ? 2 : 1;
         vk::FramebufferCreateInfo createInfo(
                 vk::FramebufferCreateFlags(),
                 renderPass,
-                1,
+                attachmentCount,
                 attachments,
                 extent.width,
                 extent.height,
                 1);
         auto framebuffer = device.createFramebuffer(createInfo);
-        FrameBuffer fb = {framebuffer, {{images[i], imageViews[i], getFormat(), vk::DeviceMemory()}}};
+        auto attachment = FrameBufferAttachment(images[i], imageViews[i], getFormat());
+        auto fb = FrameBuffer(device, framebuffer, {attachment});
         frameBuffers.push_back(fb);
     }
 }
@@ -57,5 +60,6 @@ void SwapChain::destroy()
             device.destroyImageView(attachment.imageView);
         }
     }
+    // images are destroyed with the swapchain
     vkb::destroy_swapchain(vkbSwapchain);
 }

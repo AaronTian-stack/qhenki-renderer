@@ -24,7 +24,10 @@ VulkanApp::~VulkanApp()
 
     pipelineFactory.destroy();
 
-    renderPass.destroy();
+    renderPass->destroy();
+    renderPassBuilder.destroy();
+
+    depthBuffer->destroy();
 
     buffer->destroy();
     indexBuffer->destroy();
@@ -53,19 +56,25 @@ void VulkanApp::create(Window &window)
     pipelineFactory.create(device);
 
     bufferFactory.create(vulkanContext);
+    auto extent = vulkanContext.swapChain->getExtent();
+    depthBuffer = bufferFactory.createAttachment(vk::Format::eD32Sfloat, {extent.width, extent.height, 1},
+                                                   vk::ImageUsageFlagBits::eDepthStencilAttachment,
+                                                   vk::ImageAspectFlagBits::eDepth);
+
+    renderPassBuilder.create(vulkanContext.device.logicalDevice);
 
     // create render pass
-    renderPass.setColorAttachmentFormat(vulkanContext.swapChain->getFormat());
-    //// CALL CREATE LAST! OR ELSE STUFF WILL BE BROKEN!
-    renderPass.create(device);
+    renderPassBuilder.addColorAttachment(vulkanContext.swapChain->getFormat());
+    renderPassBuilder.addDepthAttachment(depthBuffer->format);
+    renderPassBuilder.addSubPass({0}, 1);
+    renderPass = renderPassBuilder.buildRenderPass();
 
     shader1 = mkU<Shader>(device, "pathtrace_vert.spv", "pathtrace_frag.spv");
     shader2 = mkU<Shader>(device, "tri_vert.spv", "tri_frag.spv");
 
     pipelineFactory.parseFragmentShader("pathtrace_frag.spv");
 
-    pathPipeline = pipelineFactory.buildPipeline(&renderPass, shader1.get());
-
+    pathPipeline = pipelineFactory.buildPipeline(renderPass.get(), shader1.get());
 
     //// VERTEX INPUT
     struct Vertex {
@@ -73,7 +82,7 @@ void VulkanApp::create(Window &window)
         glm::vec3 color;
     };
     const std::vector<Vertex> vertices = {
-            {{-0.5f, -0.5f, 0.f}, {1.0f, 0.0f, 0.0f}},
+            {{-0.5f, -0.5f, 1.f}, {1.0f, 0.0f, 0.0f}},
             {{0.5f, -0.5f, 0.f}, {0.0f, 1.0f, 0.0f}},
             {{0.5f, 0.5f, 0.f}, {0.0f, 0.0f, 1.0f}},
             {{-0.5f, 0.5f, 0.f}, {1.0f, 1.0f, 1.0f}}
@@ -84,13 +93,13 @@ void VulkanApp::create(Window &window)
 
     auto stagingBuffer = bufferFactory.createBuffer(
             vertices.size() * sizeof(Vertex),
-            VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+            vk::BufferUsageFlagBits::eTransferSrc,
             VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
 
     stagingBuffer->fill(vertices.data());
 
     buffer = bufferFactory.createBuffer(vertices.size() * sizeof(Vertex),
-                                        VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
+                                        vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst);
     stagingBuffer->copyTo(*buffer, vulkanContext.queueManager, commandPool);
     stagingBuffer->destroy();
 
@@ -98,9 +107,8 @@ void VulkanApp::create(Window &window)
     //buffer->fill(vertices.data());
 
     indexBuffer = bufferFactory.createBuffer(indices.size() * sizeof(uint16_t),
-                                             VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
+                                             vk::BufferUsageFlagBits::eIndexBuffer, VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
     indexBuffer->fill(indices.data());
-
 
     pipelineFactory.reset();
 
@@ -108,9 +116,9 @@ void VulkanApp::create(Window &window)
     pipelineFactory.parseVertexShader("tri_vert.spv", layoutCache);
     //// END VERTEX INPUT
 
-    triPipeline = pipelineFactory.buildPipeline(&renderPass, shader2.get());
+    triPipeline = pipelineFactory.buildPipeline(renderPass.get(), shader2.get());
 
-    vulkanContext.swapChain->createFramebuffers(renderPass.getRenderPass());
+    vulkanContext.swapChain->createFramebuffers(renderPass->getRenderPass(), depthBuffer->imageView);
 
     syncer.create(device);
     for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
@@ -119,7 +127,7 @@ void VulkanApp::create(Window &window)
         auto flags = static_cast<VmaAllocationCreateFlagBits>(VMA_ALLOCATION_CREATE_MAPPED_BIT |
                                                                                     VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
         cameraBuffers.emplace_back(bufferFactory.createBuffer(sizeof(CameraMatrices),
-                                                              VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+                                                              vk::BufferUsageFlagBits::eUniformBuffer,
                                                               flags));
         allocators.emplace_back(vulkanContext.device.logicalDevice);
     }
@@ -139,14 +147,14 @@ void VulkanApp::recordCommandBuffer(VkFramebuffer framebuffer)
     frame.begin(); // begins the frames command buffer. for secondary command buffer, need to modify the beginInfo struct
 
     //// BEGIN RENDER PASS
-    renderPass.setFramebuffer(framebuffer);
-    renderPass.setRenderAreaExtent(swapChainExtent);
-    renderPass.clear(ui->clearColor[0], ui->clearColor[1], ui->clearColor[2], 1.0f);
-    renderPass.begin(commandBuffer);
+    renderPass->setFramebuffer(framebuffer);
+    renderPass->setRenderAreaExtent(swapChainExtent);
+    renderPass->clear(ui->clearColor[0], ui->clearColor[1], ui->clearColor[2], 1.0f);
+    renderPass->begin(commandBuffer);
 
     auto pipeline = ui->currentShaderIndex == 0 ? pathPipeline.get() : triPipeline.get();
     commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, pipeline->getGraphicsPipeline());
-    float time = (float)glfwGetTime();
+    auto time = (float)glfwGetTime();
     pathPipeline->setPushConstant(commandBuffer, &time, sizeof(float));
 
     ScreenUtils::setViewport(commandBuffer, swapChainExtent.width, swapChainExtent.height);
@@ -180,7 +188,7 @@ void VulkanApp::recordCommandBuffer(VkFramebuffer framebuffer)
     ui->end(commandBuffer);
 
     //// END RENDER PASS
-    renderPass.end(); // ends the render pass with the command buffer given in .begin()
+    renderPass->end(); // ends the render pass with the command buffer given in .begin()
 
     //// END RECORDING COMMAND BUFFER
     frame.end(); // ends the frames command buffer
@@ -223,7 +231,7 @@ ImGuiCreateParameters VulkanApp::getImGuiCreateParameters()
 {
     ImGuiCreateParameters params{};
     params.context = &vulkanContext;
-    params.renderPass = &renderPass;
+    params.renderPass = renderPass.get();
     params.framesInFlight = MAX_FRAMES_IN_FLIGHT;
     return params;
 }

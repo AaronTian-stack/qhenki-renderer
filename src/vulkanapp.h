@@ -18,20 +18,25 @@
 #include "cameramatrices.h"
 #include "camera.h"
 #include "inputprocesser.h"
+#include "vulkan/renderpass/renderpassbuilder.h"
 
 class VulkanApp
 {
 private:
     uPtr<Buffer> buffer;
-    uPtr<Buffer> colorBuffer;
+    //uPtr<Buffer> colorBuffer;
     uPtr<Buffer> indexBuffer;
+
+    uPtr<FrameBufferAttachment> depthBuffer;
 
     GLTFLoader gltfLoad;
     BufferFactory bufferFactory;
 
     VulkanContext vulkanContext;
 
-    RenderPass renderPass;
+    RenderPassBuilder renderPassBuilder;
+    uPtr<RenderPass> renderPass;
+
     PipelineBuilder pipelineFactory;
 
     uPtr<Pipeline> pathPipeline, triPipeline;

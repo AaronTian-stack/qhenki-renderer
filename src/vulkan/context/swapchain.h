@@ -2,7 +2,7 @@
 
 #include <vector>
 #include <vulkan/vulkan.hpp>
-#include "../renderpass.h"
+#include "../renderpass/renderpass.h"
 #include "VkBootstrap.h"
 #include "../attachments/framebuffer.h"
 
@@ -16,7 +16,7 @@ private:
 
 public:
     SwapChain(vkb::Swapchain vkbSwapchain);
-    void createFramebuffers(vk::RenderPass renderPass);
+    void createFramebuffers(vk::RenderPass renderPass, vk::ImageView depthImageView = nullptr);
     vk::Format getFormat() const;
     vk::Extent2D getExtent() const;
     vk::Framebuffer nextImage(vk::Semaphore imageAvailable);

@@ -5,10 +5,7 @@ bool VulkanContext::create(Window &window)
 {
     vkb::InstanceBuilder builder;
     auto severity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT;
-    std::vector extensions = {VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME};
-#if __APPLE__
-    extensions.push_back(VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME);
-#endif
+
     auto inst_ret = builder.set_app_name("Vulkan PBR").request_validation_layers()
             .set_debug_messenger_severity(severity)
             .set_debug_callback (
@@ -20,7 +17,7 @@ bool VulkanContext::create(Window &window)
                 std::cerr << "validation layer: " << pCallbackData->pMessage << std::endl;
                 return VK_FALSE;
             }
-    ).require_api_version(1, 2).enable_extensions(extensions).build();
+    ).require_api_version(1, 2).build();
 
     if (!inst_ret) {
         std::cerr << "Failed to create Vulkan instance. Error: " << inst_ret.error().message() << "\n";
@@ -39,9 +36,10 @@ bool VulkanContext::create(Window &window)
 #endif
 
     vkb::PhysicalDeviceSelector selector{ vkbInstance };
-    auto phys_ret = selector.set_surface (surface)
+    auto phys_ret = selector.set_surface(surface)
             .set_minimum_version (1, 2)
             .add_required_extensions(deviceExtensions)
+            .prefer_gpu_device_type(vkb::PreferredDeviceType::discrete)
             .select();
 
     if (!phys_ret) {
@@ -49,9 +47,8 @@ bool VulkanContext::create(Window &window)
         return false;
     }
 
-    vkb::DeviceBuilder device_builder{ phys_ret.value () };
-    // automatically propagate needed data from instance & physical device
-    auto dev_ret = device_builder.build ();
+    vkb::DeviceBuilder device_builder{ phys_ret.value() };
+    auto dev_ret = device_builder.build();
     if (!dev_ret) {
         std::cerr << "Failed to create Vulkan device. Error: " << dev_ret.error().message() << "\n";
         return false;
@@ -82,7 +79,9 @@ bool VulkanContext::create(Window &window)
     queueManager.initQueues(graphicsQueue, presentQueue);
 
     vkb::SwapchainBuilder swapchain_builder{ vkb_device };
-    auto swap_ret = swapchain_builder.build();
+    auto swap_ret = swapchain_builder
+            .set_desired_present_mode(VK_PRESENT_MODE_MAILBOX_KHR)
+            .build();
     if (!swap_ret){
         std::cerr << "Failed to create swap chain. Error: " << swap_ret.error().message() << "\n";
         return false;
