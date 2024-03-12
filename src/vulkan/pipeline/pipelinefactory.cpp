@@ -148,7 +148,7 @@ void PipelineBuilder::addVertexInputAttribute(vk::VertexInputAttributeDescriptio
     vertexInputInfo.pVertexAttributeDescriptions = vertexInputAttributes.data();
 }
 
-void PipelineBuilder::parseVertexShader(const char *filePath, DescriptorLayoutCache &layoutCache)
+void PipelineBuilder::parseVertexShader(const char *filePath, DescriptorLayoutCache &layoutCache, bool interleaved)
 {
     auto shaderCode = Shader::readFile(filePath);
     auto spirvBytecode = reinterpret_cast<const uint32_t *>(shaderCode.data());
@@ -156,6 +156,7 @@ void PipelineBuilder::parseVertexShader(const char *filePath, DescriptorLayoutCa
     spirv_cross::CompilerGLSL glsl(spirvBytecode, shaderCode.size() / sizeof(uint32_t));
     spirv_cross::ShaderResources resources = glsl.get_shader_resources();
 
+    uint32_t binding = 0;
     uint32_t offset = 0;
     for (const auto &input : resources.stage_inputs)
     {
@@ -168,10 +169,19 @@ void PipelineBuilder::parseVertexShader(const char *filePath, DescriptorLayoutCa
 
         auto format = mapTypeToFormat(inputType);
 
-        addVertexInputAttribute({location, 0, format.first, offset});
+        addVertexInputAttribute({location, binding, format.first, offset});
 
         // increment offset by format
-        offset += format.second;
+
+        if (interleaved)
+        {
+            offset += format.second;
+
+        }
+        else
+        {
+            binding++;
+        }
     }
 
     for (auto &pushConstant : resources.push_constant_buffers)

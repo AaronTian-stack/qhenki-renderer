@@ -90,7 +90,7 @@ void UserInterface::destroy()
 
 void UserInterface::render()
 {
-    const int y = 20;
+    const int y = 21;
     //ImGui::ShowDemoWindow();
     ImGui::SetNextWindowPos(ImVec2(0, y));
     auto flags = ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove;

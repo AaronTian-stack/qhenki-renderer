@@ -34,13 +34,13 @@ void Buffer::destroy()
     vmaDestroyBuffer(allocator, buffer, allocation);
 }
 
-void Buffer::bind(vk::CommandBuffer commandBuffer)
+void Buffer::bind(vk::CommandBuffer commandBuffer, int binding)
 {
     VkDeviceSize offset = 0;
     if (info.usage & vk::BufferUsageFlagBits::eIndexBuffer)
         commandBuffer.bindIndexBuffer(buffer, offset, vk::IndexType::eUint16);
     else if (info.usage & vk::BufferUsageFlagBits::eVertexBuffer)
-        commandBuffer.bindVertexBuffers(0, 1, &buffer, &offset);
+        commandBuffer.bindVertexBuffers(binding, 1, &buffer, &offset);
 }
 
 void Buffer::copyTo(Buffer &destination, QueueManager &queueManager, CommandPool &commandPool)
@@ -54,11 +54,11 @@ void Buffer::copyTo(Buffer &destination, QueueManager &queueManager, CommandPool
     commandPool.submitSingleTimeCommands(queueManager, {commandBuffer});
 }
 
-void bind(vk::CommandBuffer commandBuffer, const std::vector<Buffer>& buffers)
+void bind(vk::CommandBuffer commandBuffer, const std::vector<Buffer*> &buffers)
 {
     for (auto &buffer : buffers)
     {
-        if (!(buffer.info.usage & vk::BufferUsageFlagBits::eVertexBuffer))
+        if (!(buffer->info.usage & vk::BufferUsageFlagBits::eVertexBuffer))
             throw std::runtime_error("Buffer is not a vertex buffer");
     }
     // collect vector of raw buffer objects
@@ -66,7 +66,8 @@ void bind(vk::CommandBuffer commandBuffer, const std::vector<Buffer>& buffers)
     rawBuffers.reserve(buffers.size());
     for (auto &buffer : buffers)
     {
-        rawBuffers.push_back(buffer.buffer);
+        rawBuffers.push_back(buffer->buffer);
     }
-    commandBuffer.bindVertexBuffers(0, rawBuffers.size(), rawBuffers.data(), nullptr);
+    std::vector<VkDeviceSize> offsets(rawBuffers.size());
+    commandBuffer.bindVertexBuffers(0, rawBuffers.size(), rawBuffers.data(), offsets.data());
 }

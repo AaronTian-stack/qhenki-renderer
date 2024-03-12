@@ -29,7 +29,9 @@ VulkanApp::~VulkanApp()
 
     depthBuffer->destroy();
 
-    buffer->destroy();
+    //buffer->destroy();
+    positionBuffer->destroy();
+    colorBuffer->destroy();
     indexBuffer->destroy();
 
     for (auto &cameraBuffer : cameraBuffers)
@@ -77,7 +79,7 @@ void VulkanApp::create(Window &window)
     pathPipeline = pipelineFactory.buildPipeline(renderPass.get(), shader1.get());
 
     //// VERTEX INPUT
-    struct Vertex {
+    /*struct Vertex {
         glm::vec3 pos;
         glm::vec3 color;
     };
@@ -86,12 +88,24 @@ void VulkanApp::create(Window &window)
             {{0.5f, -0.5f, 0.f}, {0.0f, 1.0f, 0.0f}},
             {{0.5f, 0.5f, 0.f}, {0.0f, 0.0f, 1.0f}},
             {{-0.5f, 0.5f, 0.f}, {1.0f, 1.0f, 1.0f}}
+    };*/
+    const std::vector<glm::vec3> positions = {
+            {-0.5f, -0.5f, 1.f},
+            {0.5f, -0.5f, 0.f},
+            {0.5f, 0.5f, 0.f},
+            {-0.5f, 0.5f, 0.f}
+    };
+    const std::vector<glm::vec3> colors = {
+            {1.0f, 0.0f, 0.0f},
+            {0.0f, 1.0f, 0.0f},
+            {0.0f, 0.0f, 1.0f},
+            {1.0f, 1.0f, 1.0f}
     };
     const std::vector<uint16_t> indices = {
             0, 1, 2, 2, 3, 0
     };
 
-    auto stagingBuffer = bufferFactory.createBuffer(
+    /*auto stagingBuffer = bufferFactory.createBuffer(
             vertices.size() * sizeof(Vertex),
             vk::BufferUsageFlagBits::eTransferSrc,
             VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
@@ -101,10 +115,13 @@ void VulkanApp::create(Window &window)
     buffer = bufferFactory.createBuffer(vertices.size() * sizeof(Vertex),
                                         vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst);
     stagingBuffer->copyTo(*buffer, vulkanContext.queueManager, commandPool);
-    stagingBuffer->destroy();
+    stagingBuffer->destroy();*/
 
-    //buffer = bufferFactory.createBuffer(vertices.size() * sizeof(Vertex), VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
-    //buffer->fill(vertices.data());
+    positionBuffer = bufferFactory.createBuffer(positions.size() * sizeof(glm::vec3), vk::BufferUsageFlagBits::eVertexBuffer, VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
+    positionBuffer->fill(positions.data());
+
+    colorBuffer = bufferFactory.createBuffer(colors.size() * sizeof(glm::vec3), vk::BufferUsageFlagBits::eVertexBuffer, VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
+    colorBuffer->fill(colors.data());
 
     indexBuffer = bufferFactory.createBuffer(indices.size() * sizeof(uint16_t),
                                              vk::BufferUsageFlagBits::eIndexBuffer, VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
@@ -112,8 +129,9 @@ void VulkanApp::create(Window &window)
 
     pipelineFactory.reset();
 
-    pipelineFactory.addVertexInputBinding({0, sizeof(Vertex), vk::VertexInputRate::eVertex});
-    pipelineFactory.parseVertexShader("tri_vert.spv", layoutCache);
+    pipelineFactory.addVertexInputBinding({0, sizeof(glm::vec3), vk::VertexInputRate::eVertex});
+    pipelineFactory.addVertexInputBinding({1, sizeof(glm::vec3), vk::VertexInputRate::eVertex});
+    pipelineFactory.parseVertexShader("tri_vert.spv", layoutCache, false);
     //// END VERTEX INPUT
 
     triPipeline = pipelineFactory.buildPipeline(renderPass.get(), shader2.get());
@@ -164,7 +182,8 @@ void VulkanApp::recordCommandBuffer(VkFramebuffer framebuffer)
     {
         triPipeline->setPushConstant(commandBuffer, &modelTransform, sizeof(glm::mat4));
 
-        buffer->bind(commandBuffer);
+        //buffer->bind(commandBuffer);
+        bind(commandBuffer, {positionBuffer.get(), colorBuffer.get()});
         indexBuffer->bind(commandBuffer);
 
         auto bufferInfo = vk::DescriptorBufferInfo(cameraBuffers[currentFrame]->buffer, 0, sizeof(CameraMatrices));
@@ -257,16 +276,20 @@ void VulkanApp::updateCameraBuffer()
 void VulkanApp::handleInput()
 {
     ImGuiIO& io = ImGui::GetIO();
-    if (io.WantCaptureMouse) {
+    if (io.WantCaptureMouse)
+    {
         InputProcesser::setUserPointer(nullptr);
     }
-    else {
+    else
+    {
         InputProcesser::setUserPointer(&camera);
         if (InputProcesser::mouseButtons[GLFW_MOUSE_BUTTON_LEFT] ||
-             InputProcesser::mouseButtons[GLFW_MOUSE_BUTTON_RIGHT]) {
+             InputProcesser::mouseButtons[GLFW_MOUSE_BUTTON_RIGHT])
+        {
             InputProcesser::disableCursor();
         }
-        else if (InputProcesser::getCursorState() == GLFW_CURSOR_DISABLED) {
+        else if (InputProcesser::getCursorState() == GLFW_CURSOR_DISABLED)
+        {
             InputProcesser::enableCursor();
         }
     }

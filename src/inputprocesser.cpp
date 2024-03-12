@@ -4,6 +4,13 @@
 
 void InputProcesser::mouse_button_callback(GLFWwindow *window, int button, int action, int mods)
 {
+    if (!mouseButtons[GLFW_MOUSE_BUTTON_1] || !mouseButtons[GLFW_MOUSE_BUTTON_2])
+    {
+        // set lastMousePos to current mouse position
+        double xpos, ypos;
+        glfwGetCursorPos(window, &xpos, &ypos);
+        lastMousePos = {static_cast<float>(xpos), static_cast<float>(ypos)};
+    }
     mouseButtons[button] = action;
 }
 
@@ -20,9 +27,9 @@ void InputProcesser::mouse_callback(GLFWwindow *window, double xposIn, double yp
     deltaMouse = {xOffset, yOffset};
 
     // update camera based of glfw user pointer
-    auto* obj = static_cast<Camera*>(glfwGetWindowUserPointer(window));
-    if (obj)
-        obj->update();
+    auto* cam = static_cast<Camera*>(glfwGetWindowUserPointer(window));
+    if (cam)
+        cam->update();
 }
 
 void InputProcesser::scroll_callback(GLFWwindow *window, double xoffset, double yoffset)
@@ -48,6 +55,7 @@ void InputProcesser::disableCursor()
 void InputProcesser::enableCursor()
 {
     glfwSetInputMode(InputProcesser::window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+    deltaMouse = {0, 0};
 }
 
 int InputProcesser::getCursorState()

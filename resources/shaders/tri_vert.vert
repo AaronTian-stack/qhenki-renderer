@@ -5,8 +5,7 @@ layout(std140, set = 0, binding = 0) uniform cameraInfo {
     mat4 viewProj;
 } ubo;
 
-layout(push_constant) uniform constants
-{
+layout(push_constant) uniform constants {
     mat4 matrix;
 } modelTransform;
 

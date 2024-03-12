@@ -23,8 +23,9 @@
 class VulkanApp
 {
 private:
-    uPtr<Buffer> buffer;
-    //uPtr<Buffer> colorBuffer;
+    //uPtr<Buffer> buffer;
+    uPtr<Buffer> positionBuffer;
+    uPtr<Buffer> colorBuffer;
     uPtr<Buffer> indexBuffer;
 
     uPtr<FrameBufferAttachment> depthBuffer;

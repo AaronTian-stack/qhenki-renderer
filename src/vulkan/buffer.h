@@ -20,7 +20,7 @@ public:
     void fill(const void *data);
     void copyTo(Buffer &destination, QueueManager &queueManager, CommandPool &commandPool);
 
-    void bind(vk::CommandBuffer commandBuffer);
+    void bind(vk::CommandBuffer commandBuffer, int binding = 0);
 
     void destroy();
 
@@ -28,4 +28,5 @@ public:
     vk::BufferCreateInfo info;
 };
 
-void bind(vk::CommandBuffer commandBuffer, const std::vector<Buffer>& buffers);
+// binds sequentially in order
+void bind(vk::CommandBuffer commandBuffer, const std::vector<Buffer*> &buffers);

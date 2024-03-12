@@ -9,7 +9,7 @@
 #include <iostream>
 #include "src/vulkanapp.h"
 
-Window window(1024, 768);
+Window window(1366, 768);
 
 int main()
 {

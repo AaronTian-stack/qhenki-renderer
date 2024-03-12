@@ -50,7 +50,7 @@ public:
 
     void parseShader(const char *filePath1, const char *filePath2);
 
-    void parseVertexShader(const char *filePath, DescriptorLayoutCache &layoutCache);
+    void parseVertexShader(const char *filePath, DescriptorLayoutCache &layoutCache, bool interleaved);
     void parseFragmentShader(const char *filePath);
 
     // buffer
