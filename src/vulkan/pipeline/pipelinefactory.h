@@ -40,8 +40,6 @@ private:
     std::vector<vk::VertexInputBindingDescription> vertexInputBindings;
     std::vector<vk::VertexInputAttributeDescription> vertexInputAttributes;
 
-    std::pair<vk::Format, size_t> mapTypeToFormat(const spirv_cross::SPIRType &type);
-
 public:
     PipelineBuilder();
 
@@ -63,3 +61,5 @@ public:
 
     void destroy() override;
 };
+
+std::pair<vk::Format, size_t> mapTypeToFormat(const spirv_cross::SPIRType &type);

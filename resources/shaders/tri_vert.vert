@@ -15,8 +15,15 @@ layout(location = 1) out vec2 uv;
 layout(location = 0) in vec3 inPosition; // note that some types use multiple slots
 layout(location = 1) in vec3 inColor;
 
+const vec3[] colors = {
+{1.0f, 0.0f, 0.0f},
+{0.0f, 1.0f, 0.0f},
+{0.0f, 0.0f, 1.0f},
+{1.0f, 1.0f, 1.0f}
+};
+
 void main()
 {
     gl_Position = ubo.viewProj * modelTransform.matrix * vec4(inPosition, 1.0);
-    fragColor = inColor;
+    fragColor = colors[gl_VertexIndex % 4];
 }

@@ -29,9 +29,10 @@ VulkanApp::~VulkanApp()
 
     depthBuffer->destroy();
 
+    model->destroy();
     //buffer->destroy();
     positionBuffer->destroy();
-    colorBuffer->destroy();
+    normalBuffer->destroy();
     indexBuffer->destroy();
 
     for (auto &cameraBuffer : cameraBuffers)
@@ -95,11 +96,11 @@ void VulkanApp::create(Window &window)
             {0.5f, 0.5f, 0.f},
             {-0.5f, 0.5f, 0.f}
     };
-    const std::vector<glm::vec3> colors = {
-            {1.0f, 0.0f, 0.0f},
-            {0.0f, 1.0f, 0.0f},
+    const std::vector<glm::vec3> normals = {
             {0.0f, 0.0f, 1.0f},
-            {1.0f, 1.0f, 1.0f}
+            {0.0f, 0.0f, 1.0f},
+            {0.0f, 0.0f, 1.0f},
+            {0.0f, 0.0f, 1.0f}
     };
     const std::vector<uint16_t> indices = {
             0, 1, 2, 2, 3, 0
@@ -120,8 +121,8 @@ void VulkanApp::create(Window &window)
     positionBuffer = bufferFactory.createBuffer(positions.size() * sizeof(glm::vec3), vk::BufferUsageFlagBits::eVertexBuffer, VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
     positionBuffer->fill(positions.data());
 
-    colorBuffer = bufferFactory.createBuffer(colors.size() * sizeof(glm::vec3), vk::BufferUsageFlagBits::eVertexBuffer, VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
-    colorBuffer->fill(colors.data());
+    normalBuffer = bufferFactory.createBuffer(normals.size() * sizeof(glm::vec3), vk::BufferUsageFlagBits::eVertexBuffer, VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
+    normalBuffer->fill(normals.data());
 
     indexBuffer = bufferFactory.createBuffer(indices.size() * sizeof(uint16_t),
                                              vk::BufferUsageFlagBits::eIndexBuffer, VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
@@ -150,7 +151,7 @@ void VulkanApp::create(Window &window)
         allocators.emplace_back(vulkanContext.device.logicalDevice);
     }
 
-    //gltfLoad.load();
+    model = GLTFLoader::load(bufferFactory, "Box.glb");
 }
 
 void VulkanApp::recordCommandBuffer(VkFramebuffer framebuffer)
@@ -170,7 +171,7 @@ void VulkanApp::recordCommandBuffer(VkFramebuffer framebuffer)
     renderPass->clear(ui->clearColor[0], ui->clearColor[1], ui->clearColor[2], 1.0f);
     renderPass->begin(commandBuffer);
 
-    auto pipeline = ui->currentShaderIndex == 0 ? pathPipeline.get() : triPipeline.get();
+    auto pipeline = ui->currentShaderIndex == 1 ? pathPipeline.get() : triPipeline.get();
     commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, pipeline->getGraphicsPipeline());
     auto time = (float)glfwGetTime();
     pathPipeline->setPushConstant(commandBuffer, &time, sizeof(float));
@@ -178,12 +179,13 @@ void VulkanApp::recordCommandBuffer(VkFramebuffer framebuffer)
     ScreenUtils::setViewport(commandBuffer, swapChainExtent.width, swapChainExtent.height);
     ScreenUtils::setScissor(commandBuffer, swapChainExtent);
 
-    if (ui->currentShaderIndex == 1)
+    if (pipeline == triPipeline.get())
     {
+        modelTransform = glm::mat4();
         triPipeline->setPushConstant(commandBuffer, &modelTransform, sizeof(glm::mat4));
 
         //buffer->bind(commandBuffer);
-        bind(commandBuffer, {positionBuffer.get(), colorBuffer.get()});
+        bind(commandBuffer, {positionBuffer.get(), normalBuffer.get()});
         indexBuffer->bind(commandBuffer);
 
         auto bufferInfo = vk::DescriptorBufferInfo(cameraBuffers[currentFrame]->buffer, 0, sizeof(CameraMatrices));
@@ -197,7 +199,13 @@ void VulkanApp::recordCommandBuffer(VkFramebuffer framebuffer)
                 .build(globalSet, layout);
 
         commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipeline->getPipelineLayout(), 0, {globalSet}, nullptr);
-        commandBuffer.drawIndexed(6, 1, 0, 0, 0);
+        //commandBuffer.drawIndexed(6, 1, 0, 0, 0);
+
+        /*modelTransform = glm::translate(glm::mat4(), glm::vec3(0.f, 0.f, -1.f));
+        triPipeline->setPushConstant(commandBuffer, &modelTransform, sizeof(glm::mat4));
+        commandBuffer.drawIndexed(6, 1, 0, 0, 0);*/
+
+        model->draw(commandBuffer);
     }
     else
         commandBuffer.draw(3, 1, 0, 0);

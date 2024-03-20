@@ -119,7 +119,7 @@ void UserInterface::render()
     ImGui::SetNextWindowPos(ImVec2(ImGui::GetIO().DisplaySize.x, y), 0, ImVec2(1.0f, 0));
     ImGui::Begin("Visual Options", nullptr, flags);
     if (ImGui::Combo("Shader", &currentShaderIndex,
-                     "Pathtrace\0Triangle\0"))
+                     "Triangle\0Pathtrace\0"))
     {
 
     }

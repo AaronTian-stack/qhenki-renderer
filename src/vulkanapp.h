@@ -9,7 +9,7 @@
 #include "vulkan/frame.h"
 #include "userinterface.h"
 #include "vulkan/context/vulkancontext.h"
-#include "gltfloader.h"
+#include "models/gltfloader.h"
 #include "vulkan/bufferfactory.h"
 #include "vulkan/descriptors/descriptorlayoutcache.h"
 #include "vulkan/descriptors/descriptorallocator.h"
@@ -23,9 +23,10 @@
 class VulkanApp
 {
 private:
+    uPtr<Model> model;
     //uPtr<Buffer> buffer;
     uPtr<Buffer> positionBuffer;
-    uPtr<Buffer> colorBuffer;
+    uPtr<Buffer> normalBuffer;
     uPtr<Buffer> indexBuffer;
 
     uPtr<FrameBufferAttachment> depthBuffer;

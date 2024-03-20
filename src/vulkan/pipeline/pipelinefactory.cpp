@@ -171,12 +171,9 @@ void PipelineBuilder::parseVertexShader(const char *filePath, DescriptorLayoutCa
 
         addVertexInputAttribute({location, binding, format.first, offset});
 
-        // increment offset by format
-
         if (interleaved)
         {
-            offset += format.second;
-
+            offset += format.second; // increment offset by format
         }
         else
         {
@@ -261,7 +258,7 @@ void PipelineBuilder::parseShader(const char *filePath1, const char *filePath2)
     parseFragmentShader(filePath2);
 }
 
-std::pair<vk::Format, size_t> PipelineBuilder::mapTypeToFormat(const spirv_cross::SPIRType &type)
+std::pair<vk::Format, size_t> mapTypeToFormat(const spirv_cross::SPIRType &type)
 {
     switch (type.basetype)
     {
