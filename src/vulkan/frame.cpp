@@ -1,5 +1,5 @@
 #include "frame.h"
-#include "bufferfactory.h"
+#include "buffer/bufferfactory.h"
 
 Frame::Frame() {}
 

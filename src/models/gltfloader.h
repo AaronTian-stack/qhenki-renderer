@@ -3,7 +3,7 @@
 #include "gltf/tiny_gltf.h"
 #include "model.h"
 #include "../smartpointer.h"
-#include "../vulkan/bufferfactory.h"
+#include "../vulkan/buffer/bufferfactory.h"
 
 class GLTFLoader
 {

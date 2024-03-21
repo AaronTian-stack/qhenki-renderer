@@ -2,9 +2,9 @@
 
 #include "vulkan/vulkan.h"
 #include "vma/vk_mem_alloc.h"
-#include "context/vulkancontext.h"
+#include "../context/vulkancontext.h"
 #include "buffer.h"
-#include "../smartpointer.h"
+#include "../../smartpointer.h"
 
 class BufferFactory : public Destroyable
 {

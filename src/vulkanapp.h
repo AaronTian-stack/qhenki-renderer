@@ -10,7 +10,7 @@
 #include "userinterface.h"
 #include "vulkan/context/vulkancontext.h"
 #include "models/gltfloader.h"
-#include "vulkan/bufferfactory.h"
+#include "vulkan/buffer/bufferfactory.h"
 #include "vulkan/descriptors/descriptorlayoutcache.h"
 #include "vulkan/descriptors/descriptorallocator.h"
 #include "vulkan/descriptors/descriptorbuilder.h"

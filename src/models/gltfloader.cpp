@@ -140,17 +140,27 @@ uPtr<Buffer> GLTFLoader::getBuffer(BufferFactory &bufferFactory, tinygltf::Model
             break;
         case vk::BufferUsageFlagBits::eIndexBuffer:
             // technically indices can come in different formats, might need to handle that
-//            if (accessor.componentType == TINYGLTF_PARAMETER_TYPE_UNSIGNED_SHORT)
-//            {
+            if (accessor.componentType == TINYGLTF_PARAMETER_TYPE_UNSIGNED_SHORT)
+            {
+                // 16 bit
                 vBuffer = bufferFactory.createBuffer(count * sizeof(uint16_t), flag,
                                                      VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
                 vBuffer->fill(&buffer.data[0] + bufferView.byteOffset + accessor.byteOffset);
-//            }
-//            else
-//            {
-//                std::cerr << "Index component type " << accessor.componentType << " not supported!" << std::endl;
-//                throw std::runtime_error("Index type not supported");
-//            }
+                vBuffer->indexType = vk::IndexType::eUint16;
+            }
+            else if (accessor.componentType == TINYGLTF_PARAMETER_TYPE_UNSIGNED_INT)
+            {
+                // 32 bit
+                vBuffer = bufferFactory.createBuffer(count * sizeof(uint32_t), flag,
+                                                     VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
+                vBuffer->fill(&buffer.data[0] + bufferView.byteOffset + accessor.byteOffset);
+                vBuffer->indexType = vk::IndexType::eUint32;
+            }
+            else
+            {
+                std::cerr << "Index component type " << accessor.componentType << " not supported!" << std::endl;
+                throw std::runtime_error("Index type not supported");
+            }
             break;
         default:
             throw std::runtime_error("Invalid buffer usage flag");

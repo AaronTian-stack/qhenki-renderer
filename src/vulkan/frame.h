@@ -2,9 +2,9 @@
 #include "destroyable.h"
 #include "syncer.h"
 #include "commandpool.h"
-#include "buffer.h"
+#include "buffer/buffer.h"
 #include "../smartpointer.h"
-#include "bufferfactory.h"
+#include "buffer/bufferfactory.h"
 
 class Frame : public Destroyable
 {

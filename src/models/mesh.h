@@ -1,7 +1,7 @@
 #pragma once
 
 #include <vector>
-#include "../vulkan/buffer.h"
+#include "../vulkan/buffer/buffer.h"
 
 enum VertexBufferType
 {

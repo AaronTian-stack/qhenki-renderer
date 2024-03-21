@@ -8,6 +8,11 @@ Buffer::Buffer(vk::Buffer buffer, vk::BufferCreateInfo info, VmaAllocation alloc
     {
         vmaMapMemory(allocator, allocation, &mappedData);
     }
+    if (info.usage & vk::BufferUsageFlagBits::eIndexBuffer)
+    {
+        // default value
+        indexType = vk::IndexType::eUint16;
+    }
 }
 
 void Buffer::fill(const void *data)
@@ -38,7 +43,11 @@ void Buffer::bind(vk::CommandBuffer commandBuffer, int binding)
 {
     VkDeviceSize offset = 0;
     if (info.usage & vk::BufferUsageFlagBits::eIndexBuffer)
-        commandBuffer.bindIndexBuffer(buffer, offset, vk::IndexType::eUint16);
+    {
+        if (indexType == std::nullopt)
+            throw std::runtime_error("Index type not set");
+        commandBuffer.bindIndexBuffer(buffer, offset, indexType.value());
+    }
     else if (info.usage & vk::BufferUsageFlagBits::eVertexBuffer)
         commandBuffer.bindVertexBuffers(binding, 1, &buffer, &offset);
 }
