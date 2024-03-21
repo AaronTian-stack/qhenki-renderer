@@ -24,6 +24,9 @@ file(GLOB_RECURSE SPIRV CONFIGURE_DEPENDS
 set(dir ${CMAKE_CURRENT_SOURCE_DIR})
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${dir}/build)
 
+# static linking for debugging
+# set(CMAKE_EXE_LINKER_FLAGS "-static")
+
 #Include library files
 include_directories(dependencies/include)
 

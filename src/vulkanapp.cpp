@@ -151,7 +151,7 @@ void VulkanApp::create(Window &window)
         allocators.emplace_back(vulkanContext.device.logicalDevice);
     }
 
-    model = GLTFLoader::load(bufferFactory, "Box.glb");
+    model = GLTFLoader::load(bufferFactory, "higokumaru.glb");
 }
 
 void VulkanApp::recordCommandBuffer(VkFramebuffer framebuffer)
@@ -204,7 +204,9 @@ void VulkanApp::recordCommandBuffer(VkFramebuffer framebuffer)
 //        triPipeline->setPushConstant(commandBuffer, &modelTransform, sizeof(glm::mat4));
 //        commandBuffer.drawIndexed(6, 1, 0, 0, 0);
 
-        model->draw(commandBuffer);
+        //triPipeline->setPushConstant(commandBuffer, &model->transform, sizeof(glm::mat4));
+        //model->draw(commandBuffer);
+        model->root->draw(commandBuffer, *triPipeline, *model->root);
     }
     else
         commandBuffer.draw(3, 1, 0, 0);

@@ -8,6 +8,7 @@
 #include "gltfloader.h"
 #include "glm/vec3.hpp"
 #include "glm/gtc/type_ptr.hpp"
+#include "glm/gtx/transform.hpp"
 
 uPtr<Model> GLTFLoader::load(BufferFactory &bufferFactory, const char* filename)
 {
@@ -34,19 +35,57 @@ uPtr<Model> GLTFLoader::load(BufferFactory &bufferFactory, const char* filename)
 
     uPtr<Model> model = mkU<Model>();
     // assume the root node is the scene
-    int rootNodeIndex = gltfModel.defaultScene >= 0 ? gltfModel.defaultScene : 0;
-    processNode(bufferFactory, gltfModel, model.get(), rootNodeIndex);
+    //int rootNodeIndex = gltfModel.defaultScene >= 0 ? gltfModel.defaultScene : 0;
+    int rootNodeIndex = gltfModel.scenes[gltfModel.defaultScene].nodes[0];
+
+//    glm::quat quaternion(gltfModel.nodes[rootNodeIndex].rotation[0], gltfModel.nodes[rootNodeIndex].rotation[1],
+//                         gltfModel.nodes[rootNodeIndex].rotation[2], gltfModel.nodes[rootNodeIndex].rotation[3]);
+//    model->transform = glm::mat4_cast(quaternion);
+
+    processNode(bufferFactory, gltfModel, model.get(), nullptr, rootNodeIndex);
 
     return model;
 }
 
-void GLTFLoader::processNode(BufferFactory &bufferFactory, tinygltf::Model &gltfModel, Model *model, int nodeIndex)
+void GLTFLoader::processNode(BufferFactory &bufferFactory, tinygltf::Model &gltfModel, Model *model, Node *parent, int nodeIndex)
 {
-    const tinygltf::Node& node = gltfModel.nodes[nodeIndex];
+    const tinygltf::Node& gltfNode = gltfModel.nodes[nodeIndex];
 
-    if (node.mesh >= 0)
+    Node *node;
+    if (!parent)
     {
-        const tinygltf::Mesh &gltfMesh = gltfModel.meshes[node.mesh];
+        model->root = mkU<Node>();
+        node = model->root.get();
+    }
+    else
+    {
+        parent->children.push_back(mkU<Node>());
+        node = parent->children.back().get();
+    }
+    node->parent = parent;
+    node->name = gltfNode.name;
+
+    // set node transform
+    if (!gltfNode.scale.empty())
+    {
+        auto &scale = gltfNode.scale;
+        node->scale = {scale[0], scale[1], scale[2]};
+    }
+    if (!gltfNode.rotation.empty())
+    {
+        auto &rot = gltfNode.rotation;
+        auto q = glm::dquat(rot[3], rot[0], rot[1], rot[2]);
+        node->rotation = q;
+    }
+    if (!gltfNode.translation.empty())
+    {
+        auto &trans = gltfNode.translation;
+        node->translate = {trans[0], trans[1], trans[2]};
+    }
+
+    if (gltfNode.mesh >= 0)
+    {
+        const tinygltf::Mesh &gltfMesh = gltfModel.meshes[gltfNode.mesh];
 
         for (const auto &primitive : gltfMesh.primitives)
         {
@@ -72,13 +111,14 @@ void GLTFLoader::processNode(BufferFactory &bufferFactory, tinygltf::Model &gltf
             mesh->indexBuffer = getBuffer(bufferFactory, gltfModel, primitive, primitive.indices, vk::BufferUsageFlagBits::eIndexBuffer);
 
             model->meshes.push_back(std::move(mesh));
+            node->mesh = model->meshes.back().get();
         }
     }
 
     // recursively process child nodes
-    for (int childIndex : node.children)
+    for (int childIndex : gltfNode.children)
     {
-        processNode(bufferFactory, gltfModel, model, childIndex);
+        processNode(bufferFactory, gltfModel, model, node, childIndex);
     }
 }
 
@@ -100,17 +140,17 @@ uPtr<Buffer> GLTFLoader::getBuffer(BufferFactory &bufferFactory, tinygltf::Model
             break;
         case vk::BufferUsageFlagBits::eIndexBuffer:
             // technically indices can come in different formats, might need to handle that
-            if (accessor.componentType == TINYGLTF_PARAMETER_TYPE_UNSIGNED_SHORT)
-            {
+//            if (accessor.componentType == TINYGLTF_PARAMETER_TYPE_UNSIGNED_SHORT)
+//            {
                 vBuffer = bufferFactory.createBuffer(count * sizeof(uint16_t), flag,
                                                      VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
                 vBuffer->fill(&buffer.data[0] + bufferView.byteOffset + accessor.byteOffset);
-            }
-            else
-            {
-                std::cerr << "Index component type " << accessor.componentType << " not supported!" << std::endl;
-                throw std::runtime_error("Index type not supported");
-            }
+//            }
+//            else
+//            {
+//                std::cerr << "Index component type " << accessor.componentType << " not supported!" << std::endl;
+//                throw std::runtime_error("Index type not supported");
+//            }
             break;
         default:
             throw std::runtime_error("Invalid buffer usage flag");

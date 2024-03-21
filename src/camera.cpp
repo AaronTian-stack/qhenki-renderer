@@ -62,7 +62,7 @@ void Camera::lerp(float delta)
 
 glm::vec3 Camera::getPosition() const
 {
-    return glm::vec3();
+    return regular.position;
 }
 
 glm::vec3 sphericalToCartesian(float theta, float phi, float radius)

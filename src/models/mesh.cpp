@@ -32,6 +32,6 @@ void Mesh::draw(vk::CommandBuffer commandBuffer)
     bind(commandBuffer, buffers);
 
     indexBuffer->bind(commandBuffer);
-    int count = indexBuffer->info.size / sizeof(uint16_t);
+    auto count = indexBuffer->info.size / sizeof(uint16_t);
     commandBuffer.drawIndexed(count, 1, 0, 0, 0);
 }

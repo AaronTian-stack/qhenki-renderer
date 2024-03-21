@@ -1,3 +1,5 @@
+#pragma once
+
 #include <vector>
 #include "../vulkan/buffer.h"
 
@@ -13,7 +15,6 @@ class Mesh
 private:
     std::vector<std::pair<uPtr<Buffer>, VertexBufferType>> vertexBuffers;
     uPtr<Buffer> indexBuffer;
-    //unsigned int indexCount;
 
 public:
     Mesh();
