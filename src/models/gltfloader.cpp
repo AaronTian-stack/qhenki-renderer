@@ -92,21 +92,11 @@ uPtr<Buffer> GLTFLoader::getBuffer(BufferFactory &bufferFactory, tinygltf::Model
     size_t count = accessor.count;
     uPtr<Buffer> vBuffer;
 
-    const float* positionBuffer = nullptr;
-    std::vector<glm::vec3> data;
-
     switch (flag) {
         case vk::BufferUsageFlagBits::eVertexBuffer:
-            positionBuffer = reinterpret_cast<const float*>(&buffer.data[0] + bufferView.byteOffset + accessor.byteOffset);
-
-            for (size_t i = 0; i < count; ++i)
-            {
-                data.push_back(glm::make_vec3(positionBuffer + i * 3));
-            }
-
-            vBuffer = bufferFactory.createBuffer(count * sizeof(float), flag,
+            vBuffer = bufferFactory.createBuffer(count * sizeof(glm::vec3), flag,
                                                  VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
-            vBuffer->fill(data.data());
+            vBuffer->fill(&buffer.data[0] + bufferView.byteOffset + accessor.byteOffset);
             break;
         case vk::BufferUsageFlagBits::eIndexBuffer:
             // technically indices can come in different formats, might need to handle that

@@ -184,9 +184,8 @@ void VulkanApp::recordCommandBuffer(VkFramebuffer framebuffer)
         modelTransform = glm::mat4();
         triPipeline->setPushConstant(commandBuffer, &modelTransform, sizeof(glm::mat4));
 
-        //buffer->bind(commandBuffer);
-        //bind(commandBuffer, {positionBuffer.get(), normalBuffer.get()});
-        //indexBuffer->bind(commandBuffer);
+        bind(commandBuffer, {positionBuffer.get(), normalBuffer.get()});
+        indexBuffer->bind(commandBuffer);
 
         auto bufferInfo = vk::DescriptorBufferInfo(cameraBuffers[currentFrame]->buffer, 0, sizeof(CameraMatrices));
 
@@ -201,9 +200,9 @@ void VulkanApp::recordCommandBuffer(VkFramebuffer framebuffer)
         commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipeline->getPipelineLayout(), 0, {globalSet}, nullptr);
         //commandBuffer.drawIndexed(6, 1, 0, 0, 0);
 
-        /*modelTransform = glm::translate(glm::mat4(), glm::vec3(0.f, 0.f, -1.f));
-        triPipeline->setPushConstant(commandBuffer, &modelTransform, sizeof(glm::mat4));
-        commandBuffer.drawIndexed(6, 1, 0, 0, 0);*/
+//        modelTransform = glm::translate(glm::mat4(), glm::vec3(0.f, 0.f, -1.f));
+//        triPipeline->setPushConstant(commandBuffer, &modelTransform, sizeof(glm::mat4));
+//        commandBuffer.drawIndexed(6, 1, 0, 0, 0);
 
         model->draw(commandBuffer);
     }
