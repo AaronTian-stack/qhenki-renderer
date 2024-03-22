@@ -34,6 +34,7 @@ public:
     void begin();
     void end(VkCommandBuffer commandBuffer);
 
+    std::vector<float> frameTimes;
     int currentShaderIndex = 0;
     float clearColor[3] = {0.0f, 0.0f, 0.0f };
 };

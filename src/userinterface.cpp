@@ -99,7 +99,14 @@ void UserInterface::render()
 
     ImGui::Text("FPS: %f", ImGui::GetIO().Framerate);
 
-    ImGui::Text("Frame Time: %f ms", ImGui::GetIO().DeltaTime);
+    ImGui::Text("Frame Time: %f ms", ImGui::GetIO().DeltaTime * .001f);
+
+    frameTimes.push_back(ImGui::GetIO().DeltaTime);
+    if (frameTimes.size() > 100)
+        frameTimes.erase(frameTimes.begin());
+
+    ImGui::PlotLines("", frameTimes.data(), frameTimes.size(), 0, "",
+                     0.f, 0.05f, ImVec2(0, 20));
 
     ImGui::Separator();
     if (ImGui::Button("Options"))

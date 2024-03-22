@@ -63,6 +63,16 @@ void Buffer::copyTo(Buffer &destination, QueueManager &queueManager, CommandPool
     commandPool.submitSingleTimeCommands(queueManager, {commandBuffer});
 }
 
+void Buffer::setIndexType(vk::IndexType type)
+{
+    indexType = type;
+}
+
+std::optional<vk::IndexType> Buffer::getIndexType()
+{
+    return indexType;
+}
+
 void bind(vk::CommandBuffer commandBuffer, const std::vector<Buffer*> &buffers)
 {
     for (auto &buffer : buffers)

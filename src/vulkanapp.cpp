@@ -184,8 +184,8 @@ void VulkanApp::recordCommandBuffer(VkFramebuffer framebuffer)
         modelTransform = glm::mat4();
         triPipeline->setPushConstant(commandBuffer, &modelTransform, sizeof(glm::mat4));
 
-        bind(commandBuffer, {positionBuffer.get(), normalBuffer.get()});
-        indexBuffer->bind(commandBuffer);
+        //bind(commandBuffer, {positionBuffer.get(), normalBuffer.get()});
+        //indexBuffer->bind(commandBuffer);
 
         auto bufferInfo = vk::DescriptorBufferInfo(cameraBuffers[currentFrame]->buffer, 0, sizeof(CameraMatrices));
 

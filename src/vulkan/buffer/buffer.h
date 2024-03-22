@@ -26,10 +26,11 @@ public:
 
     void destroy();
 
+    void setIndexType(vk::IndexType type);
+    std::optional<vk::IndexType> getIndexType();
+
     vk::Buffer buffer;
     vk::BufferCreateInfo info;
-
-    friend class GLTFLoader;
 };
 
 // binds sequentially in order

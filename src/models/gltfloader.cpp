@@ -146,7 +146,7 @@ uPtr<Buffer> GLTFLoader::getBuffer(BufferFactory &bufferFactory, tinygltf::Model
                 vBuffer = bufferFactory.createBuffer(count * sizeof(uint16_t), flag,
                                                      VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
                 vBuffer->fill(&buffer.data[0] + bufferView.byteOffset + accessor.byteOffset);
-                vBuffer->indexType = vk::IndexType::eUint16;
+                vBuffer->setIndexType(vk::IndexType::eUint16);
             }
             else if (accessor.componentType == TINYGLTF_PARAMETER_TYPE_UNSIGNED_INT)
             {
@@ -154,7 +154,7 @@ uPtr<Buffer> GLTFLoader::getBuffer(BufferFactory &bufferFactory, tinygltf::Model
                 vBuffer = bufferFactory.createBuffer(count * sizeof(uint32_t), flag,
                                                      VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
                 vBuffer->fill(&buffer.data[0] + bufferView.byteOffset + accessor.byteOffset);
-                vBuffer->indexType = vk::IndexType::eUint32;
+                vBuffer->setIndexType(vk::IndexType::eUint32);
             }
             else
             {
