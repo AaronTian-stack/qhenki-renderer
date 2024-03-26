@@ -25,8 +25,6 @@ public:
     void create(VulkanContext &context);
 
     uPtr<Buffer> createBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage, VmaAllocationCreateFlagBits flags = static_cast<VmaAllocationCreateFlagBits>(0));
-    ImageAndImageView createImageAndImageView(vk::Format format, vk::Extent3D extent,
-                                              vk::ImageUsageFlags imageUsage, vk::ImageAspectFlags aspectFlags);
     uPtr<FrameBufferAttachment> createAttachment(vk::Format format, vk::Extent3D extent,
                                                  vk::ImageUsageFlags imageUsage, vk::ImageAspectFlags aspectFlags);
     uPtr<Texture> createTexture(CommandPool &commandPool, QueueManager queueManager,

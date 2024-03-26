@@ -1,6 +1,6 @@
 #include "descriptorbuilder.h"
 
-DescriptorBuilder DescriptorBuilder::begin(DescriptorLayoutCache *layoutCache, DescriptorAllocator *allocator)
+DescriptorBuilder DescriptorBuilder::beginSet(DescriptorLayoutCache *layoutCache, DescriptorAllocator *allocator)
 {
     DescriptorBuilder builder;
     builder.cache = layoutCache;

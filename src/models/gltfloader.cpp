@@ -120,12 +120,13 @@ void GLTFLoader::processNode(BufferFactory &bufferFactory, tinygltf::Model &gltf
                 if (primitive.attributes.count(type.first) == 0)
                     continue;
 
-                auto vBuffer = getBuffer(bufferFactory, gltfModel, primitive, primitive.attributes.at(type.first), vk::BufferUsageFlagBits::eVertexBuffer);
+                size_t vertexSize = type.second == VertexBufferType::UV ? sizeof(glm::vec2) : sizeof(glm::vec3);
+                auto vBuffer = getBuffer(bufferFactory, gltfModel, primitive.attributes.at(type.first), vk::BufferUsageFlagBits::eVertexBuffer, vertexSize);
                 mesh->vertexBuffers.emplace_back(std::move(vBuffer), type.second);
             }
 
             // extract index data
-            mesh->indexBuffer = getBuffer(bufferFactory, gltfModel, primitive, primitive.indices, vk::BufferUsageFlagBits::eIndexBuffer);
+            mesh->indexBuffer = getBuffer(bufferFactory, gltfModel, primitive.indices, vk::BufferUsageFlagBits::eIndexBuffer, 0);
 
             model->meshes.push_back(std::move(mesh));
             node->mesh = model->meshes.back().get();
@@ -139,8 +140,8 @@ void GLTFLoader::processNode(BufferFactory &bufferFactory, tinygltf::Model &gltf
     }
 }
 
-uPtr<Buffer> GLTFLoader::getBuffer(BufferFactory &bufferFactory, tinygltf::Model &gltfModel, const tinygltf::Primitive &primitive,
-                           int type, vk::BufferUsageFlagBits flag)
+uPtr<Buffer> GLTFLoader::getBuffer(BufferFactory &bufferFactory, tinygltf::Model &gltfModel,
+                           int type, vk::BufferUsageFlagBits flag, size_t vertexSize)
 {
     const tinygltf::Accessor &accessor = gltfModel.accessors[type];
     const tinygltf::BufferView &bufferView = gltfModel.bufferViews[accessor.bufferView];
@@ -151,7 +152,7 @@ uPtr<Buffer> GLTFLoader::getBuffer(BufferFactory &bufferFactory, tinygltf::Model
 
     switch (flag) {
         case vk::BufferUsageFlagBits::eVertexBuffer:
-            vBuffer = bufferFactory.createBuffer(count * sizeof(glm::vec3), flag,
+            vBuffer = bufferFactory.createBuffer(count * vertexSize, flag,
                                                  VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
             vBuffer->fill(&buffer.data[0] + bufferView.byteOffset + accessor.byteOffset);
             break;

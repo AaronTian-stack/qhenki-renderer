@@ -17,6 +17,9 @@ private:
     std::optional<vk::IndexType> indexType;
 
 public:
+    const vk::Buffer buffer;
+    const vk::BufferCreateInfo info;
+
     Buffer(vk::Buffer buffer, vk::BufferCreateInfo info, VmaAllocation allocation, VmaAllocator allocator, bool persistent);
 
     void fill(const void *data);
@@ -29,8 +32,7 @@ public:
     void setIndexType(vk::IndexType type);
     std::optional<vk::IndexType> getIndexType();
 
-    vk::Buffer buffer;
-    vk::BufferCreateInfo info;
+    vk::DescriptorBufferInfo getDescriptorInfo();
 };
 
 // binds sequentially in order

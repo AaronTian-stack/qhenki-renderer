@@ -73,6 +73,11 @@ std::optional<vk::IndexType> Buffer::getIndexType()
     return indexType;
 }
 
+vk::DescriptorBufferInfo Buffer::getDescriptorInfo()
+{
+    return {buffer, 0, info.size};
+}
+
 void bind(vk::CommandBuffer commandBuffer, const std::vector<Buffer*> &buffers)
 {
     for (auto &buffer : buffers)

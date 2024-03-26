@@ -30,6 +30,9 @@ VulkanApp::~VulkanApp()
     depthBuffer->destroy();
 
     model->destroy();
+
+    texture->destroy();
+
     //buffer->destroy();
     positionBuffer->destroy();
     normalBuffer->destroy();
@@ -75,7 +78,7 @@ void VulkanApp::create(Window &window)
     shader1 = mkU<Shader>(device, "pathtrace_vert.spv", "pathtrace_frag.spv");
     shader2 = mkU<Shader>(device, "tri_vert.spv", "tri_frag.spv");
 
-    pipelineFactory.parseFragmentShader("pathtrace_frag.spv");
+    pipelineFactory.parseFragmentShader("pathtrace_frag.spv", layoutCache);
 
     pathPipeline = pipelineFactory.buildPipeline(renderPass.get(), shader1.get());
 
@@ -120,9 +123,11 @@ void VulkanApp::create(Window &window)
 
     pipelineFactory.reset();
 
-    pipelineFactory.addVertexInputBinding({0, sizeof(glm::vec3), vk::VertexInputRate::eVertex});
-    pipelineFactory.addVertexInputBinding({1, sizeof(glm::vec3), vk::VertexInputRate::eVertex});
+    pipelineFactory.addVertexInputBinding({0, sizeof(glm::vec3), vk::VertexInputRate::eVertex}); // position
+    pipelineFactory.addVertexInputBinding({1, sizeof(glm::vec3), vk::VertexInputRate::eVertex}); // normal
+    pipelineFactory.addVertexInputBinding({2, sizeof(glm::vec2), vk::VertexInputRate::eVertex}); // uv
     pipelineFactory.parseVertexShader("tri_vert.spv", layoutCache, false);
+    pipelineFactory.parseFragmentShader("tri_frag.spv", layoutCache);
     //// END VERTEX INPUT
     pipelineFactory.getRasterizer().setCullMode(vk::CullModeFlagBits::eBack);
     triPipeline = pipelineFactory.buildPipeline(renderPass.get(), shader2.get());
@@ -141,13 +146,15 @@ void VulkanApp::create(Window &window)
         allocators.emplace_back(vulkanContext.device.logicalDevice);
     }
 
-    model = GLTFLoader::load(bufferFactory, "higokumaru.glb");
+    model = GLTFLoader::load(bufferFactory, "BoxTextured.glb");
 
     // dummy texture
     uint32_t white = 0xFFFFFFFF;
 
-    bufferFactory.createTexture(commandPool, vulkanContext.queueManager,
-            vk::Format::eR8G8B8A8Srgb, {1, 1, 1}, vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled, vk::ImageAspectFlagBits::eColor, &white);
+    texture = bufferFactory.createTexture(commandPool, vulkanContext.queueManager,
+            vk::Format::eR8G8B8A8Srgb, {1, 1, 1},
+            vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled,
+            vk::ImageAspectFlagBits::eColor, &white);
 }
 
 void VulkanApp::recordCommandBuffer(vk::Framebuffer framebuffer)
@@ -184,17 +191,25 @@ void VulkanApp::recordCommandBuffer(vk::Framebuffer framebuffer)
         //bind(commandBuffer, {positionBuffer.get(), normalBuffer.get()});
         //indexBuffer->bind(commandBuffer);
 
-        auto bufferInfo = vk::DescriptorBufferInfo(cameraBuffers[currentFrame]->buffer, 0, sizeof(CameraMatrices));
+        auto bufferInfo = cameraBuffers[currentFrame]->getDescriptorInfo();
+        auto textureInfo = texture->getDescriptorInfo();
 
         auto &allocator = allocators[currentFrame];
         allocator.resetPools();
-        vk::DescriptorSet globalSet;
+        vk::DescriptorSet cameraSet;
         vk::DescriptorSetLayout layout;
-        DescriptorBuilder::begin(&layoutCache, &allocator)
+        // build set by set...
+        DescriptorBuilder::beginSet(&layoutCache, &allocator)
                 .bindBuffer(0, &bufferInfo, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eVertex)
-                .build(globalSet, layout);
+                .build(cameraSet, layout);
 
-        primaryCommandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipeline->getPipelineLayout(), 0, {globalSet}, nullptr);
+        vk::DescriptorSet samplerSet;
+        DescriptorBuilder::beginSet(&layoutCache, &allocator)
+                .bindImage(0, &textureInfo, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eFragment)
+                .build(samplerSet, layout);
+
+        primaryCommandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipeline->getPipelineLayout(), 0, {cameraSet, samplerSet}, nullptr);
+
         //commandBuffer.drawIndexed(6, 1, 0, 0, 0);
 
 //        modelTransform = glm::translate(glm::mat4(), glm::vec3(0.f, 0.f, -1.f));

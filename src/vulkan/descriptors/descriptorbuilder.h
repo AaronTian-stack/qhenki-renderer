@@ -13,7 +13,7 @@ private:
     DescriptorAllocator *alloc;
     
 public:
-    static DescriptorBuilder begin(DescriptorLayoutCache *layoutCache, DescriptorAllocator *allocator);
+    static DescriptorBuilder beginSet(DescriptorLayoutCache *layoutCache, DescriptorAllocator *allocator);
 
     DescriptorBuilder& bindBuffer(uint32_t binding, vk::DescriptorBufferInfo *bufferInfo, vk::DescriptorType type, vk::ShaderStageFlags stageFlags);
 

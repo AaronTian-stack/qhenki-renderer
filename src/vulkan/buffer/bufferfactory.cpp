@@ -74,8 +74,9 @@ vk::ImageViewCreateInfo BufferFactory::imageViewInfo(vk::Image image, vk::Format
     return info;
 }
 
-ImageAndImageView BufferFactory::createImageAndImageView(vk::Format format, vk::Extent3D extent, vk::ImageUsageFlags imageUsage,
-                                                         vk::ImageAspectFlags aspectFlags)
+uPtr<FrameBufferAttachment> BufferFactory::createAttachment(
+    vk::Format format, vk::Extent3D extent,
+    vk::ImageUsageFlags imageUsage, vk::ImageAspectFlags aspectFlags)
 {
     // extent: resolution ie 1280,720,1
     // usage: ex eDepthStencil
@@ -95,15 +96,7 @@ ImageAndImageView BufferFactory::createImageAndImageView(vk::Format format, vk::
     if (result != vk::Result::eSuccess)
         throw std::runtime_error("failed to create image view");
 
-    return {image, imageView, allocation};
-}
-
-uPtr<FrameBufferAttachment> BufferFactory::createAttachment(
-    vk::Format format, vk::Extent3D extent,
-    vk::ImageUsageFlags imageUsage, vk::ImageAspectFlags aspectFlags)
-{
-    auto im = createImageAndImageView(format, extent, imageUsage, aspectFlags);
-    return mkU<FrameBufferAttachment>(device, allocator, im.allocation, im.image, im.imageView, format);
+    return mkU<FrameBufferAttachment>(device, allocator, allocation, image, imageView, format);
 }
 
 uPtr<Texture> BufferFactory::createTexture(CommandPool &commandPool, QueueManager queueManager,
@@ -112,6 +105,8 @@ uPtr<Texture> BufferFactory::createTexture(CommandPool &commandPool, QueueManage
 {
     auto texture = mkU<Texture>(createAttachment(format, extent, imageUsage, aspectFlags));
     texture->attachment->create(this->device);
+    texture->create(this->device);
+    texture->createSampler();
 
     // copy data to buffer
     auto stagingBuffer = createBuffer(

@@ -12,11 +12,12 @@ private:
     {
         {"POSITION", VertexBufferType::POSITION},
         {"NORMAL", VertexBufferType::NORMAL},
-        {"COLOR", VertexBufferType::COLOR}
+        {"COLOR", VertexBufferType::COLOR},
+        {"TEXCOORD_0", VertexBufferType::UV}
     };
     static void processNode(BufferFactory &bufferFactory, tinygltf::Model &gltfModel, Model *model, Node *parent, int nodeIndex);
-    static uPtr<Buffer> getBuffer(BufferFactory &bufferFactory, tinygltf::Model &gltfModel, const tinygltf::Primitive &primitive,
-                          int type, vk::BufferUsageFlagBits flag);
+    static uPtr<Buffer> getBuffer(BufferFactory &bufferFactory, tinygltf::Model &gltfModel,
+                          int type, vk::BufferUsageFlagBits flag, size_t vertexSize);
 
 public:
     static uPtr<Model> load(BufferFactory &bufferFactory, const char* filename);

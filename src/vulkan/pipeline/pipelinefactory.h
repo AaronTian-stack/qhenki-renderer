@@ -30,6 +30,7 @@ private:
     vk::PipelineColorBlendAttachmentState colorBlendAttachment{}; // you would make one of these for each attachment (specified in render pass)
     vk::PipelineColorBlendStateCreateInfo colorBlending{};
 
+    std::unordered_map<uint32_t, std::pair<std::vector<vk::DescriptorSetLayoutBinding>, bool>> bindingsMap;
     std::vector<vk::DescriptorSetLayout> descriptorSetLayouts;
 
     vk::PipelineLayoutCreateInfo pipelineLayoutInfo{}; // TODO: add way to change this
@@ -48,8 +49,12 @@ public:
 
     void parseShader(const char *filePath1, const char *filePath2);
 
+    void processPushConstants(spirv_cross::CompilerGLSL &glsl, spirv_cross::ShaderResources &resources);
+
+    void updateDescriptorSetLayouts(DescriptorLayoutCache &layoutCache);
     void parseVertexShader(const char *filePath, DescriptorLayoutCache &layoutCache, bool interleaved);
-    void parseFragmentShader(const char *filePath);
+
+    void parseFragmentShader(const char *filePath, DescriptorLayoutCache &layoutCache);
 
     // buffer
     void addVertexInputBinding(vk::VertexInputBindingDescription binding);

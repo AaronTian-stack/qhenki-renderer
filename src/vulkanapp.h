@@ -31,6 +31,8 @@ private:
     uPtr<Buffer> normalBuffer;
     uPtr<Buffer> indexBuffer;
 
+    uPtr<Texture> texture;
+
     uPtr<FrameBufferAttachment> depthBuffer;
 
     GLTFLoader gltfLoad;
