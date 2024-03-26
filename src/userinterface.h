@@ -6,6 +6,7 @@
 #include "vulkan/queuemanager.h"
 #include "vulkan/commandpool.h"
 #include "vulkan/context/vulkancontext.h"
+#include "camera.h"
 
 struct ImGuiCreateParameters
 {
@@ -22,6 +23,7 @@ private:
     VkDescriptorPool imguiPool;
     void renderMenuBar();
     bool optionsOpen = false;
+    bool cameraOptionsOpen = false;
 
 public:
     UserInterface();

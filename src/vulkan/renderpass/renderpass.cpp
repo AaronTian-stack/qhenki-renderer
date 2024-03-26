@@ -29,6 +29,7 @@ void RenderPass::begin(vk::CommandBuffer commandBuffer)
     renderPassBeginInfo.renderArea.offset = vk::Offset2D{0, 0};
 
     // set up the command buffer for this render pass
+    // command buffers are tied to render pass. consider using secondary command buffers
     commandBuffer.beginRenderPass(&renderPassBeginInfo, vk::SubpassContents::eInline);
     currentCommandBuffer = commandBuffer;
 }

@@ -17,8 +17,8 @@ public:
     void create(Device &device);
     void destroy() override;
 
-    vk::CommandBuffer createCommandBuffer();
-    vk::CommandBuffer createCommandBuffer(const char* name);
+    vk::CommandBuffer createCommandBuffer(vk::CommandBufferLevel level = vk::CommandBufferLevel::ePrimary);
+    vk::CommandBuffer createCommandBuffer(const char* name, vk::CommandBufferLevel level);
     vk::CommandBuffer getCommandBuffer(const char* name);
 
     vk::CommandBuffer beginSingleCommand();

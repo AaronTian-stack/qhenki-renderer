@@ -4,6 +4,7 @@
 #include <vulkan/vulkan.h>
 #include <iterator>
 #include <filesystem>
+#include "inputprocesser.h"
 
 UserInterface::UserInterface() {}
 
@@ -109,9 +110,14 @@ void UserInterface::render()
                      0.f, 0.05f, ImVec2(0, 20));
 
     ImGui::Separator();
-    if (ImGui::Button("Options"))
+    if (ImGui::Button("Visual Options"))
     {
         optionsOpen = true;
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("Camera Options"))
+    {
+        cameraOptionsOpen = true;
     }
 
     if (optionsOpen)
@@ -121,12 +127,20 @@ void UserInterface::render()
         ImGui::End();
     }
 
+    if (cameraOptionsOpen)
+    {
+        ImGui::Begin("Camera Options", &cameraOptionsOpen, ImGuiWindowFlags_AlwaysAutoResize);
+        ImGui::SliderFloat("Rotate Sensitivity", &InputProcesser::SENSITIVITY_ROTATE, 0.0f, 0.5f);
+        ImGui::SliderFloat("Translate Sensitivity", &InputProcesser::SENSITIVITY_TRANSLATE, 0.0f, 0.5f);
+        ImGui::End();
+    }
+
     renderMenuBar();
 
     ImGui::SetNextWindowPos(ImVec2(ImGui::GetIO().DisplaySize.x, y), 0, ImVec2(1.0f, 0));
     ImGui::Begin("Visual Options", nullptr, flags);
     if (ImGui::Combo("Shader", &currentShaderIndex,
-                     "Triangle\0Pathtrace\0"))
+                     "PBR\0Pathtrace\0"))
     {
 
     }

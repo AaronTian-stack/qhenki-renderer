@@ -20,9 +20,7 @@ void Node::draw(vk::CommandBuffer commandBuffer, Pipeline &pipeline, Node &node)
 
 glm::mat4 Node::getLocalTransform()
 {
-
     return glm::translate(glm::mat4(), translate) *
-
         glm::mat4_cast(rotation) *
         glm::scale(glm::mat4(), scale);
 }

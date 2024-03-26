@@ -26,9 +26,10 @@ const vec3[] colors = {
 
 void main()
 {
-    gl_Position = ubo.viewProj * modelTransform.matrix * vec4(inPosition, 1.0);
+    vec4 worldPos = modelTransform.matrix * vec4(inPosition, 1.0);
+    gl_Position = ubo.viewProj * worldPos;
     fragPos = inPosition;
     normal = transpose(inverse(mat3(modelTransform.matrix))) * inNormal;
     fragColor = colors[0];
-    lightV = ubo.position.xyz - inPosition;
+    lightV = ubo.position.xyz - worldPos.xyz;
 }

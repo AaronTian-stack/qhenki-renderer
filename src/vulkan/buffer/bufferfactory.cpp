@@ -39,8 +39,9 @@ void BufferFactory::destroy()
     vmaDestroyAllocator(allocator);
 }
 
-vk::ImageCreateInfo BufferFactory::imageInfo(vk::Format format, vk::Extent3D extent, vk::ImageUsageFlagBits usage)
+vk::ImageCreateInfo BufferFactory::imageInfo(vk::Format format, vk::Extent3D extent, vk::ImageUsageFlags usage)
 {
+    // TODO: mip levels
     vk::ImageCreateInfo info = {
             vk::ImageCreateFlags(),
             vk::ImageType::e2D,
@@ -51,6 +52,7 @@ vk::ImageCreateInfo BufferFactory::imageInfo(vk::Format format, vk::Extent3D ext
             vk::SampleCountFlagBits::e1,
             vk::ImageTiling::eOptimal,
             usage,
+            vk::SharingMode::eExclusive,
     };
     return info;
 }
@@ -72,19 +74,12 @@ vk::ImageViewCreateInfo BufferFactory::imageViewInfo(vk::Image image, vk::Format
     return info;
 }
 
-uPtr<FrameBufferAttachment> BufferFactory::createAttachment(
-    vk::Format format, vk::Extent3D extent,
-    vk::ImageUsageFlagBits imageUsage, vk::ImageAspectFlagBits aspectFlags)
+ImageAndImageView BufferFactory::createImageAndImageView(vk::Format format, vk::Extent3D extent, vk::ImageUsageFlags imageUsage,
+                                                         vk::ImageAspectFlags aspectFlags)
 {
-    /*vk::Extent3D depthImageExtent = {
-            1280,
-            720,
-            1
-    };
-    vk::Format format = vk::Format::eD32Sfloat;
-     vk::ImageUsageFlagBits imageUsage = vk::ImageUsageFlagBits::eDepthStencilAttachment
-     vk::ImageAspectFlagBits aspectFlags = vk::ImageAspectFlagBits::eDepth;
-     */
+    // extent: resolution ie 1280,720,1
+    // usage: ex eDepthStencil
+    // aspectFlags: ex eDepth
 
     vk::Image image;
     auto imageCreateInfo = imageInfo(format, extent, imageUsage);
@@ -92,7 +87,7 @@ uPtr<FrameBufferAttachment> BufferFactory::createAttachment(
     VmaAllocationCreateInfo allocationCreateInfo{};
     allocationCreateInfo.usage = VMA_MEMORY_USAGE_AUTO;
     VmaAllocation allocation;
-    vmaCreateImage(allocator, (VkImageCreateInfo *) &imageCreateInfo, &allocationCreateInfo, (VkImage *) &image, &allocation, nullptr);
+    vmaCreateImage(allocator, (VkImageCreateInfo*) &imageCreateInfo, &allocationCreateInfo, (VkImage*) &image, &allocation, nullptr);
 
     vk::ImageView imageView;
     auto imageViewCreateInfo = imageViewInfo(image, format, aspectFlags);
@@ -100,6 +95,63 @@ uPtr<FrameBufferAttachment> BufferFactory::createAttachment(
     if (result != vk::Result::eSuccess)
         throw std::runtime_error("failed to create image view");
 
-    return mkU<FrameBufferAttachment>(device, allocator, allocation, image, imageView, format);
+    return {image, imageView, allocation};
 }
 
+uPtr<FrameBufferAttachment> BufferFactory::createAttachment(
+    vk::Format format, vk::Extent3D extent,
+    vk::ImageUsageFlags imageUsage, vk::ImageAspectFlags aspectFlags)
+{
+    auto im = createImageAndImageView(format, extent, imageUsage, aspectFlags);
+    return mkU<FrameBufferAttachment>(device, allocator, im.allocation, im.image, im.imageView, format);
+}
+
+uPtr<Texture> BufferFactory::createTexture(CommandPool &commandPool, QueueManager queueManager,
+                                  vk::Format format, vk::Extent3D extent, vk::Flags<vk::ImageUsageFlagBits> imageUsage,
+                                  vk::Flags<vk::ImageAspectFlagBits> aspectFlags, void *data)
+{
+    auto texture = mkU<Texture>(createAttachment(format, extent, imageUsage, aspectFlags));
+    texture->attachment->create(this->device);
+
+    // copy data to buffer
+    auto stagingBuffer = createBuffer(
+            extent.width * extent.height * extent.depth * 4, // TODO: check this
+            vk::BufferUsageFlagBits::eTransferSrc,
+            VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
+
+    stagingBuffer->fill(data);
+
+    texture->transitionImageLayout(
+            vk::ImageLayout::eUndefined,
+            vk::ImageLayout::eTransferDstOptimal,
+            commandPool,
+            queueManager);
+
+    // vk cmd copy to buffer
+    auto commandBuffer = commandPool.beginSingleCommand();
+    vk::BufferImageCopy region = {};
+    region.bufferOffset = 0;
+    region.bufferRowLength = 0;
+    region.bufferImageHeight = 0;
+
+    region.imageSubresource.aspectMask = vk::ImageAspectFlagBits::eColor;
+    region.imageSubresource.mipLevel = 0;
+    region.imageSubresource.baseArrayLayer = 0;
+    region.imageSubresource.layerCount = 1;
+    region.imageExtent = extent;
+
+    commandBuffer.copyBufferToImage(stagingBuffer->buffer, texture->attachment->image, vk::ImageLayout::eTransferDstOptimal, 1, &region);
+    commandBuffer.end();
+    // sequential is not the greatest way to do this
+    commandPool.submitSingleTimeCommands(queueManager, {commandBuffer});
+
+    stagingBuffer->destroy();
+
+    texture->transitionImageLayout(
+            vk::ImageLayout::eTransferDstOptimal,
+            vk::ImageLayout::eShaderReadOnlyOptimal,
+            commandPool,
+            queueManager);
+
+    return texture;
+}

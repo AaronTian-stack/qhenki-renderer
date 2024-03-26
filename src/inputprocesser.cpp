@@ -1,6 +1,5 @@
 #include "inputprocesser.h"
 #include "camera.h"
-#include <iostream>
 
 void InputProcesser::mouse_button_callback(GLFWwindow *window, int button, int action, int mods)
 {

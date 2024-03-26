@@ -25,6 +25,8 @@ class VulkanApp
 private:
     uPtr<Model> model;
     //uPtr<Buffer> buffer;
+
+    //// DEBUG BUFFERS
     uPtr<Buffer> positionBuffer;
     uPtr<Buffer> normalBuffer;
     uPtr<Buffer> indexBuffer;
@@ -69,7 +71,7 @@ public:
 
     void handleInput();
     void updateCameraBuffer();
-    void recordCommandBuffer(VkFramebuffer framebuffer); // TODO: NEED TO DELETE THIS LATER
+    void recordCommandBuffer(vk::Framebuffer framebuffer); // TODO: NEED TO DELETE THIS LATER
 
     UserInterface *ui;
     ImGuiCreateParameters getImGuiCreateParameters();

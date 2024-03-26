@@ -7,8 +7,7 @@
 #include <iostream>
 #include "gltfloader.h"
 #include "glm/vec3.hpp"
-#include "glm/gtc/type_ptr.hpp"
-#include "glm/gtx/transform.hpp"
+#include <glm/gtx/matrix_decompose.hpp>
 
 uPtr<Model> GLTFLoader::load(BufferFactory &bufferFactory, const char* filename)
 {
@@ -34,13 +33,8 @@ uPtr<Model> GLTFLoader::load(BufferFactory &bufferFactory, const char* filename)
     }
 
     uPtr<Model> model = mkU<Model>();
-    // assume the root node is the scene
-    //int rootNodeIndex = gltfModel.defaultScene >= 0 ? gltfModel.defaultScene : 0;
-    int rootNodeIndex = gltfModel.scenes[gltfModel.defaultScene].nodes[0];
 
-//    glm::quat quaternion(gltfModel.nodes[rootNodeIndex].rotation[0], gltfModel.nodes[rootNodeIndex].rotation[1],
-//                         gltfModel.nodes[rootNodeIndex].rotation[2], gltfModel.nodes[rootNodeIndex].rotation[3]);
-//    model->transform = glm::mat4_cast(quaternion);
+    int rootNodeIndex = gltfModel.scenes[gltfModel.defaultScene].nodes[0];
 
     processNode(bufferFactory, gltfModel, model.get(), nullptr, rootNodeIndex);
 
@@ -66,21 +60,44 @@ void GLTFLoader::processNode(BufferFactory &bufferFactory, tinygltf::Model &gltf
     node->name = gltfNode.name;
 
     // set node transform
-    if (!gltfNode.scale.empty())
+    if (gltfNode.scale.empty() && gltfNode.rotation.empty() && gltfNode.translation.empty() && gltfNode.matrix.size() == 16)
     {
-        auto &scale = gltfNode.scale;
-        node->scale = {scale[0], scale[1], scale[2]};
+        auto &m = gltfNode.matrix;
+        glm::mat4 transformation = {
+                m[0], m[1], m[2], m[3],
+                m[4], m[5], m[6], m[7],
+                m[8], m[9], m[10], m[11],
+                m[12], m[13], m[14], m[15]
+        };
+        glm::vec3 scale;
+        glm::quat rotation;
+        glm::vec3 translation;
+        glm::vec3 skew;
+        glm::vec4 perspective;
+        glm::decompose(transformation, scale, rotation, translation, skew, perspective);
+
+        node->scale = scale;
+        node->rotation = glm::conjugate(rotation);
+        node->translate = translation;
     }
-    if (!gltfNode.rotation.empty())
+    else
     {
-        auto &rot = gltfNode.rotation;
-        auto q = glm::dquat(rot[3], rot[0], rot[1], rot[2]);
-        node->rotation = q;
-    }
-    if (!gltfNode.translation.empty())
-    {
-        auto &trans = gltfNode.translation;
-        node->translate = {trans[0], trans[1], trans[2]};
+        if (!gltfNode.scale.empty())
+        {
+            auto &scale = gltfNode.scale;
+            node->scale = {scale[0], scale[1], scale[2]};
+        }
+        if (!gltfNode.rotation.empty())
+        {
+            auto &rot = gltfNode.rotation;
+            auto q = glm::dquat(rot[3], rot[0], rot[1], rot[2]);
+            node->rotation = q;
+        }
+        if (!gltfNode.translation.empty())
+        {
+            auto &trans = gltfNode.translation;
+            node->translate = {trans[0], trans[1], trans[2]};
+        }
     }
 
     if (gltfNode.mesh >= 0)

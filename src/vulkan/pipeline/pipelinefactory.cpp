@@ -311,3 +311,8 @@ std::pair<vk::Format, size_t> mapTypeToFormat(const spirv_cross::SPIRType &type)
 
 void PipelineBuilder::destroy()
 {}
+
+vk::PipelineRasterizationStateCreateInfo& PipelineBuilder::getRasterizer()
+{
+    return rasterizer;
+}

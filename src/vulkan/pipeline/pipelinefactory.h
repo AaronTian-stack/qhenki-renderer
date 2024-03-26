@@ -57,6 +57,8 @@ public:
     // attributes for buffer
     void addVertexInputAttribute(vk::VertexInputAttributeDescription attribute);
 
+    vk::PipelineRasterizationStateCreateInfo& getRasterizer();
+
     void reset();
 
     void destroy() override;

@@ -80,16 +80,6 @@ void VulkanApp::create(Window &window)
     pathPipeline = pipelineFactory.buildPipeline(renderPass.get(), shader1.get());
 
     //// VERTEX INPUT
-    /*struct Vertex {
-        glm::vec3 pos;
-        glm::vec3 color;
-    };
-    const std::vector<Vertex> vertices = {
-            {{-0.5f, -0.5f, 1.f}, {1.0f, 0.0f, 0.0f}},
-            {{0.5f, -0.5f, 0.f}, {0.0f, 1.0f, 0.0f}},
-            {{0.5f, 0.5f, 0.f}, {0.0f, 0.0f, 1.0f}},
-            {{-0.5f, 0.5f, 0.f}, {1.0f, 1.0f, 1.0f}}
-    };*/
     const std::vector<glm::vec3> positions = {
             {-0.5f, -0.5f, 1.f},
             {0.5f, -0.5f, 0.f},
@@ -134,7 +124,7 @@ void VulkanApp::create(Window &window)
     pipelineFactory.addVertexInputBinding({1, sizeof(glm::vec3), vk::VertexInputRate::eVertex});
     pipelineFactory.parseVertexShader("tri_vert.spv", layoutCache, false);
     //// END VERTEX INPUT
-
+    pipelineFactory.getRasterizer().setCullMode(vk::CullModeFlagBits::eBack);
     triPipeline = pipelineFactory.buildPipeline(renderPass.get(), shader2.get());
 
     vulkanContext.swapChain->createFramebuffers(renderPass->getRenderPass(), depthBuffer->imageView);
@@ -152,12 +142,19 @@ void VulkanApp::create(Window &window)
     }
 
     model = GLTFLoader::load(bufferFactory, "higokumaru.glb");
+
+    // dummy texture
+    uint32_t white = 0xFFFFFFFF;
+
+    bufferFactory.createTexture(commandPool, vulkanContext.queueManager,
+            vk::Format::eR8G8B8A8Srgb, {1, 1, 1}, vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled, vk::ImageAspectFlagBits::eColor, &white);
 }
 
-void VulkanApp::recordCommandBuffer(VkFramebuffer framebuffer)
+void VulkanApp::recordCommandBuffer(vk::Framebuffer framebuffer)
 {
+    // TODO: multi thread secondary command buffer recording
     auto &frame = frames[currentFrame];
-    auto commandBuffer = frame.commandBuffer;
+    auto primaryCommandBuffer = frame.commandBuffer;
     auto swapChainExtent = vulkanContext.swapChain->getExtent();
 
     updateCameraBuffer();
@@ -169,20 +166,20 @@ void VulkanApp::recordCommandBuffer(VkFramebuffer framebuffer)
     renderPass->setFramebuffer(framebuffer);
     renderPass->setRenderAreaExtent(swapChainExtent);
     renderPass->clear(ui->clearColor[0], ui->clearColor[1], ui->clearColor[2], 1.0f);
-    renderPass->begin(commandBuffer);
+    renderPass->begin(primaryCommandBuffer);
 
     auto pipeline = ui->currentShaderIndex == 1 ? pathPipeline.get() : triPipeline.get();
-    commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, pipeline->getGraphicsPipeline());
+    primaryCommandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, pipeline->getGraphicsPipeline());
     auto time = (float)glfwGetTime();
-    pathPipeline->setPushConstant(commandBuffer, &time, sizeof(float));
+    pathPipeline->setPushConstant(primaryCommandBuffer, &time, sizeof(float));
 
-    ScreenUtils::setViewport(commandBuffer, swapChainExtent.width, swapChainExtent.height);
-    ScreenUtils::setScissor(commandBuffer, swapChainExtent);
+    ScreenUtils::setViewport(primaryCommandBuffer, swapChainExtent.width, swapChainExtent.height);
+    ScreenUtils::setScissor(primaryCommandBuffer, swapChainExtent);
 
     if (pipeline == triPipeline.get())
     {
         modelTransform = glm::mat4();
-        triPipeline->setPushConstant(commandBuffer, &modelTransform, sizeof(glm::mat4));
+        triPipeline->setPushConstant(primaryCommandBuffer, &modelTransform, sizeof(glm::mat4));
 
         //bind(commandBuffer, {positionBuffer.get(), normalBuffer.get()});
         //indexBuffer->bind(commandBuffer);
@@ -197,7 +194,7 @@ void VulkanApp::recordCommandBuffer(VkFramebuffer framebuffer)
                 .bindBuffer(0, &bufferInfo, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eVertex)
                 .build(globalSet, layout);
 
-        commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipeline->getPipelineLayout(), 0, {globalSet}, nullptr);
+        primaryCommandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipeline->getPipelineLayout(), 0, {globalSet}, nullptr);
         //commandBuffer.drawIndexed(6, 1, 0, 0, 0);
 
 //        modelTransform = glm::translate(glm::mat4(), glm::vec3(0.f, 0.f, -1.f));
@@ -206,14 +203,14 @@ void VulkanApp::recordCommandBuffer(VkFramebuffer framebuffer)
 
         //triPipeline->setPushConstant(commandBuffer, &model->transform, sizeof(glm::mat4));
         //model->draw(commandBuffer);
-        model->root->draw(commandBuffer, *triPipeline, *model->root);
+        model->root->draw(primaryCommandBuffer, *triPipeline, *model->root);
     }
     else
-        commandBuffer.draw(3, 1, 0, 0);
+        primaryCommandBuffer.draw(3, 1, 0, 0);
 
     //// DRAW COMMAND(S)
 
-    ui->end(commandBuffer);
+    ui->end(primaryCommandBuffer);
 
     //// END RENDER PASS
     renderPass->end(); // ends the render pass with the command buffer given in .begin()

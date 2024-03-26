@@ -5,20 +5,33 @@
 #include "../context/vulkancontext.h"
 #include "buffer.h"
 #include "../../smartpointer.h"
+#include "../texture/texture.h"
+
+struct ImageAndImageView
+{
+    vk::Image image;
+    vk::ImageView imageView;
+    VmaAllocation allocation;
+};
 
 class BufferFactory : public Destroyable
 {
 private:
     VmaAllocator allocator;
-    static vk::ImageCreateInfo imageInfo(vk::Format format, vk::Extent3D extent, vk::ImageUsageFlagBits usage);
+    static vk::ImageCreateInfo imageInfo(vk::Format format, vk::Extent3D extent, vk::ImageUsageFlags usage);
     static vk::ImageViewCreateInfo imageViewInfo(vk::Image image, vk::Format format, vk::ImageAspectFlags aspectFlags);
 
 public:
     void create(VulkanContext &context);
 
     uPtr<Buffer> createBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage, VmaAllocationCreateFlagBits flags = static_cast<VmaAllocationCreateFlagBits>(0));
+    ImageAndImageView createImageAndImageView(vk::Format format, vk::Extent3D extent,
+                                              vk::ImageUsageFlags imageUsage, vk::ImageAspectFlags aspectFlags);
     uPtr<FrameBufferAttachment> createAttachment(vk::Format format, vk::Extent3D extent,
-                                                 vk::ImageUsageFlagBits imageUsage, vk::ImageAspectFlagBits aspectFlags);
+                                                 vk::ImageUsageFlags imageUsage, vk::ImageAspectFlags aspectFlags);
+    uPtr<Texture> createTexture(CommandPool &commandPool, QueueManager queueManager,
+                       vk::Format format, vk::Extent3D extent,
+                       vk::ImageUsageFlags imageUsage, vk::ImageAspectFlags aspectFlags, void *data);
 
     void destroy();
 };

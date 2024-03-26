@@ -8,7 +8,7 @@ struct CameraOptions
 {
     float fov = 45.0f;
     float nearClip = 0.1f;
-    float farClip = 100.0f;
+    float farClip = 1000.0f;
     float speed{};
     float zoom{};
 };
