@@ -99,14 +99,13 @@ uPtr<FrameBufferAttachment> BufferFactory::createAttachment(
     return mkU<FrameBufferAttachment>(device, allocator, allocation, image, imageView, format);
 }
 
-uPtr<Texture> BufferFactory::createTexture(CommandPool &commandPool, QueueManager queueManager,
-                                  vk::Format format, vk::Extent3D extent, vk::Flags<vk::ImageUsageFlagBits> imageUsage,
-                                  vk::Flags<vk::ImageAspectFlagBits> aspectFlags, void *data)
+uPtr<Image> BufferFactory::createTextureImage(CommandPool &commandPool, QueueManager &queueManager,
+                                              vk::Format format, vk::Extent3D extent, vk::Flags<vk::ImageUsageFlagBits> imageUsage,
+                                              vk::Flags<vk::ImageAspectFlagBits> aspectFlags, void *data)
 {
-    auto texture = mkU<Texture>(createAttachment(format, extent, imageUsage, aspectFlags));
+    auto texture = mkU<Image>(createAttachment(format, extent, imageUsage, aspectFlags));
     texture->attachment->create(this->device);
     texture->create(this->device);
-    texture->createSampler();
 
     // copy data to buffer
     auto stagingBuffer = createBuffer(
@@ -116,14 +115,14 @@ uPtr<Texture> BufferFactory::createTexture(CommandPool &commandPool, QueueManage
 
     stagingBuffer->fill(data);
 
-    texture->transitionImageLayout(
+    auto commandBuffer = commandPool.beginSingleCommand();
+
+    texture->recordTransitionImageLayout(
             vk::ImageLayout::eUndefined,
             vk::ImageLayout::eTransferDstOptimal,
-            commandPool,
-            queueManager);
+            commandBuffer);
 
     // vk cmd copy to buffer
-    auto commandBuffer = commandPool.beginSingleCommand();
     vk::BufferImageCopy region = {};
     region.bufferOffset = 0;
     region.bufferRowLength = 0;
@@ -136,17 +135,18 @@ uPtr<Texture> BufferFactory::createTexture(CommandPool &commandPool, QueueManage
     region.imageExtent = extent;
 
     commandBuffer.copyBufferToImage(stagingBuffer->buffer, texture->attachment->image, vk::ImageLayout::eTransferDstOptimal, 1, &region);
+
+    texture->recordTransitionImageLayout(
+            vk::ImageLayout::eTransferDstOptimal,
+            vk::ImageLayout::eShaderReadOnlyOptimal,
+            commandBuffer);
+
     commandBuffer.end();
-    // sequential is not the greatest way to do this
+
+    // TODO: could be changed to return the commandBuffer and the stating buffer, such that they can be executed at once and destroyed together
     commandPool.submitSingleTimeCommands(queueManager, {commandBuffer});
 
     stagingBuffer->destroy();
-
-    texture->transitionImageLayout(
-            vk::ImageLayout::eTransferDstOptimal,
-            vk::ImageLayout::eShaderReadOnlyOptimal,
-            commandPool,
-            queueManager);
 
     return texture;
 }

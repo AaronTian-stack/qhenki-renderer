@@ -1,23 +1,17 @@
 #pragma once
 
 #include "vulkan/vulkan.hpp"
-#include "../queuemanager.h"
-#include "../commandpool.h"
+#include "image.h"
 
 class Texture : public Destroyable
 {
-private:
-    uPtr<FrameBufferAttachment> attachment;
     vk::Sampler sampler = nullptr;
-    void createSampler();
+    Image *image;
 
 public:
-    Texture(uPtr<FrameBufferAttachment> attachment);
-
-    void transitionImageLayout(vk::ImageLayout oldLayout, vk::ImageLayout newLayout, CommandPool &commandPool, QueueManager &queueManager);
-
+    Texture(Image *image);
+    void createSampler();
+    void createSampler(vk::SamplerCreateInfo samplerInfo);
     vk::DescriptorImageInfo getDescriptorInfo();
     void destroy() override;
-
-    friend class BufferFactory;
 };

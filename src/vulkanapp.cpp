@@ -149,12 +149,14 @@ void VulkanApp::create(Window &window)
     model = GLTFLoader::load(bufferFactory, "BoxTextured.glb");
 
     // dummy texture
-    uint32_t white = 0xFFFFFFFF;
+    uint32_t white = 0xff48ff00;
 
-    texture = bufferFactory.createTexture(commandPool, vulkanContext.queueManager,
-            vk::Format::eR8G8B8A8Srgb, {1, 1, 1},
-            vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled,
-            vk::ImageAspectFlagBits::eColor, &white);
+    textureImage = bufferFactory.createTextureImage(commandPool, vulkanContext.queueManager,
+                                                    vk::Format::eR8G8B8A8Srgb, {1, 1, 1},
+                                               vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled,
+                                                    vk::ImageAspectFlagBits::eColor, &white);
+    texture = mkU<Texture>(textureImage.get());
+    texture->createSampler();
 }
 
 void VulkanApp::recordCommandBuffer(vk::Framebuffer framebuffer)

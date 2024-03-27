@@ -31,6 +31,7 @@ private:
     uPtr<Buffer> normalBuffer;
     uPtr<Buffer> indexBuffer;
 
+    uPtr<Image> textureImage;
     uPtr<Texture> texture;
 
     uPtr<FrameBufferAttachment> depthBuffer;

@@ -5,6 +5,7 @@
 #include "../context/vulkancontext.h"
 #include "buffer.h"
 #include "../../smartpointer.h"
+#include "../texture/image.h"
 #include "../texture/texture.h"
 
 struct ImageAndImageView
@@ -27,9 +28,11 @@ public:
     uPtr<Buffer> createBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage, VmaAllocationCreateFlagBits flags = static_cast<VmaAllocationCreateFlagBits>(0));
     uPtr<FrameBufferAttachment> createAttachment(vk::Format format, vk::Extent3D extent,
                                                  vk::ImageUsageFlags imageUsage, vk::ImageAspectFlags aspectFlags);
-    uPtr<Texture> createTexture(CommandPool &commandPool, QueueManager queueManager,
-                       vk::Format format, vk::Extent3D extent,
-                       vk::ImageUsageFlags imageUsage, vk::ImageAspectFlags aspectFlags, void *data);
+
+    uPtr<Image> createTextureImage(CommandPool &commandPool, QueueManager &queueManager,
+                                   vk::Format format, vk::Extent3D extent,
+                                   vk::Flags<vk::ImageUsageFlagBits> imageUsage, vk::Flags<vk::ImageAspectFlagBits> aspectFlags,
+                                   void *data);
 
     void destroy();
 };

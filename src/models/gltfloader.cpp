@@ -36,6 +36,7 @@ uPtr<Model> GLTFLoader::load(BufferFactory &bufferFactory, const char* filename)
 
     int rootNodeIndex = gltfModel.scenes[gltfModel.defaultScene].nodes[0];
 
+    //makeTextures(bufferFactory, gltfModel, model.get());
     processNode(bufferFactory, gltfModel, model.get(), nullptr, rootNodeIndex);
 
     return model;
@@ -157,7 +158,7 @@ uPtr<Buffer> GLTFLoader::getBuffer(BufferFactory &bufferFactory, tinygltf::Model
             vBuffer->fill(&buffer.data[0] + bufferView.byteOffset + accessor.byteOffset);
             break;
         case vk::BufferUsageFlagBits::eIndexBuffer:
-            // technically indices can come in different formats, might need to handle that
+            // handle different formats
             if (accessor.componentType == TINYGLTF_PARAMETER_TYPE_UNSIGNED_SHORT)
             {
                 // 16 bit
@@ -184,4 +185,78 @@ uPtr<Buffer> GLTFLoader::getBuffer(BufferFactory &bufferFactory, tinygltf::Model
             throw std::runtime_error("Invalid buffer usage flag");
     }
     return vBuffer;
+}
+
+void GLTFLoader::makeTextures(CommandPool &commandPool, QueueManager &queueManager, BufferFactory &bufferFactory, tinygltf::Model &gltfModel, Model *model)
+{
+    // make every single image in order
+    for (auto &image : gltfModel.images)
+    {
+        if (image.component != 4)
+        {
+            std::cerr << "Image component " << image.component << " not RGBA!" << std::endl;
+            throw std::runtime_error("Image component not supported");
+        }
+        auto imageTexture = bufferFactory.createTextureImage(commandPool, queueManager, vk::Format::eR8G8B8A8Unorm,
+                                                             {static_cast<uint32_t>(image.width),
+                                                              static_cast<uint32_t>(image.height), 1},
+                                                             vk::ImageUsageFlagBits::eTransferDst |
+                                                             vk::ImageUsageFlagBits::eSampled,
+                                                             vk::ImageAspectFlagBits::eColor,
+                                                             image.image.data());
+        model->images.push_back(std::move(imageTexture));
+    }
+
+    for (int i = 0; i < gltfModel.textures.size(); i++)
+    {
+        const tinygltf::Texture &texture = gltfModel.textures[i];
+        // a texture is an image and a sampler
+        const tinygltf::Sampler &sampler = gltfModel.samplers[texture.sampler];
+        vk::SamplerCreateInfo samplerInfo{};
+        switch(sampler.magFilter)
+        {
+            case TINYGLTF_TEXTURE_FILTER_NEAREST:
+                samplerInfo.magFilter = vk::Filter::eNearest;
+                break;
+            case TINYGLTF_TEXTURE_FILTER_LINEAR:
+                samplerInfo.magFilter = vk::Filter::eLinear;
+                break;
+            default:
+                std::cerr << "Mag filter " << sampler.magFilter << " not supported!" << std::endl;
+        }
+        switch(sampler.minFilter)
+        {
+            case TINYGLTF_TEXTURE_FILTER_NEAREST:
+                samplerInfo.minFilter = vk::Filter::eNearest;
+                break;
+            case TINYGLTF_TEXTURE_FILTER_LINEAR:
+                samplerInfo.minFilter = vk::Filter::eLinear;
+                break;
+            default:
+                std::cerr << "Min filter " << sampler.minFilter << " not supported!" << std::endl;
+        }
+        switch(sampler.wrapS)
+        {
+            case TINYGLTF_TEXTURE_WRAP_REPEAT:
+                samplerInfo.addressModeU = vk::SamplerAddressMode::eRepeat;
+                break;
+            case TINYGLTF_TEXTURE_WRAP_CLAMP_TO_EDGE:
+                samplerInfo.addressModeU = vk::SamplerAddressMode::eClampToEdge;
+                break;
+            default:
+                std::cerr << "Wrap S " << sampler.wrapS << " not supported!" << std::endl;
+        }
+        switch(sampler.wrapT)
+        {
+            case TINYGLTF_TEXTURE_WRAP_REPEAT:
+                samplerInfo.addressModeV = vk::SamplerAddressMode::eRepeat;
+                break;
+            case TINYGLTF_TEXTURE_WRAP_CLAMP_TO_EDGE:
+                samplerInfo.addressModeV = vk::SamplerAddressMode::eClampToEdge;
+                break;
+            default:
+                std::cerr << "Wrap T " << sampler.wrapT << " not supported!" << std::endl;
+        }
+        model->textures.emplace_back(mkU<Texture>(model->images[texture.source].get()));
+    }
 }

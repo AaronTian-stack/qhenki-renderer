@@ -16,7 +16,7 @@ void main()
     float dot = dot(normalize(lightV), normalize(normal));
     float diff = clamp(dot, 0.0, 1.0);
     //outColor = vec4((normal + vec3(1.0)) * 0.5, 1.0);
-    //outColor = vec4(clamp(fragColor * diff, vec3(0.0), vec3(1.0)), 1.0);
-    outColor = vec4(fragColor * diff, 1.0);
+    //outColor = vec4(fragUV, 0.0, 1.0);
+    //outColor = vec4(fragColor * diff, 1.0);
     outColor = vec4(texture(texSampler, fragUV).rgb, 1.0);
 }

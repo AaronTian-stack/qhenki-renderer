@@ -1,13 +1,13 @@
 #include "texture.h"
 
-Texture::Texture(std::unique_ptr<FrameBufferAttachment> attachment)
+Texture::Texture(Image *image) : Destroyable(image->device), image(image)
 {
-    this->attachment = std::move(attachment);
+    if (image == nullptr)
+        throw std::invalid_argument("image cannot be null");
 }
 
 void Texture::createSampler()
 {
-    // TODO: add options
     vk::SamplerCreateInfo samplerInfo{
             vk::SamplerCreateFlags(),
             vk::Filter::eLinear,
@@ -26,64 +26,20 @@ void Texture::createSampler()
             vk::BorderColor::eIntOpaqueBlack,
             VK_FALSE
     };
-    sampler = device.createSampler(samplerInfo);
+    createSampler(samplerInfo);
 }
 
-void Texture::transitionImageLayout(vk::ImageLayout oldLayout, vk::ImageLayout newLayout,
-                                    CommandPool &commandPool, QueueManager &queueManager)
+void Texture::createSampler(vk::SamplerCreateInfo samplerInfo)
 {
-    auto commandBuffer = commandPool.beginSingleCommand();
-
-    // TODO: mip levels
-    auto barrier = vk::ImageMemoryBarrier(
-            vk::AccessFlags(),
-            vk::AccessFlags(),
-            oldLayout,
-            newLayout,
-            VK_QUEUE_FAMILY_IGNORED,
-            VK_QUEUE_FAMILY_IGNORED,
-            attachment->image,
-            vk::ImageSubresourceRange(vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1)
-    );
-
-    vk::PipelineStageFlags sourceStage;
-    vk::PipelineStageFlags destinationStage;
-
-    if (oldLayout == vk::ImageLayout::eUndefined && newLayout == vk::ImageLayout::eTransferDstOptimal) {
-        // undefined -> transfer dst optimal
-        barrier.srcAccessMask = vk::AccessFlags();
-        barrier.dstAccessMask = vk::AccessFlagBits::eTransferWrite;
-
-        sourceStage = vk::PipelineStageFlagBits::eTopOfPipe;
-        destinationStage = vk::PipelineStageFlagBits::eTransfer;
-    }
-    else if (oldLayout == vk::ImageLayout::eTransferDstOptimal &&
-             newLayout == vk::ImageLayout::eShaderReadOnlyOptimal) {
-        // transfer dst optimal -> shader read only optimal
-        barrier.srcAccessMask = vk::AccessFlagBits::eTransferWrite;
-        barrier.dstAccessMask = vk::AccessFlagBits::eShaderRead;
-
-        sourceStage = vk::PipelineStageFlagBits::eTransfer;
-        destinationStage = vk::PipelineStageFlagBits::eFragmentShader;
-    }
-    else {
-        throw std::invalid_argument("unsupported layout transition!");
-    }
-
-    commandBuffer.pipelineBarrier(
-            sourceStage, destinationStage,
-            vk::DependencyFlags(),
-            nullptr, nullptr, barrier
-    );
-    commandBuffer.end();
-
-    commandPool.submitSingleTimeCommands(queueManager, {commandBuffer});
+    if (sampler != nullptr)
+        device.destroySampler(sampler);
+    sampler = device.createSampler(samplerInfo);
 }
 
 vk::DescriptorImageInfo Texture::getDescriptorInfo()
 {
     vk::DescriptorImageInfo info{};
-    info.imageView = attachment->imageView;
+    info.imageView = image->attachment->imageView;
     info.imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
     info.sampler = sampler;
     return info;
@@ -91,7 +47,7 @@ vk::DescriptorImageInfo Texture::getDescriptorInfo()
 
 void Texture::destroy()
 {
-    attachment->destroy();
+    image->destroy();
     if (sampler != nullptr)
         device.destroySampler(sampler);
 }
