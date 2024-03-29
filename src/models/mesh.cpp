@@ -1,6 +1,6 @@
 #include "mesh.h"
 
-Mesh::Mesh()
+Mesh::Mesh() : materialIndex(-1)
 {
 
 }

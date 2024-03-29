@@ -17,7 +17,8 @@ public:
 
     DescriptorBuilder& bindBuffer(uint32_t binding, vk::DescriptorBufferInfo *bufferInfo, vk::DescriptorType type, vk::ShaderStageFlags stageFlags);
 
-    DescriptorBuilder& bindImage(uint32_t binding, vk::DescriptorImageInfo *imageInfo, vk::DescriptorType type, vk::ShaderStageFlags stageFlags);
+    DescriptorBuilder &bindImage(uint32_t binding, std::vector<vk::DescriptorImageInfo> &imageInfos, uint32_t arraySize,
+                                 vk::DescriptorType type, vk::ShaderStageFlags stageFlags);
 
     bool build(vk::DescriptorSet &set, vk::DescriptorSetLayout &layout);
     bool build(vk::DescriptorSet &set);

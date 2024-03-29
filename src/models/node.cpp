@@ -9,7 +9,7 @@ void Node::draw(vk::CommandBuffer commandBuffer, Pipeline &pipeline, Node &node)
     auto wt = node.getWorldTransform();
     if (node.mesh)
     {
-        pipeline.setPushConstant(commandBuffer, &wt, sizeof(glm::mat4));
+        pipeline.setPushConstant(commandBuffer, &wt, sizeof(glm::mat4), 0);
         node.mesh->draw(commandBuffer);
     }
     for (auto &child : node.children)

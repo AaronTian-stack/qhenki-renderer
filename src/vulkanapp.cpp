@@ -78,7 +78,7 @@ void VulkanApp::create(Window &window)
     shader1 = mkU<Shader>(device, "pathtrace_vert.spv", "pathtrace_frag.spv");
     shader2 = mkU<Shader>(device, "tri_vert.spv", "tri_frag.spv");
 
-    pipelineFactory.parseFragmentShader("pathtrace_frag.spv", layoutCache);
+    pipelineFactory.parseShader("pathtrace_vert.spv", "pathtrace_frag.spv", layoutCache, false);
 
     pathPipeline = pipelineFactory.buildPipeline(renderPass.get(), shader1.get());
 
@@ -126,8 +126,7 @@ void VulkanApp::create(Window &window)
     pipelineFactory.addVertexInputBinding({0, sizeof(glm::vec3), vk::VertexInputRate::eVertex}); // position
     pipelineFactory.addVertexInputBinding({1, sizeof(glm::vec3), vk::VertexInputRate::eVertex}); // normal
     pipelineFactory.addVertexInputBinding({2, sizeof(glm::vec2), vk::VertexInputRate::eVertex}); // uv
-    pipelineFactory.parseVertexShader("tri_vert.spv", layoutCache, false);
-    pipelineFactory.parseFragmentShader("tri_frag.spv", layoutCache);
+    pipelineFactory.parseShader("tri_vert.spv", "tri_frag.spv", layoutCache, false);
     //// END VERTEX INPUT
     pipelineFactory.getRasterizer().setCullMode(vk::CullModeFlagBits::eBack);
     triPipeline = pipelineFactory.buildPipeline(renderPass.get(), shader2.get());
@@ -146,7 +145,7 @@ void VulkanApp::create(Window &window)
         allocators.emplace_back(vulkanContext.device.logicalDevice);
     }
 
-    model = GLTFLoader::load(bufferFactory, "BoxTextured.glb");
+    model = GLTFLoader::create(commandPool,  vulkanContext.queueManager, bufferFactory, "higokumaru.glb");
 
     // dummy texture
     uint32_t white = 0xff48ff00;
@@ -180,7 +179,7 @@ void VulkanApp::recordCommandBuffer(vk::Framebuffer framebuffer)
     auto pipeline = ui->currentShaderIndex == 1 ? pathPipeline.get() : triPipeline.get();
     primaryCommandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, pipeline->getGraphicsPipeline());
     auto time = (float)glfwGetTime();
-    pathPipeline->setPushConstant(primaryCommandBuffer, &time, sizeof(float));
+    pathPipeline->setPushConstant(primaryCommandBuffer, &time, sizeof(float), 0);
 
     ScreenUtils::setViewport(primaryCommandBuffer, swapChainExtent.width, swapChainExtent.height);
     ScreenUtils::setScissor(primaryCommandBuffer, swapChainExtent);
@@ -188,7 +187,7 @@ void VulkanApp::recordCommandBuffer(vk::Framebuffer framebuffer)
     if (pipeline == triPipeline.get())
     {
         modelTransform = glm::mat4();
-        triPipeline->setPushConstant(primaryCommandBuffer, &modelTransform, sizeof(glm::mat4));
+        triPipeline->setPushConstant(primaryCommandBuffer, &modelTransform, sizeof(glm::mat4), 0);
 
         //bind(commandBuffer, {positionBuffer.get(), normalBuffer.get()});
         //indexBuffer->bind(commandBuffer);
@@ -200,17 +199,22 @@ void VulkanApp::recordCommandBuffer(vk::Framebuffer framebuffer)
         allocator.resetPools();
         vk::DescriptorSet cameraSet;
         vk::DescriptorSetLayout layout;
-        // build set by set...
+        // build set by set... all the bindings must be updated / accounted for, but they're all part of the same set anyways
         DescriptorBuilder::beginSet(&layoutCache, &allocator)
                 .bindBuffer(0, &bufferInfo, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eVertex)
                 .build(cameraSet, layout);
 
+        //std::vector<vk::DescriptorImageInfo> imageInfos = {textureInfo, textureInfo};
+        // get image infos of al model textures
+        std::vector<vk::DescriptorImageInfo> imageInfos = model->getDescriptorImageInfo();
         vk::DescriptorSet samplerSet;
         DescriptorBuilder::beginSet(&layoutCache, &allocator)
-                .bindImage(0, &textureInfo, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eFragment)
+                .bindImage(0, imageInfos,
+                           16, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eFragment)
                 .build(samplerSet, layout);
 
-        primaryCommandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipeline->getPipelineLayout(), 0, {cameraSet, samplerSet}, nullptr);
+        primaryCommandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipeline->getPipelineLayout(),
+                                                0, {cameraSet, samplerSet}, nullptr);
 
         //commandBuffer.drawIndexed(6, 1, 0, 0, 0);
 

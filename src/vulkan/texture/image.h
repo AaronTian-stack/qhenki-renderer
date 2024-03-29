@@ -8,6 +8,7 @@ class Image : public Destroyable
 {
 private:
     uPtr<FrameBufferAttachment> attachment;
+    bool destroyed;
 
 public:
     Image(uPtr<FrameBufferAttachment> attachment);

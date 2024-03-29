@@ -16,6 +16,7 @@ class Mesh
 private:
     std::vector<std::pair<uPtr<Buffer>, VertexBufferType>> vertexBuffers;
     uPtr<Buffer> indexBuffer;
+    int materialIndex;
 
 public:
     Mesh();

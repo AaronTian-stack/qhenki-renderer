@@ -29,26 +29,36 @@ bool VulkanContext::create(Window &window)
     this->window = &window;
 
     std::vector<const char*> deviceExtensions = {
-        VK_KHR_SWAPCHAIN_EXTENSION_NAME
+        VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+        VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME
     };
 #if __APPLE__
     deviceExtensions.push_back("VK_KHR_portability_subset");
 #endif
 
+    VkPhysicalDeviceDescriptorIndexingFeatures features{};
+    features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES;
+    features.runtimeDescriptorArray = VK_TRUE;
+    features.descriptorBindingPartiallyBound = VK_TRUE;
+    features.descriptorBindingVariableDescriptorCount = VK_TRUE;
+
     vkb::PhysicalDeviceSelector selector{ vkbInstance };
     auto phys_ret = selector.set_surface(surface)
             .set_minimum_version (1, 2)
             .add_required_extensions(deviceExtensions)
+            .add_required_extension_features(features)
             .prefer_gpu_device_type(vkb::PreferredDeviceType::discrete)
             .select();
 
-    if (!phys_ret) {
+    if (!phys_ret)
+    {
         std::cerr << "Failed to select Vulkan Physical Device. Error: " << phys_ret.error().message() << "\n";
         return false;
     }
 
     vkb::DeviceBuilder device_builder{ phys_ret.value() };
-    auto dev_ret = device_builder.build();
+    auto dev_ret = device_builder
+            .build();
     if (!dev_ret) {
         std::cerr << "Failed to create Vulkan device. Error: " << dev_ret.error().message() << "\n";
         return false;
@@ -78,8 +88,15 @@ bool VulkanContext::create(Window &window)
 
     queueManager.initQueues(graphicsQueue, presentQueue);
 
+    auto formats = device.physicalDevice.getSurfaceFormatsKHR(surface);
+    VkSurfaceFormatKHR format;
+    format.format = VK_FORMAT_B8G8R8A8_SRGB;
+    format.colorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
+
     vkb::SwapchainBuilder swapchain_builder{ vkb_device };
     auto swap_ret = swapchain_builder
+            .set_desired_format(format)
+            //.set_desired_format()
             .set_desired_present_mode(VK_PRESENT_MODE_MAILBOX_KHR)
             .build();
     if (!swap_ret){

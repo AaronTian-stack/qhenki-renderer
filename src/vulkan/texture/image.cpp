@@ -1,6 +1,6 @@
 #include "image.h"
 
-Image::Image(std::unique_ptr<FrameBufferAttachment> attachment)
+Image::Image(std::unique_ptr<FrameBufferAttachment> attachment) : destroyed(false)
 {
     this->attachment = std::move(attachment);
 }

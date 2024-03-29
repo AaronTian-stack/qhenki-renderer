@@ -9,7 +9,7 @@
 #include "glm/vec3.hpp"
 #include <glm/gtx/matrix_decompose.hpp>
 
-uPtr<Model> GLTFLoader::load(BufferFactory &bufferFactory, const char* filename)
+uPtr<Model> GLTFLoader::create(CommandPool &commandPool, QueueManager &queueManager, BufferFactory &bufferFactory, const char* filename)
 {
     tinygltf::TinyGLTF loader;
     tinygltf::Model gltfModel;
@@ -36,7 +36,7 @@ uPtr<Model> GLTFLoader::load(BufferFactory &bufferFactory, const char* filename)
 
     int rootNodeIndex = gltfModel.scenes[gltfModel.defaultScene].nodes[0];
 
-    //makeTextures(bufferFactory, gltfModel, model.get());
+    makeMaterialsAndTextures(commandPool, queueManager, bufferFactory, gltfModel, model.get());
     processNode(bufferFactory, gltfModel, model.get(), nullptr, rootNodeIndex);
 
     return model;
@@ -129,6 +129,8 @@ void GLTFLoader::processNode(BufferFactory &bufferFactory, tinygltf::Model &gltf
             // extract index data
             mesh->indexBuffer = getBuffer(bufferFactory, gltfModel, primitive.indices, vk::BufferUsageFlagBits::eIndexBuffer, 0);
 
+            mesh->materialIndex = primitive.material;
+
             model->meshes.push_back(std::move(mesh));
             node->mesh = model->meshes.back().get();
         }
@@ -187,7 +189,7 @@ uPtr<Buffer> GLTFLoader::getBuffer(BufferFactory &bufferFactory, tinygltf::Model
     return vBuffer;
 }
 
-void GLTFLoader::makeTextures(CommandPool &commandPool, QueueManager &queueManager, BufferFactory &bufferFactory, tinygltf::Model &gltfModel, Model *model)
+void GLTFLoader::makeMaterialsAndTextures(CommandPool &commandPool, QueueManager &queueManager, BufferFactory &bufferFactory, tinygltf::Model &gltfModel, Model *model)
 {
     // make every single image in order
     for (auto &image : gltfModel.images)
@@ -197,7 +199,7 @@ void GLTFLoader::makeTextures(CommandPool &commandPool, QueueManager &queueManag
             std::cerr << "Image component " << image.component << " not RGBA!" << std::endl;
             throw std::runtime_error("Image component not supported");
         }
-        auto imageTexture = bufferFactory.createTextureImage(commandPool, queueManager, vk::Format::eR8G8B8A8Unorm,
+        auto imageTexture = bufferFactory.createTextureImage(commandPool, queueManager, vk::Format::eR8G8B8A8Srgb,
                                                              {static_cast<uint32_t>(image.width),
                                                               static_cast<uint32_t>(image.height), 1},
                                                              vk::ImageUsageFlagBits::eTransferDst |
@@ -223,6 +225,8 @@ void GLTFLoader::makeTextures(CommandPool &commandPool, QueueManager &queueManag
                 break;
             default:
                 std::cerr << "Mag filter " << sampler.magFilter << " not supported!" << std::endl;
+                samplerInfo.magFilter = vk::Filter::eLinear;
+                break;
         }
         switch(sampler.minFilter)
         {
@@ -234,6 +238,8 @@ void GLTFLoader::makeTextures(CommandPool &commandPool, QueueManager &queueManag
                 break;
             default:
                 std::cerr << "Min filter " << sampler.minFilter << " not supported!" << std::endl;
+                samplerInfo.minFilter = vk::Filter::eLinear;
+                break;
         }
         switch(sampler.wrapS)
         {
@@ -245,6 +251,8 @@ void GLTFLoader::makeTextures(CommandPool &commandPool, QueueManager &queueManag
                 break;
             default:
                 std::cerr << "Wrap S " << sampler.wrapS << " not supported!" << std::endl;
+                samplerInfo.addressModeU = vk::SamplerAddressMode::eRepeat;
+                break;
         }
         switch(sampler.wrapT)
         {
@@ -256,7 +264,33 @@ void GLTFLoader::makeTextures(CommandPool &commandPool, QueueManager &queueManag
                 break;
             default:
                 std::cerr << "Wrap T " << sampler.wrapT << " not supported!" << std::endl;
+                samplerInfo.addressModeV = vk::SamplerAddressMode::eRepeat;
+                break;
         }
         model->textures.emplace_back(mkU<Texture>(model->images[texture.source].get()));
+        model->textures.back()->createSampler(samplerInfo);
     }
+
+    for (const auto &mat : gltfModel.materials)
+    {
+        Material material;
+        material.baseColorFactor = glm::vec4(mat.pbrMetallicRoughness.baseColorFactor[0],
+                                             mat.pbrMetallicRoughness.baseColorFactor[1],
+                                             mat.pbrMetallicRoughness.baseColorFactor[2],
+                                             mat.pbrMetallicRoughness.baseColorFactor[3]);
+        material.metallicFactor = mat.pbrMetallicRoughness.metallicFactor;
+        material.roughnessFactor = mat.pbrMetallicRoughness.roughnessFactor;
+
+        material.baseColorTexture = mat.pbrMetallicRoughness.baseColorTexture.index;
+        material.metallicRoughnessTexture = mat.pbrMetallicRoughness.metallicRoughnessTexture.index;
+        material.normalTexture = mat.normalTexture.index;
+
+        material.occlusionTexture = mat.occlusionTexture.index;
+        material.occlusionStrength = mat.occlusionTexture.strength;
+
+        material.emissiveTexture = mat.emissiveTexture.index;
+
+        model->materials.push_back(material);
+    }
+
 }

@@ -15,11 +15,11 @@ private:
         {"COLOR", VertexBufferType::COLOR},
         {"TEXCOORD_0", VertexBufferType::UV}
     };
-    static void makeTextures(CommandPool &commandPool, QueueManager &queueManager,BufferFactory &bufferFactory, tinygltf::Model &gltfModel, Model *model);
+    static void makeMaterialsAndTextures(CommandPool &commandPool, QueueManager &queueManager, BufferFactory &bufferFactory, tinygltf::Model &gltfModel, Model *model);
     static void processNode(BufferFactory &bufferFactory, tinygltf::Model &gltfModel, Model *model, Node *parent, int nodeIndex);
     static uPtr<Buffer> getBuffer(BufferFactory &bufferFactory, tinygltf::Model &gltfModel,
                           int type, vk::BufferUsageFlagBits flag, size_t vertexSize);
 
 public:
-    static uPtr<Model> load(BufferFactory &bufferFactory, const char* filename);
+    static uPtr<Model> create(CommandPool &commandPool, QueueManager &queueManager, BufferFactory &bufferFactory, const char* filename);
 };

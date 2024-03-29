@@ -47,7 +47,9 @@ vk::DescriptorImageInfo Texture::getDescriptorInfo()
 
 void Texture::destroy()
 {
-    image->destroy();
+    if (!image->destroyed)
+        image->destroy();
+    image->destroyed = true;
     if (sampler != nullptr)
         device.destroySampler(sampler);
 }

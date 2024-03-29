@@ -11,6 +11,10 @@ void Model::destroy()
     {
         mesh->destroy();
     }
+    for (auto &texture : textures)
+    {
+        texture->destroy();
+    }
 }
 
 void Model::draw(vk::CommandBuffer commandBuffer)
@@ -19,4 +23,15 @@ void Model::draw(vk::CommandBuffer commandBuffer)
     {
         mesh->draw(commandBuffer);
     }
+}
+
+std::vector<vk::DescriptorImageInfo> Model::getDescriptorImageInfo()
+{
+    std::vector<vk::DescriptorImageInfo> descriptorImageInfo;
+    descriptorImageInfo.reserve(textures.size());
+    for (auto &texture : textures)
+    {
+        descriptorImageInfo.push_back(texture->getDescriptorInfo());
+    }
+    return descriptorImageInfo;
 }

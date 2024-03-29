@@ -47,8 +47,6 @@ public:
     uPtr<Pipeline> buildPipeline(RenderPass* renderPass, Shader* shader);
     void addPushConstant(uint32_t size, vk::ShaderStageFlags stageFlags = vk::ShaderStageFlagBits::eAll);
 
-    void parseShader(const char *filePath1, const char *filePath2);
-
     void processPushConstants(spirv_cross::CompilerGLSL &glsl, spirv_cross::ShaderResources &resources);
 
     void updateDescriptorSetLayouts(DescriptorLayoutCache &layoutCache);
@@ -67,6 +65,9 @@ public:
     void reset();
 
     void destroy() override;
+
+    void
+    parseShader(const char *filePath1, const char *filePath2, DescriptorLayoutCache &layoutCache, bool interleaved);
 };
 
 std::pair<vk::Format, size_t> mapTypeToFormat(const spirv_cross::SPIRType &type);

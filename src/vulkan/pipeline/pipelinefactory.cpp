@@ -121,11 +121,7 @@ uPtr<Pipeline> PipelineBuilder::buildPipeline(RenderPass* renderPass, Shader* sh
 void PipelineBuilder::addPushConstant(uint32_t size, vk::ShaderStageFlags stageFlags)
 {
     // TODO: there seem to be issues if the stageFlags is anything besides VK_SHADER_STAGE_ALL
-    vk::PushConstantRange pushConstant(
-        stageFlags,
-        pushOffset,
-        size
-            );
+    vk::PushConstantRange pushConstant(stageFlags,pushOffset,size);
 
     pushConstants.push_back(pushConstant);
 
@@ -178,6 +174,7 @@ void PipelineBuilder::updateDescriptorSetLayouts(DescriptorLayoutCache &layoutCa
         vk::DescriptorSetLayoutCreateInfo layoutInfo{};
         layoutInfo.bindingCount = list.size(); // bindings in descriptor set
         layoutInfo.pBindings = list.data();
+
         descriptorSetLayouts.push_back(layoutCache.createDescriptorLayout(&layoutInfo));
     }
 
@@ -237,7 +234,6 @@ void PipelineBuilder::parseVertexShader(const char *filePath, DescriptorLayoutCa
                                             );
     }
     // TODO: might want to do something eventually for storage buffers
-
     updateDescriptorSetLayouts(layoutCache);
 }
 
@@ -258,10 +254,16 @@ void PipelineBuilder::parseFragmentShader(const char *filePath, DescriptorLayout
 
         uint32_t bindingNum = glsl.get_decoration(sampledImage.id, spv::DecorationBinding);
         uint32_t set = glsl.get_decoration(sampledImage.id, spv::DecorationDescriptorSet);
+        uint32_t arrayLength = 1;
+        auto sizes = glsl.get_type(sampledImage.type_id).array;
+        if (!sizes.empty()) // no array
+        {
+            arrayLength = sizes[0];
+        }
 
         bindingsMap[set].first.emplace_back(bindingNum,
                                             vk::DescriptorType::eCombinedImageSampler,
-                                            1, // number of values in array
+                                            arrayLength, // number of values in array
                                             vk::ShaderStageFlagBits::eFragment,
                                             nullptr
                                             );
@@ -269,11 +271,10 @@ void PipelineBuilder::parseFragmentShader(const char *filePath, DescriptorLayout
     updateDescriptorSetLayouts(layoutCache);
 }
 
-void PipelineBuilder::parseShader(const char *filePath1, const char *filePath2)
+void PipelineBuilder::parseShader(const char *filePath1, const char *filePath2, DescriptorLayoutCache &layoutCache, bool interleaved)
 {
-    // TODO: parsing functions could be merged
-    //parseFragmentShader(filePath1);
-    //parseFragmentShader(filePath2);
+    parseVertexShader(filePath1, layoutCache, interleaved);
+    parseFragmentShader(filePath2, layoutCache);
 }
 
 std::pair<vk::Format, size_t> mapTypeToFormat(const spirv_cross::SPIRType &type)
