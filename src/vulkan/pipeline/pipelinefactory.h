@@ -47,7 +47,8 @@ public:
     uPtr<Pipeline> buildPipeline(RenderPass* renderPass, Shader* shader);
     void addPushConstant(uint32_t size, vk::ShaderStageFlags stageFlags = vk::ShaderStageFlagBits::eAll);
 
-    void processPushConstants(spirv_cross::CompilerGLSL &glsl, spirv_cross::ShaderResources &resources);
+    void processPushConstants(spirv_cross::CompilerGLSL &glsl, spirv_cross::ShaderResources &resources,
+                              vk::ShaderStageFlags stages);
 
     void updateDescriptorSetLayouts(DescriptorLayoutCache &layoutCache);
     void parseVertexShader(const char *filePath, DescriptorLayoutCache &layoutCache, bool interleaved);

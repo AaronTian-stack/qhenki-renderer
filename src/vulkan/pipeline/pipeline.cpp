@@ -34,7 +34,7 @@ vk::Pipeline Pipeline::getGraphicsPipeline()
     return graphicsPipeline;
 }
 
-void Pipeline::setPushConstant(vk::CommandBuffer commandBuffer, void *value, size_t size, size_t offset)
+void Pipeline::setPushConstant(vk::CommandBuffer commandBuffer, void *value, size_t size, size_t offset, vk::ShaderStageFlags stages)
 {
-    commandBuffer.pushConstants(pipelineLayout, vk::ShaderStageFlagBits::eAll, offset, size, value);
+    commandBuffer.pushConstants(pipelineLayout, stages, offset, size, value);
 }

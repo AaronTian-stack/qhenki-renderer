@@ -2,6 +2,7 @@
 
 #include <vector>
 #include "../vulkan/buffer/buffer.h"
+#include "material.h"
 
 enum VertexBufferType
 {
@@ -16,9 +17,9 @@ class Mesh
 private:
     std::vector<std::pair<uPtr<Buffer>, VertexBufferType>> vertexBuffers;
     uPtr<Buffer> indexBuffer;
-    int materialIndex;
 
 public:
+    Material *material;
     Mesh();
     void draw(vk::CommandBuffer commandBuffer);
     void destroy();

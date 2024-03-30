@@ -1,19 +1,20 @@
-#include "../vulkan/texture/texture.h"
+#pragma once
+
 #include "glm/vec4.hpp"
 
 struct Material
 {
-    glm::vec4 baseColorFactor;
-    int baseColorTexture;
+    alignas(16) glm::vec4 baseColorFactor;
+    alignas(4) int baseColorTexture;
 
-    float metallicFactor;
-    float roughnessFactor;
-    int metallicRoughnessTexture;
+    alignas(4) float metallicFactor;
+    alignas(4) float roughnessFactor;
+    alignas(4) int metallicRoughnessTexture;
 
-    int normalTexture;
+    alignas(4) int normalTexture;
 
-    int occlusionTexture;
-    float occlusionStrength;
+    alignas(4) int occlusionTexture;
+    alignas(4) float occlusionStrength;
 
-    int emissiveTexture;
+    alignas(4) int emissiveTexture;
 };

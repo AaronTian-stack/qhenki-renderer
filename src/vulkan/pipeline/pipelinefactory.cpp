@@ -120,7 +120,6 @@ uPtr<Pipeline> PipelineBuilder::buildPipeline(RenderPass* renderPass, Shader* sh
 
 void PipelineBuilder::addPushConstant(uint32_t size, vk::ShaderStageFlags stageFlags)
 {
-    // TODO: there seem to be issues if the stageFlags is anything besides VK_SHADER_STAGE_ALL
     vk::PushConstantRange pushConstant(stageFlags,pushOffset,size);
 
     pushConstants.push_back(pushConstant);
@@ -145,7 +144,8 @@ void PipelineBuilder::addVertexInputAttribute(vk::VertexInputAttributeDescriptio
     vertexInputInfo.pVertexAttributeDescriptions = vertexInputAttributes.data();
 }
 
-void PipelineBuilder::processPushConstants(spirv_cross::CompilerGLSL &glsl, spirv_cross::ShaderResources &resources)
+void PipelineBuilder::processPushConstants(spirv_cross::CompilerGLSL &glsl, spirv_cross::ShaderResources &resources,
+                                           vk::ShaderStageFlags stages)
 {
     for (auto &pushConstant : resources.push_constant_buffers)
     {
@@ -154,11 +154,12 @@ void PipelineBuilder::processPushConstants(spirv_cross::CompilerGLSL &glsl, spir
 
         std::cout << "Push Constant: " << pushConstant.name << std::endl;
 
+        uint32_t size = 0;
         for (uint32_t i = 0; i < pushConstantType.member_types.size(); ++i)
         {
-            uint32_t size = glsl.get_declared_struct_member_size(pushConstantType, i);
-            addPushConstant(size, vk::ShaderStageFlagBits::eAll);
+            size += glsl.get_declared_struct_member_size(pushConstantType, i);
         }
+        addPushConstant(size, stages);
     }
 }
 
@@ -217,7 +218,7 @@ void PipelineBuilder::parseVertexShader(const char *filePath, DescriptorLayoutCa
         }
     }
 
-    processPushConstants(glsl, resources);
+    processPushConstants(glsl, resources, vk::ShaderStageFlagBits::eVertex);
 
     //// CREATE DESCRIPTOR SET LAYOUT
     for (const auto &uniformBuffer : resources.uniform_buffers)
@@ -245,7 +246,7 @@ void PipelineBuilder::parseFragmentShader(const char *filePath, DescriptorLayout
     spirv_cross::CompilerGLSL glsl(spirvBytecode, shaderCode.size() / sizeof(uint32_t));
     spirv_cross::ShaderResources resources = glsl.get_shader_resources();
 
-    processPushConstants(glsl, resources);
+    processPushConstants(glsl, resources, vk::ShaderStageFlagBits::eFragment);
 
     // TODO: samplers
     for (auto &sampledImage : resources.sampled_images)

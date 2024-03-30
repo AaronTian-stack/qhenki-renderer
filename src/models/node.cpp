@@ -9,7 +9,9 @@ void Node::draw(vk::CommandBuffer commandBuffer, Pipeline &pipeline, Node &node)
     auto wt = node.getWorldTransform();
     if (node.mesh)
     {
-        pipeline.setPushConstant(commandBuffer, &wt, sizeof(glm::mat4), 0);
+        pipeline.setPushConstant(commandBuffer, &wt, sizeof(glm::mat4), 0, vk::ShaderStageFlagBits::eVertex);
+        auto &material = *node.mesh->material;
+        pipeline.setPushConstant(commandBuffer, &material, sizeof(Material), sizeof(glm::mat4), vk::ShaderStageFlagBits::eFragment);
         node.mesh->draw(commandBuffer);
     }
     for (auto &child : node.children)

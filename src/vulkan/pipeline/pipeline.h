@@ -19,7 +19,7 @@ public:
 
     vk::PipelineLayout getPipelineLayout();
     vk::Pipeline getGraphicsPipeline();
-    void setPushConstant(vk::CommandBuffer commandBuffer, void *value, size_t size, size_t offset);
+    void setPushConstant(vk::CommandBuffer commandBuffer, void *value, size_t size, size_t offset, vk::ShaderStageFlags stages);
 
     friend class PipelineBuilder;
 };

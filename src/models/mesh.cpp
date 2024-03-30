@@ -1,9 +1,7 @@
 #include "mesh.h"
 
-Mesh::Mesh() : materialIndex(-1)
-{
-
-}
+Mesh::Mesh() : material(nullptr)
+{}
 
 void Mesh::destroy()
 {

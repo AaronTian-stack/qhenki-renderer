@@ -129,7 +129,7 @@ void GLTFLoader::processNode(BufferFactory &bufferFactory, tinygltf::Model &gltf
             // extract index data
             mesh->indexBuffer = getBuffer(bufferFactory, gltfModel, primitive.indices, vk::BufferUsageFlagBits::eIndexBuffer, 0);
 
-            mesh->materialIndex = primitive.material;
+            mesh->material = &model->materials[primitive.material];
 
             model->meshes.push_back(std::move(mesh));
             node->mesh = model->meshes.back().get();
@@ -199,7 +199,9 @@ void GLTFLoader::makeMaterialsAndTextures(CommandPool &commandPool, QueueManager
             std::cerr << "Image component " << image.component << " not RGBA!" << std::endl;
             throw std::runtime_error("Image component not supported");
         }
-        auto imageTexture = bufferFactory.createTextureImage(commandPool, queueManager, vk::Format::eR8G8B8A8Srgb,
+
+        // gamma correction on color texture is done in the shader, otherwise load as unorm
+        auto imageTexture = bufferFactory.createTextureImage(commandPool, queueManager, vk::Format::eR8G8B8A8Unorm,
                                                              {static_cast<uint32_t>(image.width),
                                                               static_cast<uint32_t>(image.height), 1},
                                                              vk::ImageUsageFlagBits::eTransferDst |

@@ -179,7 +179,7 @@ void VulkanApp::recordCommandBuffer(vk::Framebuffer framebuffer)
     auto pipeline = ui->currentShaderIndex == 1 ? pathPipeline.get() : triPipeline.get();
     primaryCommandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, pipeline->getGraphicsPipeline());
     auto time = (float)glfwGetTime();
-    pathPipeline->setPushConstant(primaryCommandBuffer, &time, sizeof(float), 0);
+    pathPipeline->setPushConstant(primaryCommandBuffer, &time, sizeof(float), 0, vk::ShaderStageFlagBits::eFragment);
 
     ScreenUtils::setViewport(primaryCommandBuffer, swapChainExtent.width, swapChainExtent.height);
     ScreenUtils::setScissor(primaryCommandBuffer, swapChainExtent);
@@ -187,13 +187,12 @@ void VulkanApp::recordCommandBuffer(vk::Framebuffer framebuffer)
     if (pipeline == triPipeline.get())
     {
         modelTransform = glm::mat4();
-        triPipeline->setPushConstant(primaryCommandBuffer, &modelTransform, sizeof(glm::mat4), 0);
+        triPipeline->setPushConstant(primaryCommandBuffer, &modelTransform, sizeof(glm::mat4), 0, vk::ShaderStageFlagBits::eVertex);
 
         //bind(commandBuffer, {positionBuffer.get(), normalBuffer.get()});
         //indexBuffer->bind(commandBuffer);
 
         auto bufferInfo = cameraBuffers[currentFrame]->getDescriptorInfo();
-        auto textureInfo = texture->getDescriptorInfo();
 
         auto &allocator = allocators[currentFrame];
         allocator.resetPools();
@@ -207,6 +206,11 @@ void VulkanApp::recordCommandBuffer(vk::Framebuffer framebuffer)
         //std::vector<vk::DescriptorImageInfo> imageInfos = {textureInfo, textureInfo};
         // get image infos of al model textures
         std::vector<vk::DescriptorImageInfo> imageInfos = model->getDescriptorImageInfo();
+        if (imageInfos.size() > 16)
+        {
+            std::cerr << "More than 16 samplers in model!" << std::endl;
+            return;
+        }
         vk::DescriptorSet samplerSet;
         DescriptorBuilder::beginSet(&layoutCache, &allocator)
                 .bindImage(0, imageInfos,

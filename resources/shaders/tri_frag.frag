@@ -12,24 +12,40 @@ layout(location = 0) out vec4 outColor; // index of framebuffer / attachment
 // since partial binding is on, indexing into undefined sampler will not show errors!
 layout(set = 1, binding = 0) uniform sampler2D texSampler[16];
 
-//layout(push_constant) uniform mats {
-//    int index1;
-//    int index2;
-//    int index3;
-//    int index4;
-//    vec4 albedo;
-//    float metal;
-//    float roughness;
-//} material;
+layout(push_constant) uniform mats {
+    layout(offset = 64) vec4 baseColorFactor;
+    int baseColorTexture;
+
+    float metallicFactor;
+    float roughnessFactor;
+    int metallicRoughnessTexture;
+
+    int normalTexture;
+
+    int occlusionTexture;
+    float occlusionStrength;
+
+    int emissiveTexture;
+} material;
+
+
+// TODO: uniform buffers for lights
 
 void main()
 {
     // lambert
     float dot = dot(normalize(lightV), normalize(normal));
-    float diff = clamp(dot, 0.0, 1.0);
+    // half lambert
+
+    float diff = pow(dot * 0.5 + 0.5, 2.0);
 
     vec3 normalV = normal + vec3(1.0) * 0.5;
 
-    vec3 c = texture(texSampler[0], fragUV).rgb * diff;
+    vec4 baseColor = texture(texSampler[material.baseColorTexture], fragUV);
+    // undo gamma correction for base color since it was loaded as a unorm
+    baseColor.rgb = pow(baseColor.rgb, vec3(2.2));
+    baseColor *= material.baseColorFactor;
+
+    vec3 c = baseColor.rgb * diff;
     outColor = vec4(c, 1.0);
 }
