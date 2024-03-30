@@ -6,6 +6,7 @@
 #include "vulkan/queuemanager.h"
 #include "vulkan/commandpool.h"
 #include "vulkan/context/vulkancontext.h"
+#include "camera.h"
 
 struct ImGuiCreateParameters
 {
@@ -22,6 +23,7 @@ private:
     VkDescriptorPool imguiPool;
     void renderMenuBar();
     bool optionsOpen = false;
+    bool cameraOptionsOpen = false;
 
 public:
     UserInterface();
@@ -34,6 +36,7 @@ public:
     void begin();
     void end(VkCommandBuffer commandBuffer);
 
+    std::vector<float> frameTimes;
     int currentShaderIndex = 0;
     float clearColor[3] = {0.0f, 0.0f, 0.0f };
 };

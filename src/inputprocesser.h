@@ -26,5 +26,6 @@ public:
     static int getCursorState();
     static void setUserPointer(void *ptr);
 
-    inline static float SENSITIVITY = 0.05f;
+    inline static float SENSITIVITY_ROTATE = 0.05f;
+    inline static float SENSITIVITY_TRANSLATE = 0.0025f;
 };

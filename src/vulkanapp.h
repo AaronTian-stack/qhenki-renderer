@@ -9,8 +9,8 @@
 #include "vulkan/frame.h"
 #include "userinterface.h"
 #include "vulkan/context/vulkancontext.h"
-#include "gltfloader.h"
-#include "vulkan/bufferfactory.h"
+#include "models/gltfloader.h"
+#include "vulkan/buffer/bufferfactory.h"
 #include "vulkan/descriptors/descriptorlayoutcache.h"
 #include "vulkan/descriptors/descriptorallocator.h"
 #include "vulkan/descriptors/descriptorbuilder.h"
@@ -23,9 +23,16 @@
 class VulkanApp
 {
 private:
-    uPtr<Buffer> buffer;
-    //uPtr<Buffer> colorBuffer;
+    uPtr<Model> model;
+    //uPtr<Buffer> buffer;
+
+    //// DEBUG BUFFERS
+    uPtr<Buffer> positionBuffer;
+    uPtr<Buffer> normalBuffer;
     uPtr<Buffer> indexBuffer;
+
+    uPtr<Image> textureImage;
+    uPtr<Texture> texture;
 
     uPtr<FrameBufferAttachment> depthBuffer;
 
@@ -67,7 +74,7 @@ public:
 
     void handleInput();
     void updateCameraBuffer();
-    void recordCommandBuffer(VkFramebuffer framebuffer); // TODO: NEED TO DELETE THIS LATER
+    void recordCommandBuffer(vk::Framebuffer framebuffer); // TODO: NEED TO DELETE THIS LATER
 
     UserInterface *ui;
     ImGuiCreateParameters getImGuiCreateParameters();

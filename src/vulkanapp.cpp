@@ -29,7 +29,13 @@ VulkanApp::~VulkanApp()
 
     depthBuffer->destroy();
 
-    buffer->destroy();
+    model->destroy();
+
+    texture->destroy();
+
+    //buffer->destroy();
+    positionBuffer->destroy();
+    normalBuffer->destroy();
     indexBuffer->destroy();
 
     for (auto &cameraBuffer : cameraBuffers)
@@ -72,26 +78,28 @@ void VulkanApp::create(Window &window)
     shader1 = mkU<Shader>(device, "pathtrace_vert.spv", "pathtrace_frag.spv");
     shader2 = mkU<Shader>(device, "tri_vert.spv", "tri_frag.spv");
 
-    pipelineFactory.parseFragmentShader("pathtrace_frag.spv");
+    pipelineFactory.parseShader("pathtrace_vert.spv", "pathtrace_frag.spv", layoutCache, false);
 
     pathPipeline = pipelineFactory.buildPipeline(renderPass.get(), shader1.get());
 
     //// VERTEX INPUT
-    struct Vertex {
-        glm::vec3 pos;
-        glm::vec3 color;
+    const std::vector<glm::vec3> positions = {
+            {-0.5f, -0.5f, 1.f},
+            {0.5f, -0.5f, 0.f},
+            {0.5f, 0.5f, 0.f},
+            {-0.5f, 0.5f, 0.f}
     };
-    const std::vector<Vertex> vertices = {
-            {{-0.5f, -0.5f, 1.f}, {1.0f, 0.0f, 0.0f}},
-            {{0.5f, -0.5f, 0.f}, {0.0f, 1.0f, 0.0f}},
-            {{0.5f, 0.5f, 0.f}, {0.0f, 0.0f, 1.0f}},
-            {{-0.5f, 0.5f, 0.f}, {1.0f, 1.0f, 1.0f}}
+    const std::vector<glm::vec3> normals = {
+            {0.0f, 0.0f, 1.0f},
+            {0.0f, 0.0f, 1.0f},
+            {0.0f, 0.0f, 1.0f},
+            {0.0f, 0.0f, 1.0f}
     };
     const std::vector<uint16_t> indices = {
             0, 1, 2, 2, 3, 0
     };
 
-    auto stagingBuffer = bufferFactory.createBuffer(
+    /*auto stagingBuffer = bufferFactory.createBuffer(
             vertices.size() * sizeof(Vertex),
             vk::BufferUsageFlagBits::eTransferSrc,
             VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
@@ -101,10 +109,13 @@ void VulkanApp::create(Window &window)
     buffer = bufferFactory.createBuffer(vertices.size() * sizeof(Vertex),
                                         vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst);
     stagingBuffer->copyTo(*buffer, vulkanContext.queueManager, commandPool);
-    stagingBuffer->destroy();
+    stagingBuffer->destroy();*/
 
-    //buffer = bufferFactory.createBuffer(vertices.size() * sizeof(Vertex), VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
-    //buffer->fill(vertices.data());
+    positionBuffer = bufferFactory.createBuffer(positions.size() * sizeof(glm::vec3), vk::BufferUsageFlagBits::eVertexBuffer, VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
+    positionBuffer->fill(positions.data());
+
+    normalBuffer = bufferFactory.createBuffer(normals.size() * sizeof(glm::vec3), vk::BufferUsageFlagBits::eVertexBuffer, VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
+    normalBuffer->fill(normals.data());
 
     indexBuffer = bufferFactory.createBuffer(indices.size() * sizeof(uint16_t),
                                              vk::BufferUsageFlagBits::eIndexBuffer, VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
@@ -112,10 +123,12 @@ void VulkanApp::create(Window &window)
 
     pipelineFactory.reset();
 
-    pipelineFactory.addVertexInputBinding({0, sizeof(Vertex), vk::VertexInputRate::eVertex});
-    pipelineFactory.parseVertexShader("tri_vert.spv", layoutCache);
+    pipelineFactory.addVertexInputBinding({0, sizeof(glm::vec3), vk::VertexInputRate::eVertex}); // position
+    pipelineFactory.addVertexInputBinding({1, sizeof(glm::vec3), vk::VertexInputRate::eVertex}); // normal
+    pipelineFactory.addVertexInputBinding({2, sizeof(glm::vec2), vk::VertexInputRate::eVertex}); // uv
+    pipelineFactory.parseShader("tri_vert.spv", "tri_frag.spv", layoutCache, false);
     //// END VERTEX INPUT
-
+    pipelineFactory.getRasterizer().setCullMode(vk::CullModeFlagBits::eBack);
     triPipeline = pipelineFactory.buildPipeline(renderPass.get(), shader2.get());
 
     vulkanContext.swapChain->createFramebuffers(renderPass->getRenderPass(), depthBuffer->imageView);
@@ -132,13 +145,24 @@ void VulkanApp::create(Window &window)
         allocators.emplace_back(vulkanContext.device.logicalDevice);
     }
 
-    //gltfLoad.load();
+    model = GLTFLoader::create(commandPool,  vulkanContext.queueManager, bufferFactory, "higokumaru.glb");
+
+    // dummy texture
+    uint32_t white = 0xff48ff00;
+
+    textureImage = bufferFactory.createTextureImage(commandPool, vulkanContext.queueManager,
+                                                    vk::Format::eR8G8B8A8Srgb, {1, 1, 1},
+                                               vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled,
+                                                    vk::ImageAspectFlagBits::eColor, &white);
+    texture = mkU<Texture>(textureImage.get());
+    texture->createSampler();
 }
 
-void VulkanApp::recordCommandBuffer(VkFramebuffer framebuffer)
+void VulkanApp::recordCommandBuffer(vk::Framebuffer framebuffer)
 {
+    // TODO: multi thread secondary command buffer recording
     auto &frame = frames[currentFrame];
-    auto commandBuffer = frame.commandBuffer;
+    auto primaryCommandBuffer = frame.commandBuffer;
     auto swapChainExtent = vulkanContext.swapChain->getExtent();
 
     updateCameraBuffer();
@@ -150,42 +174,68 @@ void VulkanApp::recordCommandBuffer(VkFramebuffer framebuffer)
     renderPass->setFramebuffer(framebuffer);
     renderPass->setRenderAreaExtent(swapChainExtent);
     renderPass->clear(ui->clearColor[0], ui->clearColor[1], ui->clearColor[2], 1.0f);
-    renderPass->begin(commandBuffer);
+    renderPass->begin(primaryCommandBuffer);
 
-    auto pipeline = ui->currentShaderIndex == 0 ? pathPipeline.get() : triPipeline.get();
-    commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, pipeline->getGraphicsPipeline());
+    auto pipeline = ui->currentShaderIndex == 1 ? pathPipeline.get() : triPipeline.get();
+    primaryCommandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, pipeline->getGraphicsPipeline());
     auto time = (float)glfwGetTime();
-    pathPipeline->setPushConstant(commandBuffer, &time, sizeof(float));
+    pathPipeline->setPushConstant(primaryCommandBuffer, &time, sizeof(float), 0, vk::ShaderStageFlagBits::eFragment);
 
-    ScreenUtils::setViewport(commandBuffer, swapChainExtent.width, swapChainExtent.height);
-    ScreenUtils::setScissor(commandBuffer, swapChainExtent);
+    ScreenUtils::setViewport(primaryCommandBuffer, swapChainExtent.width, swapChainExtent.height);
+    ScreenUtils::setScissor(primaryCommandBuffer, swapChainExtent);
 
-    if (ui->currentShaderIndex == 1)
+    if (pipeline == triPipeline.get())
     {
-        triPipeline->setPushConstant(commandBuffer, &modelTransform, sizeof(glm::mat4));
+        modelTransform = glm::mat4();
+        triPipeline->setPushConstant(primaryCommandBuffer, &modelTransform, sizeof(glm::mat4), 0, vk::ShaderStageFlagBits::eVertex);
 
-        buffer->bind(commandBuffer);
-        indexBuffer->bind(commandBuffer);
+        //bind(commandBuffer, {positionBuffer.get(), normalBuffer.get()});
+        //indexBuffer->bind(commandBuffer);
 
-        auto bufferInfo = vk::DescriptorBufferInfo(cameraBuffers[currentFrame]->buffer, 0, sizeof(CameraMatrices));
+        auto bufferInfo = cameraBuffers[currentFrame]->getDescriptorInfo();
 
         auto &allocator = allocators[currentFrame];
         allocator.resetPools();
-        vk::DescriptorSet globalSet;
+        vk::DescriptorSet cameraSet;
         vk::DescriptorSetLayout layout;
-        DescriptorBuilder::begin(&layoutCache, &allocator)
+        // build set by set... all the bindings must be updated / accounted for, but they're all part of the same set anyways
+        DescriptorBuilder::beginSet(&layoutCache, &allocator)
                 .bindBuffer(0, &bufferInfo, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eVertex)
-                .build(globalSet, layout);
+                .build(cameraSet, layout);
 
-        commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipeline->getPipelineLayout(), 0, {globalSet}, nullptr);
-        commandBuffer.drawIndexed(6, 1, 0, 0, 0);
+        //std::vector<vk::DescriptorImageInfo> imageInfos = {textureInfo, textureInfo};
+        // get image infos of al model textures
+        std::vector<vk::DescriptorImageInfo> imageInfos = model->getDescriptorImageInfo();
+        if (imageInfos.size() > 16)
+        {
+            std::cerr << "More than 16 samplers in model!" << std::endl;
+            return;
+        }
+        vk::DescriptorSet samplerSet;
+        DescriptorBuilder::beginSet(&layoutCache, &allocator)
+                .bindImage(0, imageInfos,
+                           16, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eFragment)
+                .build(samplerSet, layout);
+
+        primaryCommandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipeline->getPipelineLayout(),
+                                                0, {cameraSet, samplerSet}, nullptr);
+
+        //commandBuffer.drawIndexed(6, 1, 0, 0, 0);
+
+//        modelTransform = glm::translate(glm::mat4(), glm::vec3(0.f, 0.f, -1.f));
+//        triPipeline->setPushConstant(commandBuffer, &modelTransform, sizeof(glm::mat4));
+//        commandBuffer.drawIndexed(6, 1, 0, 0, 0);
+
+        //triPipeline->setPushConstant(commandBuffer, &model->transform, sizeof(glm::mat4));
+        //model->draw(commandBuffer);
+        model->root->draw(primaryCommandBuffer, *triPipeline, *model->root);
     }
     else
-        commandBuffer.draw(3, 1, 0, 0);
+        primaryCommandBuffer.draw(3, 1, 0, 0);
 
     //// DRAW COMMAND(S)
 
-    ui->end(commandBuffer);
+    ui->end(primaryCommandBuffer);
 
     //// END RENDER PASS
     renderPass->end(); // ends the render pass with the command buffer given in .begin()
@@ -257,16 +307,20 @@ void VulkanApp::updateCameraBuffer()
 void VulkanApp::handleInput()
 {
     ImGuiIO& io = ImGui::GetIO();
-    if (io.WantCaptureMouse) {
+    if (io.WantCaptureMouse)
+    {
         InputProcesser::setUserPointer(nullptr);
     }
-    else {
+    else
+    {
         InputProcesser::setUserPointer(&camera);
         if (InputProcesser::mouseButtons[GLFW_MOUSE_BUTTON_LEFT] ||
-             InputProcesser::mouseButtons[GLFW_MOUSE_BUTTON_RIGHT]) {
+             InputProcesser::mouseButtons[GLFW_MOUSE_BUTTON_RIGHT])
+        {
             InputProcesser::disableCursor();
         }
-        else if (InputProcesser::getCursorState() == GLFW_CURSOR_DISABLED) {
+        else if (InputProcesser::getCursorState() == GLFW_CURSOR_DISABLED)
+        {
             InputProcesser::enableCursor();
         }
     }

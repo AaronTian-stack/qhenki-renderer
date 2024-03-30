@@ -17,17 +17,18 @@ void Camera::update()
     right = glm::normalize(glm::cross(forward, worldUp));
     up = glm::normalize(glm::cross(right, forward));
 
-    auto offset = InputProcesser::deltaMouse * InputProcesser::SENSITIVITY;
     if (InputProcesser::mouseButtons[GLFW_MOUSE_BUTTON_LEFT])
     {
+        auto offset = InputProcesser::deltaMouse * InputProcesser::SENSITIVITY_ROTATE;
         regular.theta += offset.x;
         regular.phi += offset.y;
         regular.phi = glm::clamp(regular.phi, 0.f, 180.0f);
     }
     if (InputProcesser::mouseButtons[GLFW_MOUSE_BUTTON_RIGHT])
     {
-        regular.target -= right * offset.x * InputProcesser::SENSITIVITY;
-        regular.target -= up * offset.y * InputProcesser::SENSITIVITY;
+        auto offset = InputProcesser::deltaMouse * InputProcesser::SENSITIVITY_TRANSLATE;
+        regular.target -= right * offset.x ;
+        regular.target -= up * offset.y;
     }
     recalculateFields();
 }
@@ -62,7 +63,7 @@ void Camera::lerp(float delta)
 
 glm::vec3 Camera::getPosition() const
 {
-    return glm::vec3();
+    return smooth.position;
 }
 
 glm::vec3 sphericalToCartesian(float theta, float phi, float radius)

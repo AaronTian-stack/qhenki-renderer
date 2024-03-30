@@ -1,6 +1,6 @@
 #include "descriptorbuilder.h"
 
-DescriptorBuilder DescriptorBuilder::begin(DescriptorLayoutCache *layoutCache, DescriptorAllocator *allocator)
+DescriptorBuilder DescriptorBuilder::beginSet(DescriptorLayoutCache *layoutCache, DescriptorAllocator *allocator)
 {
     DescriptorBuilder builder;
     builder.cache = layoutCache;
@@ -36,14 +36,14 @@ DescriptorBuilder::bindBuffer(uint32_t binding, vk::DescriptorBufferInfo *buffer
     return *this;
 }
 
-DescriptorBuilder&
-DescriptorBuilder::bindImage(uint32_t binding, vk::DescriptorImageInfo *imageInfo, vk::DescriptorType type,
-                             vk::ShaderStageFlags stageFlags)
+DescriptorBuilder &
+DescriptorBuilder::bindImage(uint32_t binding, std::vector<vk::DescriptorImageInfo> &imageInfos, uint32_t arraySize,
+                             vk::DescriptorType type, vk::ShaderStageFlags stageFlags)
 {
     vk::DescriptorSetLayoutBinding newBinding(
             binding,
             type,
-            1,
+            arraySize, // size of array in shader. needed for correct map lookup
             stageFlags,
             nullptr
     );
@@ -53,9 +53,9 @@ DescriptorBuilder::bindImage(uint32_t binding, vk::DescriptorImageInfo *imageInf
             nullptr, // needs to be set when building
             binding,
             0, // index to start at
-            1, // array elements to update
+            imageInfos.size(), // array elements to update
             type,
-            imageInfo,
+            imageInfos.data(),
             nullptr,
             nullptr
             );
@@ -75,7 +75,7 @@ bool DescriptorBuilder::build(vk::DescriptorSet &set, vk::DescriptorSetLayout &l
 
     layout = cache->createDescriptorLayout(&layoutInfo); // find or create which set layout this is based off the bindings
 
-    // allocate descriptor set into set
+    // allocate descriptor set into set from layout
     bool success = alloc->allocate(&set, layout);
     if (!success) { return false; }
 

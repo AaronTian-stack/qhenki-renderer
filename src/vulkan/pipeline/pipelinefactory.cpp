@@ -81,6 +81,7 @@ void PipelineBuilder::reset()
     pipelineLayoutInfo.pPushConstantRanges = pushConstants.data();
     pipelineLayoutInfo.pushConstantRangeCount = pushConstants.size();
 
+    bindingsMap.clear();
     descriptorSetLayouts.clear();
     pipelineLayoutInfo.setLayoutCount = 0;
     pipelineLayoutInfo.pSetLayouts = nullptr;
@@ -119,12 +120,7 @@ uPtr<Pipeline> PipelineBuilder::buildPipeline(RenderPass* renderPass, Shader* sh
 
 void PipelineBuilder::addPushConstant(uint32_t size, vk::ShaderStageFlags stageFlags)
 {
-    // TODO: there seem to be issues if the stageFlags is anything besides VK_SHADER_STAGE_ALL
-    vk::PushConstantRange pushConstant(
-        stageFlags,
-        pushOffset,
-        size
-            );
+    vk::PushConstantRange pushConstant(stageFlags,pushOffset,size);
 
     pushConstants.push_back(pushConstant);
 
@@ -148,71 +144,38 @@ void PipelineBuilder::addVertexInputAttribute(vk::VertexInputAttributeDescriptio
     vertexInputInfo.pVertexAttributeDescriptions = vertexInputAttributes.data();
 }
 
-void PipelineBuilder::parseVertexShader(const char *filePath, DescriptorLayoutCache &layoutCache)
+void PipelineBuilder::processPushConstants(spirv_cross::CompilerGLSL &glsl, spirv_cross::ShaderResources &resources,
+                                           vk::ShaderStageFlags stages)
 {
-    auto shaderCode = Shader::readFile(filePath);
-    auto spirvBytecode = reinterpret_cast<const uint32_t *>(shaderCode.data());
-
-    spirv_cross::CompilerGLSL glsl(spirvBytecode, shaderCode.size() / sizeof(uint32_t));
-    spirv_cross::ShaderResources resources = glsl.get_shader_resources();
-
-    uint32_t offset = 0;
-    for (const auto &input : resources.stage_inputs)
-    {
-        std::cout << "Vertex Input Attribute: " << input.name << std::endl;
-
-        // Get the layout information for the vertex input attribute
-        spirv_cross::SPIRType inputType = glsl.get_type(input.type_id);
-
-        uint32_t location = glsl.get_decoration(input.id, spv::DecorationLocation);
-
-        auto format = mapTypeToFormat(inputType);
-
-        addVertexInputAttribute({location, 0, format.first, offset});
-
-        // increment offset by format
-        offset += format.second;
-    }
-
     for (auto &pushConstant : resources.push_constant_buffers)
     {
-        // Get the layout information for the push constant block
-        spirv_cross::SPIRType pushConstantType = glsl.get_type(pushConstant.type_id);
+        // get the layout information for the push constant block
+        const spirv_cross::SPIRType& pushConstantType = glsl.get_type(pushConstant.type_id);
 
         std::cout << "Push Constant: " << pushConstant.name << std::endl;
 
+        uint32_t size = 0;
         for (uint32_t i = 0; i < pushConstantType.member_types.size(); ++i)
         {
-            uint32_t size = glsl.get_declared_struct_member_size(pushConstantType, i);
-
-            addPushConstant(size, vk::ShaderStageFlagBits::eAll);
+            size += glsl.get_declared_struct_member_size(pushConstantType, i);
         }
+        addPushConstant(size, stages);
     }
+}
 
-    //// CREATE DESCRIPTOR SET LAYOUT
-    std::unordered_map<uint32_t, std::vector<vk::DescriptorSetLayoutBinding>> bindingsMap;
-    //std::vector<vk::DescriptorSetLayoutBinding> bindings;
-    for (const auto &uniformBuffer : resources.uniform_buffers)
-    {
-        // the descriptors for the uniform buffers
-        uint32_t bindingNum = glsl.get_decoration(uniformBuffer.id, spv::DecorationBinding);
-        uint32_t set = glsl.get_decoration(uniformBuffer.id, spv::DecorationDescriptorSet); // TODO: needs to keep track of all sets!
-
-        bindingsMap[set].emplace_back(bindingNum,
-                           vk::DescriptorType::eUniformBuffer,
-                           1, // number of values in array // TODO: get this via reflection
-                           vk::ShaderStageFlagBits::eVertex,
-                           nullptr // for images
-                           );
-    }
-    // TODO: might want to do something eventually for storage buffers
-
+void PipelineBuilder::updateDescriptorSetLayouts(DescriptorLayoutCache &layoutCache)
+{
     // loop over all sets and create the descriptor set layouts
     for (auto &set : bindingsMap)
     {
+        if (set.second.second) // already added to descriptor set layout
+            continue;
+        set.second.second = true;
+        auto &list = set.second.first;
         vk::DescriptorSetLayoutCreateInfo layoutInfo{};
-        layoutInfo.bindingCount = set.second.size(); // bindings in descriptor set
-        layoutInfo.pBindings = set.second.data();
+        layoutInfo.bindingCount = list.size(); // bindings in descriptor set
+        layoutInfo.pBindings = list.data();
+
         descriptorSetLayouts.push_back(layoutCache.createDescriptorLayout(&layoutInfo));
     }
 
@@ -220,7 +183,7 @@ void PipelineBuilder::parseVertexShader(const char *filePath, DescriptorLayoutCa
     pipelineLayoutInfo.pSetLayouts = descriptorSetLayouts.data();
 }
 
-void PipelineBuilder::parseFragmentShader(const char *filePath)
+void PipelineBuilder::parseVertexShader(const char *filePath, DescriptorLayoutCache &layoutCache, bool interleaved)
 {
     auto shaderCode = Shader::readFile(filePath);
     auto spirvBytecode = reinterpret_cast<const uint32_t *>(shaderCode.data());
@@ -228,30 +191,94 @@ void PipelineBuilder::parseFragmentShader(const char *filePath)
     spirv_cross::CompilerGLSL glsl(spirvBytecode, shaderCode.size() / sizeof(uint32_t));
     spirv_cross::ShaderResources resources = glsl.get_shader_resources();
 
-    for (auto &pushConstant : resources.push_constant_buffers)
+    uint32_t binding = 0;
+    uint32_t offset = 0;
+
+    for (const auto &input : resources.stage_inputs)
     {
-        // Get the layout information for the push constant block
-        spirv_cross::SPIRType pushConstantType = glsl.get_type(pushConstant.type_id);
+        std::cout << "Vertex Input Attribute: " << input.name << std::endl;
 
-        std::cout << "Push Constant: " << pushConstant.name << std::endl;
+        // Get the layout information for the vertex input attribute
+        const spirv_cross::SPIRType& inputType = glsl.get_type(input.type_id);
 
-        for (uint32_t i = 0; i < pushConstantType.member_types.size(); ++i)
+        uint32_t location = glsl.get_decoration(input.id, spv::DecorationLocation);
+
+        auto format = mapTypeToFormat(inputType);
+        std::cout << "Format Size: " << format.second << std::endl;
+
+        addVertexInputAttribute({location, binding, format.first, offset});
+
+        if (interleaved)
         {
-            uint32_t offset = glsl.get_member_decoration(pushConstant.type_id, i, spv::DecorationOffset);
-            uint32_t size = glsl.get_declared_struct_member_size(pushConstantType, i);
-
-            addPushConstant(size, vk::ShaderStageFlagBits::eAll);
+            offset += format.second; // increment offset by format
+        }
+        else
+        {
+            binding++;
         }
     }
+
+    processPushConstants(glsl, resources, vk::ShaderStageFlagBits::eVertex);
+
+    //// CREATE DESCRIPTOR SET LAYOUT
+    for (const auto &uniformBuffer : resources.uniform_buffers)
+    {
+        // the descriptors for the uniform buffers
+        uint32_t bindingNum = glsl.get_decoration(uniformBuffer.id, spv::DecorationBinding);
+        uint32_t set = glsl.get_decoration(uniformBuffer.id, spv::DecorationDescriptorSet); // TODO: needs to keep track of all sets!
+
+        bindingsMap[set].first.emplace_back(bindingNum,
+                                            vk::DescriptorType::eUniformBuffer,
+                                            1, // number of values in array // TODO: get this via reflection
+                                            vk::ShaderStageFlagBits::eVertex,
+                                            nullptr // for images
+                                            );
+    }
+    // TODO: might want to do something eventually for storage buffers
+    updateDescriptorSetLayouts(layoutCache);
 }
 
-void PipelineBuilder::parseShader(const char *filePath1, const char *filePath2)
+void PipelineBuilder::parseFragmentShader(const char *filePath, DescriptorLayoutCache &layoutCache)
 {
-    parseFragmentShader(filePath1);
-    parseFragmentShader(filePath2);
+    auto shaderCode = Shader::readFile(filePath);
+    auto spirvBytecode = reinterpret_cast<const uint32_t *>(shaderCode.data());
+
+    spirv_cross::CompilerGLSL glsl(spirvBytecode, shaderCode.size() / sizeof(uint32_t));
+    spirv_cross::ShaderResources resources = glsl.get_shader_resources();
+
+    processPushConstants(glsl, resources, vk::ShaderStageFlagBits::eFragment);
+
+    // TODO: samplers
+    for (auto &sampledImage : resources.sampled_images)
+    {
+        std::cout << "Sampled Image: " << sampledImage.name << std::endl;
+
+        uint32_t bindingNum = glsl.get_decoration(sampledImage.id, spv::DecorationBinding);
+        uint32_t set = glsl.get_decoration(sampledImage.id, spv::DecorationDescriptorSet);
+        uint32_t arrayLength = 1;
+        auto sizes = glsl.get_type(sampledImage.type_id).array;
+        if (!sizes.empty()) // no array
+        {
+            arrayLength = sizes[0];
+        }
+
+        bindingsMap[set].first.emplace_back(bindingNum,
+                                            vk::DescriptorType::eCombinedImageSampler,
+                                            arrayLength, // number of values in array
+                                            vk::ShaderStageFlagBits::eFragment,
+                                            nullptr
+                                            );
+    }
+    updateDescriptorSetLayouts(layoutCache);
 }
 
-std::pair<vk::Format, size_t> PipelineBuilder::mapTypeToFormat(const spirv_cross::SPIRType &type)
+void PipelineBuilder::parseShader(const char *filePath1, const char *filePath2, DescriptorLayoutCache &layoutCache, bool interleaved)
+{
+    parseVertexShader(filePath1, layoutCache, interleaved);
+    parseFragmentShader(filePath2, layoutCache);
+}
+
+std::pair<vk::Format, size_t> mapTypeToFormat(const spirv_cross::SPIRType &type)
 {
     switch (type.basetype)
     {
@@ -304,3 +331,8 @@ std::pair<vk::Format, size_t> PipelineBuilder::mapTypeToFormat(const spirv_cross
 
 void PipelineBuilder::destroy()
 {}
+
+vk::PipelineRasterizationStateCreateInfo& PipelineBuilder::getRasterizer()
+{
+    return rasterizer;
+}

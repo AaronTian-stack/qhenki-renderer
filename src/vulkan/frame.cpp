@@ -1,5 +1,5 @@
 #include "frame.h"
-#include "bufferfactory.h"
+#include "buffer/bufferfactory.h"
 
 Frame::Frame() {}
 
@@ -9,9 +9,7 @@ Frame::Frame(vk::Device device, CommandPool &pool, Syncer &sync) :
         imageAvailableSemaphore(sync.createSemaphore()),
         renderFinishedSemaphore(sync.createSemaphore()),
         inFlightFence(sync.createFence(true))
-{
-
-}
+{}
 
 void Frame::destroy()
 {
@@ -22,6 +20,7 @@ void Frame::destroy()
 
 void Frame::begin()
 {
+    vk::CommandBufferBeginInfo beginInfo{};
     //beginInfo.flags = vk::CommandBufferUsageFlagBits::eSimultaneousUse; // Optional: look into this more
     beginInfo.pInheritanceInfo = nullptr; // which state to inherit from primary command buffers (only applies to secondary command buffers)
 
@@ -35,6 +34,7 @@ void Frame::end()
 
 vk::SubmitInfo Frame::getSubmitInfo()
 {
+    vk::SubmitInfo submitInfo{};
     //VkSemaphore waitSemaphores[] = {imageAvailableSemaphore};
     submitInfo.waitSemaphoreCount = 1;
     submitInfo.pWaitSemaphores = &imageAvailableSemaphore; // wait until the image has been acquired before drawing

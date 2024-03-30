@@ -17,19 +17,19 @@ void CommandPool::destroy()
     device.destroy(commandPool);
 }
 
-vk::CommandBuffer CommandPool::createCommandBuffer()
+vk::CommandBuffer CommandPool::createCommandBuffer(vk::CommandBufferLevel level)
 {
     auto allocInfo = vk::CommandBufferAllocateInfo(
             commandPool,
-            vk::CommandBufferLevel::ePrimary, // TODO: abstract so you can create secondary command buffers
+            level,
             1
             );
     return device.allocateCommandBuffers(allocInfo)[0];
 }
 
-vk::CommandBuffer CommandPool::createCommandBuffer(const char* name)
+vk::CommandBuffer CommandPool::createCommandBuffer(const char* name, vk::CommandBufferLevel level)
 {
-    auto commandBuffer = createCommandBuffer();
+    auto commandBuffer = createCommandBuffer(level);
     commandBuffers[name] = commandBuffer;
     return commandBuffer;
 }
