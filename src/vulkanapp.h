@@ -23,7 +23,8 @@
 class VulkanApp
 {
 private:
-    uPtr<Model> model;
+    //uPtr<Model> model;
+    std::vector<uPtr<Model>> models;
     //uPtr<Buffer> buffer;
 
     //// DEBUG BUFFERS
@@ -49,7 +50,7 @@ private:
     uPtr<Pipeline> pathPipeline, triPipeline;
     uPtr<Shader> shader1, shader2;
 
-    CommandPool commandPool; // one pool per thread
+    CommandPool graphicsCommandPool; // one pool per thread
     Syncer syncer;
 
     int currentFrame = 0;
@@ -80,4 +81,7 @@ public:
     ImGuiCreateParameters getImGuiCreateParameters();
 
     CommandPool& getCommandPool();
+
+    void setUpCallbacks();
+    void setModel(const std::string &filePath);
 };

@@ -23,7 +23,7 @@ public:
     void resetFence(vk::Fence fence);
     void resetFence(const char* name);
     void waitForFence(const char* name);
-    vk::Result waitForFence(vk::Fence fence);
+    vk::Result waitForFences(std::vector<vk::Fence> fence);
 
 
 

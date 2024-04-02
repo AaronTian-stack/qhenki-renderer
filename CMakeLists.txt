@@ -13,7 +13,10 @@ file(GLOB_RECURSE SOURCE_FILES CONFIGURE_DEPENDS
 
 file(GLOB_RECURSE IMGUI CONFIGURE_DEPENDS
         ${CMAKE_CURRENT_SOURCE_DIR}/dependencies/include/imgui/*.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/dependencies/include/imgui/*.h)
+        ${CMAKE_CURRENT_SOURCE_DIR}/dependencies/include/imgui/*.h
+        ${CMAKE_CURRENT_SOURCE_DIR}/dependencies/include/ImGuiFileDialog-0.6.7/*.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/dependencies/include/ImGuiFileDialog-0.6.7/*.h
+)
 
 file(GLOB_RECURSE SPIRV CONFIGURE_DEPENDS
         ${CMAKE_CURRENT_SOURCE_DIR}/dependencies/include/spirv_cross/*.cpp

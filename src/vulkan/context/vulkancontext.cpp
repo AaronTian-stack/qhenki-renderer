@@ -1,5 +1,45 @@
 #include "vulkancontext.h"
+#include "VkBootstrap.h"
 #include <iostream>
+
+QueuesIndices VulkanContext::selectQueues(vkb::Device &vkb_device, vk::Device device)
+{
+    vk::Queue graphicsQueue = nullptr;
+    uint32_t graphicsIndex = -1;
+    vk::Queue presentQueue = nullptr;
+    uint32_t presentIndex = -1;
+    vk::Queue transferQueue = nullptr;
+    uint32_t transferIndex = -1;
+
+    // by default one queue from each family is already enabled
+    auto families = vkb_device.queue_families;
+    for (uint32_t index = 0; index < families.size(); index++)
+    {
+        auto family = families[index];
+
+        if (family.queueFlags & VK_QUEUE_GRAPHICS_BIT)
+        {
+            // graphics implicitly can do everything (except compute)
+            if (graphicsQueue == nullptr)
+            {
+                graphicsQueue = device.getQueue(index, 0);
+                presentQueue = device.getQueue(index, 0);
+                transferQueue = device.getQueue(index, 0);
+                graphicsIndex = index;
+                presentIndex = index;
+                transferIndex = index;
+            }
+            else
+            {
+                // the graphics queue has already been set, but now this queue can be used for transfer
+                transferQueue = device.getQueue(index, 0);
+                transferIndex = index;
+            }
+        }
+    }
+    return {graphicsQueue, presentQueue, transferQueue,
+            graphicsIndex, presentIndex, transferIndex};
+}
 
 bool VulkanContext::create(Window &window)
 {
@@ -56,6 +96,7 @@ bool VulkanContext::create(Window &window)
         return false;
     }
 
+    // by default, one queue from each family is enabled
     vkb::DeviceBuilder device_builder{ phys_ret.value() };
     auto dev_ret = device_builder
             .build();
@@ -65,28 +106,25 @@ bool VulkanContext::create(Window &window)
     }
     vkb::Device vkb_device = dev_ret.value();
 
-    vkb_device.get_queue_index(vkb::QueueType::graphics).value();
-
     this->device = {
         vkb_device,
         vk::PhysicalDevice(vkb_device.physical_device),
         vk::Device(vkb_device.device)
     };
 
-    auto graphicsQueueOpt = vkb_device.get_queue(vkb::QueueType::graphics);
-    if (!graphicsQueueOpt) {
-        std::cerr << "Failed to get graphics queue. Error: " << graphicsQueueOpt.error().message() << "\n";
-        return false;
-    }
-    auto presentQueueOpt = vkb_device.get_queue(vkb::QueueType::present);
-    if (!presentQueueOpt) {
-        std::cerr << "Failed to get present queue. Error: " << presentQueueOpt.error().message() << "\n";
-        return false;
-    }
-    auto graphicsQueue = vk::Queue(graphicsQueueOpt.value());
-    auto presentQueue = vk::Queue(presentQueueOpt.value());
+    auto queues = selectQueues(vkb_device, device.logicalDevice);
 
-    queueManager.initQueues(graphicsQueue, presentQueue);
+    auto opt = vkb_device.get_queue(vkb::QueueType::transfer);
+    if (opt.has_value())
+    {
+        queues.transfer = vk::Queue(opt.value());
+    }
+
+    auto graphicsQueue = vk::Queue(queues.graphics);
+    auto presentQueue = vk::Queue(queues.present);
+    auto transferQueue = vk::Queue(queues.transfer);
+
+    queueManager.initQueues(queues);
 
     auto formats = device.physicalDevice.getSurfaceFormatsKHR(surface);
     VkSurfaceFormatKHR format;

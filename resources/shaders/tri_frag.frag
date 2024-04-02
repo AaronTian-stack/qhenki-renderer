@@ -47,5 +47,13 @@ void main()
     baseColor *= material.baseColorFactor;
 
     vec3 c = baseColor.rgb * diff;
+
+    vec3 emissive = texture(texSampler[material.emissiveTexture], fragUV).rgb;
+    //c += emissive;
+
+    vec3 mr = texture(texSampler[material.metallicRoughnessTexture], fragUV).rgb;
+    float metallic = mr.r;
+    float roughness = mr.g;
+
     outColor = vec4(c, 1.0);
 }

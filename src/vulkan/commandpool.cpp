@@ -1,11 +1,11 @@
 #include "commandpool.h"
 
-void CommandPool::create(Device &device)
+void CommandPool::create(Device &device, int queueFamilyIndex)
 {
     this->device = vk::Device(device.vkbDevice.device);
     auto poolInfo = vk::CommandPoolCreateInfo(
             vk::CommandPoolCreateFlagBits::eResetCommandBuffer,
-            device.vkbDevice.get_queue_index(vkb::QueueType::graphics).value()
+            queueFamilyIndex
             );
     commandPool = this->device.createCommandPool(poolInfo);
     singleCommandFence = this->device.createFence(vk::FenceCreateInfo());
@@ -49,13 +49,26 @@ vk::CommandBuffer CommandPool::beginSingleCommand()
     return commandBuffer;
 }
 
-void CommandPool::submitSingleTimeCommands(QueueManager &queueManager, std::vector<vk::CommandBuffer> commandBuffers)
+void CommandPool::submitSingleTimeCommands(QueueManager &queueManager, std::vector<vk::CommandBuffer> commandBuffers, vkb::QueueType queueType)
 {
     vk::SubmitInfo submitInfo{};
     submitInfo.commandBufferCount = commandBuffers.size();
     submitInfo.pCommandBuffers = commandBuffers.data();
 
-    auto result = queueManager.graphicsQueue.submit(1, &submitInfo, singleCommandFence);
+    vk::Queue queueToUse;
+    switch(queueType)
+    {
+        case vkb::QueueType::graphics:
+            queueToUse = queueManager.queuesIndices.graphics;
+            break;
+        case vkb::QueueType::transfer:
+            queueToUse = queueManager.queuesIndices.transfer;
+            break;
+        default:
+            queueToUse = queueManager.queuesIndices.graphics;
+    }
+
+    auto result = queueToUse.submit(1, &submitInfo, singleCommandFence);
     if (result != vk::Result::eSuccess)
     {
         throw std::runtime_error("failed to submit single time command buffer!");

@@ -16,7 +16,16 @@ uPtr<Model> GLTFLoader::create(CommandPool &commandPool, QueueManager &queueMana
     std::string err;
     std::string warn;
 
-    bool ret = loader.LoadBinaryFromFile(&gltfModel, &err, &warn, filename); // for glb
+    bool ret = false;
+    // check extension of filename
+    std::string ext = filename;
+    ext = ext.substr(ext.find_last_of('.') + 1);
+    if (ext == "gltf")
+        ret = loader.LoadASCIIFromFile(&gltfModel, &err, &warn, filename);
+    else if (ext == "glb")
+        ret = loader.LoadBinaryFromFile(&gltfModel, &err, &warn, filename);
+    else
+        throw std::runtime_error("Invalid file extension");
 
     if (!warn.empty())
     {
@@ -191,6 +200,8 @@ uPtr<Buffer> GLTFLoader::getBuffer(BufferFactory &bufferFactory, tinygltf::Model
 
 void GLTFLoader::makeMaterialsAndTextures(CommandPool &commandPool, QueueManager &queueManager, BufferFactory &bufferFactory, tinygltf::Model &gltfModel, Model *model)
 {
+    std::vector<vk::CommandBuffer> commandBuffers;
+    std::vector<uPtr<Buffer>> stagingBuffers;
     // make every single image in order
     for (auto &image : gltfModel.images)
     {
@@ -201,15 +212,21 @@ void GLTFLoader::makeMaterialsAndTextures(CommandPool &commandPool, QueueManager
         }
 
         // gamma correction on color texture is done in the shader, otherwise load as unorm
-        auto imageTexture = bufferFactory.createTextureImage(commandPool, queueManager, vk::Format::eR8G8B8A8Unorm,
+        auto tuple = bufferFactory.createTextureImageDeferred(commandPool, vk::Format::eR8G8B8A8Unorm,
                                                              {static_cast<uint32_t>(image.width),
                                                               static_cast<uint32_t>(image.height), 1},
                                                              vk::ImageUsageFlagBits::eTransferDst |
                                                              vk::ImageUsageFlagBits::eSampled,
                                                              vk::ImageAspectFlagBits::eColor,
                                                              image.image.data());
+        auto imageTexture = std::move(std::get<0>(tuple));
+        commandBuffers.push_back(std::get<1>(tuple));
+        stagingBuffers.push_back(std::move(std::get<2>(tuple)));
         model->images.push_back(std::move(imageTexture));
     }
+    commandPool.submitSingleTimeCommands(queueManager, commandBuffers, vkb::QueueType::transfer); // submit as a batch to make it smoother
+    for (auto &buffer : stagingBuffers)
+        buffer->destroy();
 
     for (int i = 0; i < gltfModel.textures.size(); i++)
     {

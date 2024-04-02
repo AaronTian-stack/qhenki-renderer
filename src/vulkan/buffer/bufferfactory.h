@@ -29,10 +29,16 @@ public:
     uPtr<FrameBufferAttachment> createAttachment(vk::Format format, vk::Extent3D extent,
                                                  vk::ImageUsageFlags imageUsage, vk::ImageAspectFlags aspectFlags);
 
+    void destroy();
+
+    std::tuple<std::unique_ptr<Image>, vk::CommandBuffer, std::unique_ptr<Buffer>>
+    createTextureImageDeferred(CommandPool &commandPool, vk::Format format, vk::Extent3D extent,
+                               vk::Flags<vk::ImageUsageFlagBits> imageUsage,
+                               vk::Flags<vk::ImageAspectFlagBits> aspectFlags,
+                               void *data);
+
     uPtr<Image> createTextureImage(CommandPool &commandPool, QueueManager &queueManager,
                                    vk::Format format, vk::Extent3D extent,
                                    vk::Flags<vk::ImageUsageFlagBits> imageUsage, vk::Flags<vk::ImageAspectFlagBits> aspectFlags,
                                    void *data);
-
-    void destroy();
 };

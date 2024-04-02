@@ -32,13 +32,19 @@ private:
 
 public:
     CameraOptions options;
-    Camera(glm::vec3 position = glm::vec3(0.0f, 0.0f, 0.0f), CameraOptions options = CameraOptions());
+    Camera(CameraOptions options = CameraOptions());
     void update();
     void zoom(float yOffset);
     void lerp(float delta);
 
     glm::mat4 getViewMatrix() const;
     glm::vec3 getPosition() const;
+
+    void setTarget(glm::vec3 position);
+    void setThetaPhi(float theta, float phi);
+    void setTargetDistance(float distance);
+
+    void simpleReset();
 };
 
 glm::vec3 sphericalToCartesian(float theta, float phi, float radius);

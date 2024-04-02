@@ -1,10 +1,11 @@
 #include "vulkanapp.h"
+
 #include "vulkan/screenutils.h"
 #include "glm/glm.hpp"
 #include "inputprocesser.h"
 #include "imgui/imgui.h"
 
-VulkanApp::VulkanApp() : camera({0, 2.f, 2.f}) {}
+VulkanApp::VulkanApp() {}
 
 VulkanApp::~VulkanApp()
 {
@@ -14,7 +15,7 @@ VulkanApp::~VulkanApp()
         frame.destroy();
 
     syncer.destroy();
-    commandPool.destroy();
+    graphicsCommandPool.destroy();
 
     pathPipeline->destroy();
     shader1->destroy(); // shader modules must be destroyed after pipeline
@@ -29,7 +30,8 @@ VulkanApp::~VulkanApp()
 
     depthBuffer->destroy();
 
-    model->destroy();
+    for (auto &model : models)
+        model->destroy();
 
     texture->destroy();
 
@@ -58,7 +60,7 @@ void VulkanApp::create(Window &window)
     allocators.emplace_back(vulkanContext.device.logicalDevice);
 
     auto device = vulkanContext.device.logicalDevice;
-    commandPool.create(vulkanContext.device);
+    graphicsCommandPool.create(vulkanContext.device, vulkanContext.queueManager.getGraphicsIndex());
     pipelineFactory.create(device);
 
     bufferFactory.create(vulkanContext);
@@ -108,7 +110,7 @@ void VulkanApp::create(Window &window)
 
     buffer = bufferFactory.createBuffer(vertices.size() * sizeof(Vertex),
                                         vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst);
-    stagingBuffer->copyTo(*buffer, vulkanContext.queueManager, commandPool);
+    stagingBuffer->copyTo(*buffer, vulkanContext.queueManager, graphicsCommandPool);
     stagingBuffer->destroy();*/
 
     positionBuffer = bufferFactory.createBuffer(positions.size() * sizeof(glm::vec3), vk::BufferUsageFlagBits::eVertexBuffer, VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
@@ -136,7 +138,7 @@ void VulkanApp::create(Window &window)
     syncer.create(device);
     for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
     {
-        frames.emplace_back(device, commandPool, syncer);
+        frames.emplace_back(device, graphicsCommandPool, syncer);
         auto flags = static_cast<VmaAllocationCreateFlagBits>(VMA_ALLOCATION_CREATE_MAPPED_BIT |
                                                                                     VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
         cameraBuffers.emplace_back(bufferFactory.createBuffer(sizeof(CameraMatrices),
@@ -145,17 +147,39 @@ void VulkanApp::create(Window &window)
         allocators.emplace_back(vulkanContext.device.logicalDevice);
     }
 
-    model = GLTFLoader::create(commandPool,  vulkanContext.queueManager, bufferFactory, "higokumaru.glb");
+    //model = GLTFLoader::create(graphicsCommandPool,  vulkanContext.queueManager, bufferFactory, "higokumaru.glb");
 
     // dummy texture
     uint32_t white = 0xff48ff00;
 
-    textureImage = bufferFactory.createTextureImage(commandPool, vulkanContext.queueManager,
+    textureImage = bufferFactory.createTextureImage(graphicsCommandPool, vulkanContext.queueManager,
                                                     vk::Format::eR8G8B8A8Srgb, {1, 1, 1},
                                                vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled,
                                                     vk::ImageAspectFlagBits::eColor, &white);
     texture = mkU<Texture>(textureImage.get());
     texture->createSampler();
+}
+
+void VulkanApp::setUpCallbacks() {
+    ui->modelSelectCallback = [this](const std::string& filePath)
+    {
+//        // gather all fences across all frames ot ensure buffer is not being used in render
+//        // equivalent to calling device idle
+//        std::vector<vk::Fence> fences(MAX_FRAMES_IN_FLIGHT);
+//        for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
+//            fences[i] = frames[i].inFlightFence;
+//
+//        syncer.waitForFences(fences);
+        setModel(filePath);
+    };
+}
+
+void VulkanApp::setModel(const std::string& filePath)
+{
+    models.push_back(GLTFLoader::create(graphicsCommandPool,  vulkanContext.queueManager,
+                               bufferFactory, filePath.c_str()));
+    // reset camera position
+    camera.simpleReset();
 }
 
 void VulkanApp::recordCommandBuffer(vk::Framebuffer framebuffer)
@@ -168,7 +192,7 @@ void VulkanApp::recordCommandBuffer(vk::Framebuffer framebuffer)
     updateCameraBuffer();
 
     //// BEGIN RECORDING COMMAND BUFFER
-    frame.begin(); // begins the frames command buffer. for secondary command buffer, need to modify the beginInfo struct
+    frame.begin(); // begins the frames command buffer
 
     //// BEGIN RENDER PASS
     renderPass->setFramebuffer(framebuffer);
@@ -203,32 +227,35 @@ void VulkanApp::recordCommandBuffer(vk::Framebuffer framebuffer)
                 .bindBuffer(0, &bufferInfo, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eVertex)
                 .build(cameraSet, layout);
 
-        //std::vector<vk::DescriptorImageInfo> imageInfos = {textureInfo, textureInfo};
-        // get image infos of al model textures
-        std::vector<vk::DescriptorImageInfo> imageInfos = model->getDescriptorImageInfo();
-        if (imageInfos.size() > 16)
+        if (models.size() > 0)
         {
-            std::cerr << "More than 16 samplers in model!" << std::endl;
-            return;
-        }
-        vk::DescriptorSet samplerSet;
-        DescriptorBuilder::beginSet(&layoutCache, &allocator)
-                .bindImage(0, imageInfos,
-                           16, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eFragment)
-                .build(samplerSet, layout);
+            auto &model = models.back();
+            //std::vector<vk::DescriptorImageInfo> imageInfos = {textureInfo, textureInfo};
+            // get image infos of al model textures
+            std::vector<vk::DescriptorImageInfo> imageInfos = model->getDescriptorImageInfo();
+            if (imageInfos.size() > 16) {
+                std::cerr << "More than 16 samplers in model!" << std::endl;
+                return;
+            }
+            vk::DescriptorSet samplerSet;
+            DescriptorBuilder::beginSet(&layoutCache, &allocator)
+                    .bindImage(0, imageInfos,
+                               16, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eFragment)
+                    .build(samplerSet, layout);
 
-        primaryCommandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipeline->getPipelineLayout(),
-                                                0, {cameraSet, samplerSet}, nullptr);
+            primaryCommandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipeline->getPipelineLayout(),
+                                                    0, {cameraSet, samplerSet}, nullptr);
 
-        //commandBuffer.drawIndexed(6, 1, 0, 0, 0);
+            //commandBuffer.drawIndexed(6, 1, 0, 0, 0);
 
 //        modelTransform = glm::translate(glm::mat4(), glm::vec3(0.f, 0.f, -1.f));
 //        triPipeline->setPushConstant(commandBuffer, &modelTransform, sizeof(glm::mat4));
 //        commandBuffer.drawIndexed(6, 1, 0, 0, 0);
 
-        //triPipeline->setPushConstant(commandBuffer, &model->transform, sizeof(glm::mat4));
-        //model->draw(commandBuffer);
-        model->root->draw(primaryCommandBuffer, *triPipeline, *model->root);
+            //triPipeline->setPushConstant(commandBuffer, &model->transform, sizeof(glm::mat4));
+            //model->draw(commandBuffer);
+            model->root->draw(primaryCommandBuffer, *triPipeline, *model->root);
+        }
     }
     else
         primaryCommandBuffer.draw(3, 1, 0, 0);
@@ -265,11 +292,18 @@ void VulkanApp::render()
     // lots of information about syncing in frame.getSubmitInfo() struct.
     queueManager.submitGraphics(frame.getSubmitInfo(), frame.inFlightFence); // signal fence when done
 
-    std::vector<vk::Semaphore> signalSemaphores = { frame.renderFinishedSemaphore };
+    std::vector<vk::Semaphore> signalSemaphores = {frame.renderFinishedSemaphore};
     // calls the present command, waits for given semaphores
     queueManager.present(swapChain, signalSemaphores);
 
     currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
+
+    if (models.size() > 1)
+    {
+        // remove first model
+        models[0]->destroy();
+        models.erase(models.begin());
+    }
 }
 
 void VulkanApp::resize()
@@ -288,7 +322,7 @@ ImGuiCreateParameters VulkanApp::getImGuiCreateParameters()
 
 CommandPool& VulkanApp::getCommandPool()
 {
-    return commandPool;
+    return graphicsCommandPool;
 }
 
 void VulkanApp::updateCameraBuffer()

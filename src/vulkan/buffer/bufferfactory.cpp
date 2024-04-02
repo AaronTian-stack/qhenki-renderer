@@ -99,9 +99,10 @@ uPtr<FrameBufferAttachment> BufferFactory::createAttachment(
     return mkU<FrameBufferAttachment>(device, allocator, allocation, image, imageView, format);
 }
 
-uPtr<Image> BufferFactory::createTextureImage(CommandPool &commandPool, QueueManager &queueManager,
-                                              vk::Format format, vk::Extent3D extent, vk::Flags<vk::ImageUsageFlagBits> imageUsage,
-                                              vk::Flags<vk::ImageAspectFlagBits> aspectFlags, void *data)
+std::tuple<uPtr<Image>, vk::CommandBuffer, uPtr<Buffer>> BufferFactory::createTextureImageDeferred(
+        CommandPool &commandPool,
+        vk::Format format, vk::Extent3D extent, vk::Flags<vk::ImageUsageFlagBits> imageUsage,
+        vk::Flags<vk::ImageAspectFlagBits> aspectFlags, void *data)
 {
     auto texture = mkU<Image>(createAttachment(format, extent, imageUsage, aspectFlags));
     texture->attachment->create(this->device);
@@ -143,8 +144,19 @@ uPtr<Image> BufferFactory::createTextureImage(CommandPool &commandPool, QueueMan
 
     commandBuffer.end();
 
-    // TODO: could be changed to return the commandBuffer and the stating buffer, such that they can be executed at once and destroyed together
-    commandPool.submitSingleTimeCommands(queueManager, {commandBuffer});
+    return {std::move(texture), commandBuffer, std::move(stagingBuffer)};
+}
+
+uPtr<Image> BufferFactory::createTextureImage(CommandPool &commandPool, QueueManager &queueManager,
+                                              vk::Format format, vk::Extent3D extent, vk::Flags<vk::ImageUsageFlagBits> imageUsage,
+                                              vk::Flags<vk::ImageAspectFlagBits> aspectFlags, void *data)
+{
+    auto tuple = createTextureImageDeferred(commandPool, format, extent, imageUsage, aspectFlags, data);
+    auto texture = std::move(std::get<0>(tuple));
+    auto commandBuffer = std::get<1>(tuple);
+    auto stagingBuffer = std::move(std::get<2>(tuple));
+
+    commandPool.submitSingleTimeCommands(queueManager, {commandBuffer}, vkb::QueueType::transfer);
 
     stagingBuffer->destroy();
 

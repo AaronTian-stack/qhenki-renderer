@@ -22,6 +22,7 @@ int main()
     ui.create(param, app.getCommandPool());
 
     app.ui = &ui;
+    app.setUpCallbacks();
 
     while (!window.shouldClose()) {
         glfwPollEvents();
