@@ -21,5 +21,6 @@ private:
                           int type, vk::BufferUsageFlagBits flag, size_t vertexSize);
 
 public:
+    static void benchmarkTest(const char* filename);
     static uPtr<Model> create(CommandPool &commandPool, QueueManager &queueManager, BufferFactory &bufferFactory, const char* filename);
 };

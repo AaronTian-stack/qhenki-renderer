@@ -30,6 +30,8 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${dir}/build)
 # static linking for debugging
 # set(CMAKE_EXE_LINKER_FLAGS "-static")
 
+# if on macOS you will need to set MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS=1 in environment variables in run configuration
+
 #Include library files
 include_directories(dependencies/include)
 

@@ -50,7 +50,9 @@ private:
     uPtr<Pipeline> pathPipeline, triPipeline;
     uPtr<Shader> shader1, shader2;
 
+    std::atomic<bool> readyToRender;
     CommandPool graphicsCommandPool; // one pool per thread
+    CommandPool transferCommandPool;
     Syncer syncer;
 
     int currentFrame = 0;
@@ -80,7 +82,7 @@ public:
     UserInterface *ui;
     ImGuiCreateParameters getImGuiCreateParameters();
 
-    CommandPool& getCommandPool();
+    CommandPool& getGraphicsCommandPool();
 
     void setUpCallbacks();
     void setModel(const std::string &filePath);

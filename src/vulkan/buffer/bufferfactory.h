@@ -31,6 +31,7 @@ public:
 
     void destroy();
 
+    // TODO: change to structs
     std::tuple<std::unique_ptr<Image>, vk::CommandBuffer, std::unique_ptr<Buffer>>
     createTextureImageDeferred(CommandPool &commandPool, vk::Format format, vk::Extent3D extent,
                                vk::Flags<vk::ImageUsageFlagBits> imageUsage,

@@ -81,6 +81,8 @@ bool VulkanContext::create(Window &window)
     features.runtimeDescriptorArray = VK_TRUE;
     features.descriptorBindingPartiallyBound = VK_TRUE;
     features.descriptorBindingVariableDescriptorCount = VK_TRUE;
+    features.descriptorBindingSampledImageUpdateAfterBind = VK_TRUE;
+    features.descriptorBindingUniformBufferUpdateAfterBind = VK_TRUE;
 
     vkb::PhysicalDeviceSelector selector{ vkbInstance };
     auto phys_ret = selector.set_surface(surface)

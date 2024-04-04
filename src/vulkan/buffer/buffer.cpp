@@ -60,7 +60,8 @@ void Buffer::copyTo(Buffer &destination, QueueManager &queueManager, CommandPool
     commandBuffer.copyBuffer(this->buffer, destination.buffer, 1, &copyRegion);
 
     commandBuffer.end();
-    commandPool.submitSingleTimeCommands(queueManager, {commandBuffer}, vkb::QueueType::transfer);
+    commandPool.submitSingleTimeCommands(queueManager, {commandBuffer},
+                                         vkb::QueueType::graphics, true);
 }
 
 void Buffer::setIndexType(vk::IndexType type)

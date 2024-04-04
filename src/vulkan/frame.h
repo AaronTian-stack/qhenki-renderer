@@ -9,9 +9,6 @@
 class Frame : public Destroyable
 {
 private:
-    //vk::CommandBufferBeginInfo beginInfo{};
-    //vk::SubmitInfo submitInfo{};
-
     vk::PipelineStageFlags waitStages[1] = {vk::PipelineStageFlagBits::eColorAttachmentOutput};
 
 public:

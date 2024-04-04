@@ -9,6 +9,25 @@
 #include "glm/vec3.hpp"
 #include <glm/gtx/matrix_decompose.hpp>
 
+void GLTFLoader::benchmarkTest(const char* filename)
+{
+    tinygltf::TinyGLTF loader;
+    tinygltf::Model gltfModel;
+    std::string err;
+    std::string warn;
+
+    bool ret = false;
+    // check extension of filename
+    std::string ext = filename;
+    ext = ext.substr(ext.find_last_of('.') + 1);
+    if (ext == "gltf")
+        ret = loader.LoadASCIIFromFile(&gltfModel, &err, &warn, filename);
+    else if (ext == "glb")
+        ret = loader.LoadBinaryFromFile(&gltfModel, &err, &warn, filename);
+    else
+        throw std::runtime_error("Invalid file extension");
+}
+
 uPtr<Model> GLTFLoader::create(CommandPool &commandPool, QueueManager &queueManager, BufferFactory &bufferFactory, const char* filename)
 {
     tinygltf::TinyGLTF loader;
@@ -224,7 +243,9 @@ void GLTFLoader::makeMaterialsAndTextures(CommandPool &commandPool, QueueManager
         stagingBuffers.push_back(std::move(std::get<2>(tuple)));
         model->images.push_back(std::move(imageTexture));
     }
-    commandPool.submitSingleTimeCommands(queueManager, commandBuffers, vkb::QueueType::transfer); // submit as a batch to make it smoother
+    // submit as a async batch to make it smoother
+    commandPool.submitSingleTimeCommands(queueManager, commandBuffers, vkb::QueueType::transfer, true);
+
     for (auto &buffer : stagingBuffers)
         buffer->destroy();
 

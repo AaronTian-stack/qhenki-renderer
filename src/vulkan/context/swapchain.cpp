@@ -18,7 +18,8 @@ vk::Extent2D SwapChain::getExtent() const
 vk::Framebuffer SwapChain::nextImage(vk::Semaphore imageAvailable)
 {
     auto device = vk::Device(this->vkbSwapchain.device);
-    auto result = device.acquireNextImageKHR(swapChain, UINT64_MAX, imageAvailable, VK_NULL_HANDLE);
+    auto result = device.acquireNextImageKHR(swapChain, UINT64_MAX,
+                                             imageAvailable, VK_NULL_HANDLE);
     imageIndex = result.value;
     return frameBuffers[imageIndex].framebuffer;
 }

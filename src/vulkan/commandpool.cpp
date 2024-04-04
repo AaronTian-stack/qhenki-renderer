@@ -1,6 +1,6 @@
 #include "commandpool.h"
 
-void CommandPool::create(Device &device, int queueFamilyIndex)
+void CommandPool::create(Device &device, uint32_t queueFamilyIndex)
 {
     this->device = vk::Device(device.vkbDevice.device);
     auto poolInfo = vk::CommandPoolCreateInfo(
@@ -8,22 +8,22 @@ void CommandPool::create(Device &device, int queueFamilyIndex)
             queueFamilyIndex
             );
     commandPool = this->device.createCommandPool(poolInfo);
-    singleCommandFence = this->device.createFence(vk::FenceCreateInfo());
+    blockCommandFence = this->device.createFence(vk::FenceCreateInfo());
 }
 
 void CommandPool::destroy()
 {
-    device.destroyFence(singleCommandFence);
+    device.destroyFence(blockCommandFence);
     device.destroy(commandPool);
+    for (auto fence : waitingFences)
+    {
+        device.destroy(fence);
+    }
 }
 
 vk::CommandBuffer CommandPool::createCommandBuffer(vk::CommandBufferLevel level)
 {
-    auto allocInfo = vk::CommandBufferAllocateInfo(
-            commandPool,
-            level,
-            1
-            );
+    auto allocInfo = vk::CommandBufferAllocateInfo(commandPool,level,1);
     return device.allocateCommandBuffers(allocInfo)[0];
 }
 
@@ -49,17 +49,20 @@ vk::CommandBuffer CommandPool::beginSingleCommand()
     return commandBuffer;
 }
 
-void CommandPool::submitSingleTimeCommands(QueueManager &queueManager, std::vector<vk::CommandBuffer> commandBuffers, vkb::QueueType queueType)
+void CommandPool::submitSingleTimeCommands(QueueManager &queueManager, std::vector<vk::CommandBuffer> commandBuffers,
+                                           vkb::QueueType queueType, bool wait)
 {
     vk::SubmitInfo submitInfo{};
     submitInfo.commandBufferCount = commandBuffers.size();
     submitInfo.pCommandBuffers = commandBuffers.data();
 
     vk::Queue queueToUse;
-    switch(queueType)
-    {
+    switch(queueType) {
         case vkb::QueueType::graphics:
             queueToUse = queueManager.queuesIndices.graphics;
+            break;
+        case vkb::QueueType::present:
+            queueToUse = queueManager.queuesIndices.present;
             break;
         case vkb::QueueType::transfer:
             queueToUse = queueManager.queuesIndices.transfer;
@@ -67,18 +70,34 @@ void CommandPool::submitSingleTimeCommands(QueueManager &queueManager, std::vect
         default:
             queueToUse = queueManager.queuesIndices.graphics;
     }
+    vk::Fence fence;
+    if (wait)
+    {
+        fence = blockCommandFence;
+    }
+    else
+    {
+        fence = device.createFence(vk::FenceCreateInfo());
+        waitingFences.push_back(fence);
+    }
 
-    auto result = queueToUse.submit(1, &submitInfo, singleCommandFence);
+    auto result = queueToUse.submit(1, &submitInfo, fence);
     if (result != vk::Result::eSuccess)
     {
         throw std::runtime_error("failed to submit single time command buffer!");
     }
-    auto wait = device.waitForFences(singleCommandFence, VK_TRUE, UINT64_MAX);
-    if (wait != vk::Result::eSuccess)
-    {
-        throw std::runtime_error("failed to wait for fence!");
-    }
 
-    device.freeCommandBuffers(commandPool, commandBuffers.size(), commandBuffers.data());
-    device.resetFences(singleCommandFence);
+    // TODO: don't wait on this when doing async!!
+    if (wait)
+    {
+        // wait for singular fence
+        auto waitResult = device.waitForFences(fence, VK_TRUE, UINT64_MAX);
+        if (waitResult != vk::Result::eSuccess)
+        {
+            throw std::runtime_error("failed to wait for fence!");
+        }
+
+        device.freeCommandBuffers(commandPool, commandBuffers.size(), commandBuffers.data());
+        device.resetFences(fence);
+    }
 }

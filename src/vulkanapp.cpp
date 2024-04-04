@@ -4,6 +4,7 @@
 #include "glm/glm.hpp"
 #include "inputprocesser.h"
 #include "imgui/imgui.h"
+#include <thread>
 
 VulkanApp::VulkanApp() {}
 
@@ -16,6 +17,7 @@ VulkanApp::~VulkanApp()
 
     syncer.destroy();
     graphicsCommandPool.destroy();
+    transferCommandPool.destroy();
 
     pathPipeline->destroy();
     shader1->destroy(); // shader modules must be destroyed after pipeline
@@ -61,6 +63,7 @@ void VulkanApp::create(Window &window)
 
     auto device = vulkanContext.device.logicalDevice;
     graphicsCommandPool.create(vulkanContext.device, vulkanContext.queueManager.getGraphicsIndex());
+    transferCommandPool.create(vulkanContext.device, vulkanContext.queueManager.getTransferIndex());
     pipelineFactory.create(device);
 
     bufferFactory.create(vulkanContext);
@@ -163,23 +166,21 @@ void VulkanApp::create(Window &window)
 void VulkanApp::setUpCallbacks() {
     ui->modelSelectCallback = [this](const std::string& filePath)
     {
-//        // gather all fences across all frames ot ensure buffer is not being used in render
-//        // equivalent to calling device idle
-//        std::vector<vk::Fence> fences(MAX_FRAMES_IN_FLIGHT);
-//        for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
-//            fences[i] = frames[i].inFlightFence;
-//
-//        syncer.waitForFences(fences);
         setModel(filePath);
     };
 }
 
 void VulkanApp::setModel(const std::string& filePath)
 {
-    models.push_back(GLTFLoader::create(graphicsCommandPool,  vulkanContext.queueManager,
-                               bufferFactory, filePath.c_str()));
     // reset camera position
     camera.simpleReset();
+    readyToRender = false;
+    std::thread t([this, filePath](){
+        models.push_back(GLTFLoader::create(transferCommandPool,  vulkanContext.queueManager,
+                                            bufferFactory, filePath.c_str()));
+        readyToRender = true;
+    });
+    t.detach();
 }
 
 void VulkanApp::recordCommandBuffer(vk::Framebuffer framebuffer)
@@ -227,20 +228,16 @@ void VulkanApp::recordCommandBuffer(vk::Framebuffer framebuffer)
                 .bindBuffer(0, &bufferInfo, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eVertex)
                 .build(cameraSet, layout);
 
-        if (models.size() > 0)
+        if (readyToRender && !models.empty())
         {
             auto &model = models.back();
             //std::vector<vk::DescriptorImageInfo> imageInfos = {textureInfo, textureInfo};
             // get image infos of al model textures
             std::vector<vk::DescriptorImageInfo> imageInfos = model->getDescriptorImageInfo();
-            if (imageInfos.size() > 16) {
-                std::cerr << "More than 16 samplers in model!" << std::endl;
-                return;
-            }
             vk::DescriptorSet samplerSet;
             DescriptorBuilder::beginSet(&layoutCache, &allocator)
                     .bindImage(0, imageInfos,
-                               16, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eFragment)
+                               60, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eFragment)
                     .build(samplerSet, layout);
 
             primaryCommandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipeline->getPipelineLayout(),
@@ -288,6 +285,11 @@ void VulkanApp::render()
     commandBuffer.reset();
     recordCommandBuffer(fb);
 
+    // for deferred rendering, we need to
+    // 1. wait for swapchain image semaphore
+    // 2. render offscreen and signal semaphore (subpass will order itself)
+    // 3. wait for offscreen render to finish and then present it
+
     auto &queueManager = vulkanContext.queueManager;
     // lots of information about syncing in frame.getSubmitInfo() struct.
     queueManager.submitGraphics(frame.getSubmitInfo(), frame.inFlightFence); // signal fence when done
@@ -298,12 +300,12 @@ void VulkanApp::render()
 
     currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 
-    if (models.size() > 1)
-    {
-        // remove first model
-        models[0]->destroy();
-        models.erase(models.begin());
-    }
+//    if (models.size() > 1)
+//    {
+//        // remove first model
+//        models[0]->destroy();
+//        models.erase(models.begin());
+//    }
 }
 
 void VulkanApp::resize()
@@ -320,7 +322,7 @@ ImGuiCreateParameters VulkanApp::getImGuiCreateParameters()
     return params;
 }
 
-CommandPool& VulkanApp::getCommandPool()
+CommandPool& VulkanApp::getGraphicsCommandPool()
 {
     return graphicsCommandPool;
 }

@@ -21,6 +21,7 @@ uPtr<Buffer> BufferFactory::createBuffer(vk::DeviceSize size, vk::BufferUsageFla
     bufferCreateInfo.sType = vk::StructureType::eBufferCreateInfo;
     bufferCreateInfo.size = size;
     bufferCreateInfo.usage = usage;
+    bufferCreateInfo.sharingMode = vk::SharingMode::eExclusive; // TODO: ownership transfer
 
     VmaAllocationCreateInfo allocationCreateInfo{};
     allocationCreateInfo.usage = VMA_MEMORY_USAGE_AUTO;
@@ -99,6 +100,7 @@ uPtr<FrameBufferAttachment> BufferFactory::createAttachment(
     return mkU<FrameBufferAttachment>(device, allocator, allocation, image, imageView, format);
 }
 
+// TODO: change this to a struct
 std::tuple<uPtr<Image>, vk::CommandBuffer, uPtr<Buffer>> BufferFactory::createTextureImageDeferred(
         CommandPool &commandPool,
         vk::Format format, vk::Extent3D extent, vk::Flags<vk::ImageUsageFlagBits> imageUsage,
@@ -135,7 +137,8 @@ std::tuple<uPtr<Image>, vk::CommandBuffer, uPtr<Buffer>> BufferFactory::createTe
     region.imageSubresource.layerCount = 1;
     region.imageExtent = extent;
 
-    commandBuffer.copyBufferToImage(stagingBuffer->buffer, texture->attachment->image, vk::ImageLayout::eTransferDstOptimal, 1, &region);
+    commandBuffer.copyBufferToImage(stagingBuffer->buffer, texture->attachment->image,
+                                    vk::ImageLayout::eTransferDstOptimal, 1, &region);
 
     texture->recordTransitionImageLayout(
             vk::ImageLayout::eTransferDstOptimal,
@@ -156,7 +159,7 @@ uPtr<Image> BufferFactory::createTextureImage(CommandPool &commandPool, QueueMan
     auto commandBuffer = std::get<1>(tuple);
     auto stagingBuffer = std::move(std::get<2>(tuple));
 
-    commandPool.submitSingleTimeCommands(queueManager, {commandBuffer}, vkb::QueueType::transfer);
+    commandPool.submitSingleTimeCommands(queueManager, {commandBuffer}, vkb::QueueType::graphics, true);
 
     stagingBuffer->destroy();
 
