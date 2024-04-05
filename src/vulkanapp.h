@@ -23,19 +23,10 @@
 class VulkanApp
 {
 private:
-    //uPtr<Model> model;
     std::vector<uPtr<Model>> models;
-    //uPtr<Buffer> buffer;
 
-    //// DEBUG BUFFERS
-    uPtr<Buffer> positionBuffer;
-    uPtr<Buffer> normalBuffer;
-    uPtr<Buffer> indexBuffer;
-
-    uPtr<Image> textureImage;
-    uPtr<Texture> texture;
-
-    uPtr<FrameBufferAttachment> depthBuffer;
+    uPtr<FrameBuffer> gBuffer;
+    sPtr<FrameBufferAttachment> depthBuffer;
 
     GLTFLoader gltfLoad;
     BufferFactory bufferFactory;
@@ -43,7 +34,8 @@ private:
     VulkanContext vulkanContext;
 
     RenderPassBuilder renderPassBuilder;
-    uPtr<RenderPass> renderPass;
+    uPtr<RenderPass> displayRenderPass;
+    uPtr<RenderPass> offscreenRenderPass;
 
     PipelineBuilder pipelineFactory;
 
@@ -71,12 +63,14 @@ public:
     VulkanApp();
     ~VulkanApp();
 
+    void createGbuffer(vk::Extent2D extent, vk::RenderPass renderPass);
     void create(Window &window);
     void render();
     void resize();
 
     void handleInput();
     void updateCameraBuffer();
+    void recordOffscreenBuffer(vk::CommandBuffer buffer, vk::Framebuffer framebuffer);
     void recordCommandBuffer(vk::Framebuffer framebuffer); // TODO: NEED TO DELETE THIS LATER
 
     UserInterface *ui;

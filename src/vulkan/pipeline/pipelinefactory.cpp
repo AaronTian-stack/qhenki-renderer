@@ -87,7 +87,7 @@ void PipelineBuilder::reset()
     pipelineLayoutInfo.pSetLayouts = nullptr;
 }
 
-uPtr<Pipeline> PipelineBuilder::buildPipeline(RenderPass* renderPass, Shader* shader)
+uPtr<Pipeline> PipelineBuilder::buildPipeline(RenderPass* renderPass, int subpass, Shader* shader)
 {
     auto pipeline = mkU<Pipeline>(device);
 
@@ -108,7 +108,7 @@ uPtr<Pipeline> PipelineBuilder::buildPipeline(RenderPass* renderPass, Shader* sh
     pipelineInfo.layout = pipeline->createPipelineLayout(pipelineLayoutInfo);
 
     pipelineInfo.renderPass = renderPass->getRenderPass();
-    pipelineInfo.subpass = 0;
+    pipelineInfo.subpass = subpass;
 
     pipelineInfo.basePipelineHandle = VK_NULL_HANDLE; // Optional
     pipelineInfo.basePipelineIndex = -1; // Optional

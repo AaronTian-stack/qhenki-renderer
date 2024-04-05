@@ -75,7 +75,7 @@ vk::ImageViewCreateInfo BufferFactory::imageViewInfo(vk::Image image, vk::Format
     return info;
 }
 
-uPtr<FrameBufferAttachment> BufferFactory::createAttachment(
+sPtr<FrameBufferAttachment> BufferFactory::createAttachment(
     vk::Format format, vk::Extent3D extent,
     vk::ImageUsageFlags imageUsage, vk::ImageAspectFlags aspectFlags)
 {
@@ -97,11 +97,10 @@ uPtr<FrameBufferAttachment> BufferFactory::createAttachment(
     if (result != vk::Result::eSuccess)
         throw std::runtime_error("failed to create image view");
 
-    return mkU<FrameBufferAttachment>(device, allocator, allocation, image, imageView, format);
+    return mkS<FrameBufferAttachment>(device, allocator, allocation, image, imageView, format);
 }
 
-// TODO: change this to a struct
-std::tuple<uPtr<Image>, vk::CommandBuffer, uPtr<Buffer>> BufferFactory::createTextureImageDeferred(
+DeferredImage BufferFactory::createTextureImageDeferred(
         CommandPool &commandPool,
         vk::Format format, vk::Extent3D extent, vk::Flags<vk::ImageUsageFlagBits> imageUsage,
         vk::Flags<vk::ImageAspectFlagBits> aspectFlags, void *data)
@@ -154,10 +153,10 @@ uPtr<Image> BufferFactory::createTextureImage(CommandPool &commandPool, QueueMan
                                               vk::Format format, vk::Extent3D extent, vk::Flags<vk::ImageUsageFlagBits> imageUsage,
                                               vk::Flags<vk::ImageAspectFlagBits> aspectFlags, void *data)
 {
-    auto tuple = createTextureImageDeferred(commandPool, format, extent, imageUsage, aspectFlags, data);
-    auto texture = std::move(std::get<0>(tuple));
-    auto commandBuffer = std::get<1>(tuple);
-    auto stagingBuffer = std::move(std::get<2>(tuple));
+    auto deferredImage = createTextureImageDeferred(commandPool, format, extent, imageUsage, aspectFlags, data);
+    auto texture = std::move(deferredImage.image);
+    auto commandBuffer = deferredImage.cmd;
+    auto stagingBuffer = std::move(deferredImage.stagingBufferToDestroy);
 
     commandPool.submitSingleTimeCommands(queueManager, {commandBuffer}, vkb::QueueType::graphics, true);
 

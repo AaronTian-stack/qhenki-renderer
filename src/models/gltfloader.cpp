@@ -231,16 +231,16 @@ void GLTFLoader::makeMaterialsAndTextures(CommandPool &commandPool, QueueManager
         }
 
         // gamma correction on color texture is done in the shader, otherwise load as unorm
-        auto tuple = bufferFactory.createTextureImageDeferred(commandPool, vk::Format::eR8G8B8A8Unorm,
+        auto deferredImage = bufferFactory.createTextureImageDeferred(commandPool, vk::Format::eR8G8B8A8Unorm,
                                                              {static_cast<uint32_t>(image.width),
                                                               static_cast<uint32_t>(image.height), 1},
                                                              vk::ImageUsageFlagBits::eTransferDst |
                                                              vk::ImageUsageFlagBits::eSampled,
                                                              vk::ImageAspectFlagBits::eColor,
                                                              image.image.data());
-        auto imageTexture = std::move(std::get<0>(tuple));
-        commandBuffers.push_back(std::get<1>(tuple));
-        stagingBuffers.push_back(std::move(std::get<2>(tuple)));
+        auto imageTexture = std::move(deferredImage.image);
+        commandBuffers.push_back(deferredImage.cmd);
+        stagingBuffers.push_back(std::move(deferredImage.stagingBufferToDestroy));
         model->images.push_back(std::move(imageTexture));
     }
     // submit as a async batch to make it smoother

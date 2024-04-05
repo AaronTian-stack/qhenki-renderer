@@ -15,6 +15,7 @@ public:
     const vk::ImageView imageView;
     const vk::Format format;
     FrameBufferAttachment(vk::Image image, vk::ImageView imageView, vk::Format format);
-    FrameBufferAttachment(vk::Device device, VmaAllocator allocator, VmaAllocation allocation, vk::Image image, vk::ImageView imageView, vk::Format format);
+    FrameBufferAttachment(vk::Device device, VmaAllocator allocator, VmaAllocation allocation,
+                          vk::Image image, vk::ImageView imageView, vk::Format format);
     void destroy() override;
 };

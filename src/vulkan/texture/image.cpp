@@ -1,9 +1,7 @@
 #include "image.h"
 
-Image::Image(std::unique_ptr<FrameBufferAttachment> attachment) : destroyed(false)
-{
-    this->attachment = std::move(attachment);
-}
+Image::Image(const sPtr<FrameBufferAttachment> attachment) : attachment(attachment), destroyed(false)
+{}
 
 void Image::recordTransitionImageLayout(vk::ImageLayout oldLayout, vk::ImageLayout newLayout,
                                         vk::CommandBuffer commandBuffer)

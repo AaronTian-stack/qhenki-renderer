@@ -44,7 +44,7 @@ private:
 public:
     PipelineBuilder();
 
-    uPtr<Pipeline> buildPipeline(RenderPass* renderPass, Shader* shader);
+    uPtr<Pipeline> buildPipeline(RenderPass* renderPass, int subpass, Shader* shader);
     void addPushConstant(uint32_t size, vk::ShaderStageFlags stageFlags = vk::ShaderStageFlagBits::eAll);
 
     void processPushConstants(spirv_cross::CompilerGLSL &glsl, spirv_cross::ShaderResources &resources,

@@ -122,10 +122,6 @@ bool VulkanContext::create(Window &window)
         queues.transfer = vk::Queue(opt.value());
     }
 
-    auto graphicsQueue = vk::Queue(queues.graphics);
-    auto presentQueue = vk::Queue(queues.present);
-    auto transferQueue = vk::Queue(queues.transfer);
-
     queueManager.initQueues(queues);
 
     auto formats = device.physicalDevice.getSurfaceFormatsKHR(surface);
