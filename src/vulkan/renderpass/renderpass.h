@@ -23,6 +23,7 @@ public:
 
     void clear(float r, float g, float b, float a);
     void begin(vk::CommandBuffer commandBuffer);
+    void nextSubpass();
     void end();
     void setFramebuffer(vk::Framebuffer buffer);
     void setRenderAreaExtent(vk::Extent2D extent);

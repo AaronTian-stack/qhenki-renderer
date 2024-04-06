@@ -20,13 +20,20 @@ VulkanApp::~VulkanApp()
     transferCommandPool.destroy();
 
     pathPipeline->destroy();
-    shader1->destroy(); // shader modules must be destroyed after pipeline
+    pathtraceShader->destroy();
 
     triPipeline->destroy();
-    shader2->destroy();
+    triShader->destroy();
+
+    gBufferPipeline->destroy();
+    gBufferShader->destroy();
+
+    lightingPipeline->destroy();
+    lightingShader->destroy();
 
     pipelineFactory.destroy();
 
+    offscreenRenderPass->destroy();
     displayRenderPass->destroy();
     renderPassBuilder.destroy();
 
@@ -53,22 +60,31 @@ void VulkanApp::createGbuffer(vk::Extent2D extent, vk::RenderPass renderPass)
 
     auto colorAttachment = bufferFactory.createAttachment(vk::Format::eR8G8B8A8Srgb,
                                                           {extent.width, extent.height, 1},
-                                                          vk::ImageUsageFlagBits::eColorAttachment,
+                                                          vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eInputAttachment,
                                                           vk::ImageAspectFlagBits::eColor);
     auto normalAttachment = bufferFactory.createAttachment(vk::Format::eR8G8B8A8Unorm,
                                                            {extent.width, extent.height, 1},
-                                                           vk::ImageUsageFlagBits::eColorAttachment,
+                                                           vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eInputAttachment,
                                                            vk::ImageAspectFlagBits::eColor);
     // metal R roughness G ao B
     auto metalRoughnessAOAttachment = bufferFactory.createAttachment(vk::Format::eR8G8B8A8Unorm,
                                                                     {extent.width, extent.height, 1},
-                                                                    vk::ImageUsageFlagBits::eColorAttachment,
+                                                                    vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eInputAttachment,
                                                                     vk::ImageAspectFlagBits::eColor);
 
     // TODO: emission, specular map
 
-    std::vector<vk::ImageView> attachments = {colorAttachment->imageView, normalAttachment->imageView,
-                                              metalRoughnessAOAttachment->imageView};
+    auto outputAttachment = bufferFactory.createAttachment(vulkanContext.swapChain->getFormat(),
+                                                           {extent.width, extent.height, 1},
+                                                           vk::ImageUsageFlagBits::eColorAttachment,
+                                                           vk::ImageAspectFlagBits::eColor);
+
+    std::vector<vk::ImageView> attachments = {colorAttachment->imageView, // 0
+                                              normalAttachment->imageView, // 1
+                                              metalRoughnessAOAttachment->imageView, // 2
+                                              depthBuffer->imageView, // 3
+                                              outputAttachment->imageView // 4
+                                            };
     auto device = vulkanContext.device.logicalDevice;
     vk::FramebufferCreateInfo createInfo(
             vk::FramebufferCreateFlags(),
@@ -109,21 +125,44 @@ void VulkanApp::create(Window &window)
     // create render pass
     renderPassBuilder.addColorAttachment(vulkanContext.swapChain->getFormat());
     renderPassBuilder.addDepthAttachment(depthBuffer->format);
-    renderPassBuilder.addSubPass({0}, 1);
+    renderPassBuilder.addSubPass({}, {}, {0}, {}, 1);
     displayRenderPass = renderPassBuilder.buildRenderPass();
 
-//    renderPassBuilder.reset();
-//    renderPassBuilder.addColorAttachment(vk::Format::eR8G8B8A8Srgb); // albedo
-//    renderPassBuilder.addColorAttachment(vk::Format::eR8G8B8A8Unorm); // normal
-//    renderPassBuilder.addColorAttachment(vk::Format::eR8G8B8A8Unorm); // metal roughness ao
+    renderPassBuilder.reset();
+    renderPassBuilder.addColorAttachment(vk::Format::eR8G8B8A8Srgb); // albedo 0
+    renderPassBuilder.addColorAttachment(vk::Format::eR8G8B8A8Unorm); // normal 1
+    renderPassBuilder.addColorAttachment(vk::Format::eR8G8B8A8Unorm); // metal roughness ao 2
+    renderPassBuilder.addDepthAttachment(depthBuffer->format); // 3
+    renderPassBuilder.addColorAttachment(vulkanContext.swapChain->getFormat()); // final output 4
+    renderPassBuilder.addSubPass({}, {}, {0, 1, 2}, {}, 3);
+    renderPassBuilder.addSubPass({0, 1, 2},
+                                 {vk::ImageLayout::eShaderReadOnlyOptimal},
+                                 {4}, {}
+                                 );
+    renderPassBuilder.addColorDependency(0, 1);
+    offscreenRenderPass = renderPassBuilder.buildRenderPass();
 
-
-    shader1 = mkU<Shader>(device, "pathtrace_vert.spv", "pathtrace_frag.spv");
-    shader2 = mkU<Shader>(device, "tri_vert.spv", "tri_frag.spv");
+    pathtraceShader = mkU<Shader>(device, "pathtrace_vert.spv", "pathtrace_frag.spv");
+    triShader = mkU<Shader>(device, "tri_vert.spv", "tri_frag.spv");
 
     pipelineFactory.parseShader("pathtrace_vert.spv", "pathtrace_frag.spv", layoutCache, false);
+    pipelineFactory.getColorBlending().attachmentCount = 1;
+    pathPipeline = pipelineFactory.buildPipeline(displayRenderPass.get(), 0, pathtraceShader.get());
 
-    pathPipeline = pipelineFactory.buildPipeline(displayRenderPass.get(), 0, shader1.get());
+    gBufferShader = mkU<Shader>(device, "gbuffer_vert.spv", "gbuffer_frag.spv");
+    pipelineFactory.reset();
+    pipelineFactory.addVertexInputBinding({0, sizeof(glm::vec3), vk::VertexInputRate::eVertex}); // position
+    pipelineFactory.addVertexInputBinding({1, sizeof(glm::vec3), vk::VertexInputRate::eVertex}); // normal
+    pipelineFactory.addVertexInputBinding({2, sizeof(glm::vec2), vk::VertexInputRate::eVertex}); // uv
+    pipelineFactory.parseShader("gbuffer_vert.spv", "gbuffer_frag.spv", layoutCache, false);
+    pipelineFactory.getColorBlending().attachmentCount = 3; // blending is disabled for now. pipeline factory does not set color blendings correctly
+    gBufferPipeline = pipelineFactory.buildPipeline(offscreenRenderPass.get(), 0, gBufferShader.get());
+
+    lightingShader = mkU<Shader>(device, "lighting_vert.spv", "lighting_frag.spv");
+    pipelineFactory.reset();
+    pipelineFactory.parseShader("lighting_vert.spv", "lighting_frag.spv", layoutCache, false);
+    pipelineFactory.getColorBlending().attachmentCount = 1;
+    lightingPipeline = pipelineFactory.buildPipeline(offscreenRenderPass.get(), 1, lightingShader.get());
 
     //// VERTEX INPUT
     const std::vector<glm::vec3> positions = {
@@ -148,11 +187,13 @@ void VulkanApp::create(Window &window)
     pipelineFactory.addVertexInputBinding({1, sizeof(glm::vec3), vk::VertexInputRate::eVertex}); // normal
     pipelineFactory.addVertexInputBinding({2, sizeof(glm::vec2), vk::VertexInputRate::eVertex}); // uv
     pipelineFactory.parseShader("tri_vert.spv", "tri_frag.spv", layoutCache, false);
-    //// END VERTEX INPUT
     pipelineFactory.getRasterizer().setCullMode(vk::CullModeFlagBits::eBack);
-    triPipeline = pipelineFactory.buildPipeline(displayRenderPass.get(), 0, shader2.get());
+    pipelineFactory.getColorBlending().attachmentCount = 1;
+    triPipeline = pipelineFactory.buildPipeline(displayRenderPass.get(), 0, triShader.get());
 
     vulkanContext.swapChain->createFramebuffers(displayRenderPass->getRenderPass(), depthBuffer->imageView);
+
+    createGbuffer(vulkanContext.swapChain->getExtent(), offscreenRenderPass->getRenderPass());
 
     syncer.create(device);
     for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
@@ -187,9 +228,66 @@ void VulkanApp::setModel(const std::string& filePath)
     t.detach();
 }
 
-void VulkanApp::recordOffscreenBuffer(vk::CommandBuffer buffer, vk::Framebuffer framebuffer)
+void VulkanApp::recordOffscreenBuffer(vk::CommandBuffer commandBuffer)
 {
+    if (readyToRender && !models.empty())
+    {
+        auto extent = vulkanContext.swapChain->getExtent();
+        offscreenRenderPass->setFramebuffer(gBuffer->framebuffer);
+        offscreenRenderPass->setRenderAreaExtent(vulkanContext.swapChain->getExtent());
+        offscreenRenderPass->clear(ui->clearColor[0], ui->clearColor[1], ui->clearColor[2], 1.0f);
+        offscreenRenderPass->begin(commandBuffer);
+        ScreenUtils::setViewport(commandBuffer, extent.width, extent.height);
+        ScreenUtils::setScissor(commandBuffer, extent);
 
+        commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, gBufferPipeline->getGraphicsPipeline());
+        auto &model = models.back();
+        // get image infos of all model textures
+        std::vector<vk::DescriptorImageInfo> imageInfos = model->getDescriptorImageInfo();
+        vk::DescriptorSet samplerSet;
+        vk::DescriptorSetLayout layout;
+        auto &allocator = allocators[currentFrame]; // TODO: maybe change to argument
+
+        auto bufferInfo = cameraBuffers[currentFrame]->getDescriptorInfo();
+        vk::DescriptorSet cameraSet;
+        DescriptorBuilder::beginSet(&layoutCache, &allocator)
+                .bindBuffer(0, &bufferInfo, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eVertex)
+                .build(cameraSet, layout);
+
+        DescriptorBuilder::beginSet(&layoutCache, &allocator)
+                .bindImage(0, imageInfos,
+                           60, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eFragment)
+                .build(samplerSet, layout);
+
+        commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, gBufferPipeline->getPipelineLayout(),
+                                                0, {cameraSet, samplerSet}, nullptr);
+
+        model->root->draw(commandBuffer, *gBufferPipeline, *model->root);
+
+        offscreenRenderPass->nextSubpass();
+
+        commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, lightingPipeline->getGraphicsPipeline());
+        // TODO: bind
+        vk::DescriptorSet inputSet;
+        std::vector<vk::DescriptorImageInfo> inputImageInfos = {
+                gBuffer->attachments[0]->getDescriptorInfo(),
+                gBuffer->attachments[1]->getDescriptorInfo(),
+                gBuffer->attachments[2]->getDescriptorInfo()
+        };
+        DescriptorBuilder::beginSet(&layoutCache, &allocator)
+                .bindImage(0, {inputImageInfos[0]},
+                           1, vk::DescriptorType::eInputAttachment, vk::ShaderStageFlagBits::eFragment)
+                .bindImage(1, {inputImageInfos[1]},
+                           1, vk::DescriptorType::eInputAttachment, vk::ShaderStageFlagBits::eFragment)
+                .bindImage(2, {inputImageInfos[2]},
+                           1, vk::DescriptorType::eInputAttachment, vk::ShaderStageFlagBits::eFragment)
+                .build(inputSet, layout);
+        commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, lightingPipeline->getPipelineLayout(),
+                                         0, {inputSet}, nullptr);
+        commandBuffer.draw(3, 1, 0, 0);
+
+        offscreenRenderPass->end();
+    }
 }
 
 void VulkanApp::recordCommandBuffer(vk::Framebuffer framebuffer)
@@ -220,9 +318,6 @@ void VulkanApp::recordCommandBuffer(vk::Framebuffer framebuffer)
 
     if (pipeline == triPipeline.get())
     {
-        modelTransform = glm::mat4();
-        triPipeline->setPushConstant(primaryCommandBuffer, &modelTransform, sizeof(glm::mat4), 0, vk::ShaderStageFlagBits::eVertex);
-
         auto bufferInfo = cameraBuffers[currentFrame]->getDescriptorInfo();
 
         auto &allocator = allocators[currentFrame];
@@ -260,6 +355,8 @@ void VulkanApp::recordCommandBuffer(vk::Framebuffer framebuffer)
 
     //// END RENDER PASS
     displayRenderPass->end(); // ends the render pass with the command buffer given in .begin()
+
+    recordOffscreenBuffer(primaryCommandBuffer);
 
     //// END RECORDING COMMAND BUFFER
     frame.end(); // ends the frames command buffer

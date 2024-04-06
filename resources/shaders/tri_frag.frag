@@ -55,12 +55,14 @@ void main()
     vec3 emissive = texture(texSampler[material.emissiveTexture], fragUV).rgb;
     //c += emissive;
 
-    vec3 mr = texture(texSampler[material.metallicRoughnessTexture], fragUV).rgb;
+    vec2 mr = texture(texSampler[material.metallicRoughnessTexture], fragUV).rg;
     float metallic = mr.r;
     float roughness = mr.g;
 
     vec3 normalMap = texture(texSampler[material.normalTexture], fragUV).rgb;
     vec3 normal = normalize(normalMap * 2.0 - 1.0);
+
+    float occlusion = texture(texSampler[material.occlusionTexture], fragUV).r;
 
     outColor = vec4(c, 1.0);
 }

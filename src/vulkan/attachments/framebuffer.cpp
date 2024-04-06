@@ -17,3 +17,14 @@ void FrameBuffer::destroy()
         attachment->destroy();
     }
 }
+
+std::vector<vk::DescriptorImageInfo> FrameBuffer::getDescriptorInfo()
+{
+    std::vector<vk::DescriptorImageInfo> descriptorImageInfo;
+    descriptorImageInfo.reserve(attachments.size());
+    for (auto &attachment : attachments)
+    {
+        descriptorImageInfo.push_back(attachment->getDescriptorInfo());
+    }
+    return descriptorImageInfo;
+}

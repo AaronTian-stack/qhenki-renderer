@@ -40,7 +40,10 @@ private:
     PipelineBuilder pipelineFactory;
 
     uPtr<Pipeline> pathPipeline, triPipeline;
-    uPtr<Shader> shader1, shader2;
+    uPtr<Pipeline> gBufferPipeline, lightingPipeline;
+
+    uPtr<Shader> pathtraceShader, triShader;
+    uPtr<Shader> gBufferShader, lightingShader;
 
     std::atomic<bool> readyToRender;
     CommandPool graphicsCommandPool; // one pool per thread
@@ -57,8 +60,6 @@ private:
     DescriptorLayoutCache layoutCache;
     std::vector<DescriptorAllocator> allocators;
 
-    glm::mat4 modelTransform;
-
 public:
     VulkanApp();
     ~VulkanApp();
@@ -70,7 +71,7 @@ public:
 
     void handleInput();
     void updateCameraBuffer();
-    void recordOffscreenBuffer(vk::CommandBuffer buffer, vk::Framebuffer framebuffer);
+    void recordOffscreenBuffer(vk::CommandBuffer buffer);
     void recordCommandBuffer(vk::Framebuffer framebuffer); // TODO: NEED TO DELETE THIS LATER
 
     UserInterface *ui;

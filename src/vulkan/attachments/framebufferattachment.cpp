@@ -16,3 +16,8 @@ void FrameBufferAttachment::destroy()
     device.destroyImageView(imageView);
     vmaDestroyImage(allocator, image, allocation);
 }
+
+vk::DescriptorImageInfo FrameBufferAttachment::getDescriptorInfo()
+{
+    return {nullptr, imageView, vk::ImageLayout::eShaderReadOnlyOptimal};
+}

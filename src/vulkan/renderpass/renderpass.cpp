@@ -34,6 +34,11 @@ void RenderPass::begin(vk::CommandBuffer commandBuffer)
     currentCommandBuffer = commandBuffer;
 }
 
+void RenderPass::nextSubpass()
+{
+    currentCommandBuffer->nextSubpass(vk::SubpassContents::eInline);
+}
+
 void RenderPass::clear(float r, float g, float b, float a)
 {
     for (int i = 0; i < clearValues.size(); i++)
