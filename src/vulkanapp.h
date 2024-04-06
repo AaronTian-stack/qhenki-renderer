@@ -19,6 +19,7 @@
 #include "camera.h"
 #include "inputprocesser.h"
 #include "vulkan/renderpass/renderpassbuilder.h"
+#include <atomic>
 
 class VulkanApp
 {

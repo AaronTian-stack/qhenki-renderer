@@ -9,6 +9,8 @@ layout(location = 0) out vec4 outColor; // location is index of framebuffer / at
 void main()
 {
     vec4 albedo = subpassLoad(inputAlbedo);
+    vec4 normal = subpassLoad(inputNormal);
+    vec4 roughnessMetalAO = subpassLoad(inputRoughnessMetalAO);
 
     outColor = albedo;
 }

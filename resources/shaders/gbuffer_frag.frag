@@ -3,7 +3,7 @@
 layout(location = 0) in vec3 fragColor;
 layout(location = 1) in vec3 fragPos;
 layout(location = 2) in vec2 fragUV;
-layout(location = 3) in vec3 normal;
+layout(location = 3) in vec3 fragNormal;
 
 layout(location = 0) out vec4 outAlbedo; // location is index of framebuffer / attachment
 layout(location = 1) out vec4 outNormal;
@@ -36,8 +36,14 @@ void setValues(out vec3 albedo, out vec3 normal, out vec2 metalRoughness, out fl
     else
         albedo = material.baseColorFactor.rgb;
 
-//    if (material.normalTexture != -1)
-//        // TBN calculation
+    if (material.normalTexture != -1)
+    {
+        // TODO: TBN calculation
+        vec3 N = texture(texSampler[material.normalTexture], fragUV).rgb;
+        normal = normalize(N * 2.0 - 1.0);
+    }
+    else
+        normal = normalize(fragNormal);
 
     if (material.metallicRoughnessTexture != -1)
         metalRoughness = texture(texSampler[material.metallicRoughnessTexture], fragUV).rg;
