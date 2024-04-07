@@ -16,7 +16,11 @@ void main()
     vec3 unconvertedNormal = subpassLoad(inputNormal).xyz;
     vec4 roughnessMetalAO = subpassLoad(inputRoughnessMetalAO);
 
-    if (position.a == 0.0) discard;
+    if (position.a == 0.0)
+    {
+        outColor = albedo;
+        return;
+    }
 
     // convert normal back to [-1, 1] range
     vec3 normal = unconvertedNormal * 2.0 - 1.0;

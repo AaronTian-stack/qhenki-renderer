@@ -244,7 +244,7 @@ void GLTFLoader::makeMaterialsAndTextures(CommandPool &commandPool, QueueManager
         model->images.push_back(std::move(imageTexture));
     }
     // submit as a async batch to make it smoother
-    commandPool.submitSingleTimeCommands(queueManager, commandBuffers, vkb::QueueType::transfer, true);
+    commandPool.submitSingleTimeCommands(queueManager, commandBuffers, vkb::QueueType::graphics, true);
 
     for (auto &buffer : stagingBuffers)
         buffer->destroy();
