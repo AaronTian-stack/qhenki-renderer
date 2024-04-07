@@ -31,6 +31,29 @@ layout(push_constant) uniform mats {
 
 // TODO: uniform buffers for lights
 
+// 16 is max number of samplers in any shader on macOS
+// since partial binding is on, indexing into undefined sampler will not show errors!
+layout(set = 1, binding = 0) uniform sampler2D texSampler[16];
+
+layout(push_constant) uniform mats {
+    layout(offset = 64) vec4 baseColorFactor;
+    int baseColorTexture;
+
+    float metallicFactor;
+    float roughnessFactor;
+    int metallicRoughnessTexture;
+
+    int normalTexture;
+
+    int occlusionTexture;
+    float occlusionStrength;
+
+    int emissiveTexture;
+} material;
+
+
+// TODO: uniform buffers for lights
+
 void main()
 {
     // lambert

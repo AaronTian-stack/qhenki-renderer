@@ -157,7 +157,6 @@ void VulkanApp::create(Window &window)
     pipelineFactory.addVertexInputBinding({2, sizeof(glm::vec2), vk::VertexInputRate::eVertex}); // uv
     pipelineFactory.parseShader("gbuffer_vert.spv", "gbuffer_frag.spv", layoutCache, false);
     pipelineFactory.getColorBlending().attachmentCount = 4; // blending is disabled for now. pipeline factory does not set color blendings correctly
-    pipelineFactory.getRasterizer().cullMode = vk::CullModeFlagBits::eBack;
     gBufferPipeline = pipelineFactory.buildPipeline(offscreenRenderPass.get(), 0, gBufferShader.get());
 
     lightingShader = mkU<Shader>(device, "lighting_vert.spv", "lighting_frag.spv");

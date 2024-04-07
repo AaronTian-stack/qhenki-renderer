@@ -46,8 +46,7 @@ bool VulkanContext::create(Window &window)
     vkb::InstanceBuilder builder;
     auto severity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT;
 
-    auto inst_ret = builder.set_app_name("Vulkan PBR")
-            .request_validation_layers()
+    auto inst_ret = builder.set_app_name("Vulkan PBR").request_validation_layers()
             .set_debug_messenger_severity(severity)
             .set_debug_callback (
             [] (VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
@@ -57,8 +56,8 @@ bool VulkanContext::create(Window &window)
                     -> VkBool32 {
                 std::cerr << "validation layer: " << pCallbackData->pMessage << std::endl;
                 return VK_FALSE;
-            })
-            .require_api_version(1, 2).build();
+            }
+    ).require_api_version(1, 2).build();
 
     if (!inst_ret) {
         std::cerr << "Failed to create Vulkan instance. Error: " << inst_ret.error().message() << "\n";
