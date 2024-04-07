@@ -233,13 +233,16 @@ void VulkanApp::recordOffscreenBuffer(vk::CommandBuffer commandBuffer, Descripto
                 .bindBuffer(0, &bufferInfo, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eVertex)
                 .build(cameraSet, layout);
 
-        DescriptorBuilder::beginSet(&layoutCache, &allocator)
-                .bindImage(0, imageInfos,
-                             60, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eFragment)
-                .build(samplerSet, layout);
+        if (!imageInfos.empty()) // pipeline still expects uv though
+        {
+            DescriptorBuilder::beginSet(&layoutCache, &allocator)
+                    .bindImage(0, imageInfos,
+                               60, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eFragment)
+                    .build(samplerSet, layout);
 
-        commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, gBufferPipeline->getPipelineLayout(),
-                                                0, {cameraSet, samplerSet}, nullptr);
+            commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, gBufferPipeline->getPipelineLayout(),
+                                             0, {cameraSet, samplerSet}, nullptr);
+        }
 
         model->root->draw(commandBuffer, *gBufferPipeline, *model->root);
 

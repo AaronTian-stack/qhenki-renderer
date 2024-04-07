@@ -85,11 +85,11 @@ void main()
     vec3 emissive;
     setValues(albedo, normal, metalRoughness, AO, emissive);
 
-    float thres = dither[int(mod(gl_FragCoord.y, 4.0)) * 16 + int(mod(gl_FragCoord.x, 4.0))];
+    float thres = dither[int(mod(gl_FragCoord.y, 4.0)) * 4 + int(mod(gl_FragCoord.x, 4.0))];
     if (albedo.a < thres) discard;
 
     outPosition = vec4(fragPos, 1.0);
-    outAlbedo = albedo;
+    outAlbedo = vec4(albedo.rgb, 1.0);
     outNormal = vec4(normal, 1.0);
     outMetalRoughnessAO = vec4(metalRoughness, AO, 1.0);
 }
