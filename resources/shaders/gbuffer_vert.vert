@@ -2,6 +2,7 @@
 
 layout(std140, set = 0, binding = 0) uniform cameraInfo {
     vec4 position;
+    vec4 direction;
     mat4 viewProj;
 } ubo;
 
@@ -31,7 +32,7 @@ void main()
     vec4 worldPos = modelTransform.matrix * vec4(inPosition, 1.0);
     gl_Position = ubo.viewProj * worldPos;
     fragPos = inPosition;
-    fragNormal = transpose(inverse(mat3(modelTransform.matrix))) * inNormal;
+    fragNormal = mat3(transpose(inverse(modelTransform.matrix))) * inNormal;
     fragColor = colors[0];
     fragUV = inUV;
 }

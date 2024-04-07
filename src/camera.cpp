@@ -91,6 +91,11 @@ void Camera::simpleReset()
     recalculateFields();
 }
 
+glm::vec4 Camera::getForwardVector() const
+{
+    return {smooth.target - smooth.position, 1.0f};
+}
+
 glm::vec3 sphericalToCartesian(float theta, float phi, float radius)
 {
     float x = radius * glm::sin(glm::radians(phi)) * glm::sin(glm::radians(theta));

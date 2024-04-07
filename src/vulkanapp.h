@@ -40,11 +40,9 @@ private:
 
     PipelineBuilder pipelineFactory;
 
-    uPtr<Pipeline> pathPipeline, triPipeline;
-    uPtr<Pipeline> gBufferPipeline, lightingPipeline;
+    uPtr<Pipeline> gBufferPipeline, lightingPipeline, postProcessPipeline;
 
-    uPtr<Shader> pathtraceShader, triShader;
-    uPtr<Shader> gBufferShader, lightingShader;
+    uPtr<Shader> gBufferShader, lightingShader, postProcessShader;
 
     std::atomic<bool> readyToRender;
     CommandPool graphicsCommandPool; // one pool per thread
@@ -72,7 +70,7 @@ public:
 
     void handleInput();
     void updateCameraBuffer();
-    void recordOffscreenBuffer(vk::CommandBuffer buffer);
+    void recordOffscreenBuffer(vk::CommandBuffer buffer, DescriptorAllocator &allocator);
     void recordCommandBuffer(vk::Framebuffer framebuffer); // TODO: NEED TO DELETE THIS LATER
 
     UserInterface *ui;

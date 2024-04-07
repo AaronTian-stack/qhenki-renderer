@@ -143,7 +143,7 @@ void UserInterface::render()
     ImGui::SetNextWindowPos(ImVec2(ImGui::GetIO().DisplaySize.x, y), 0, ImVec2(1.0f, 0));
     ImGui::Begin("Visual Options", nullptr, flags);
     if (ImGui::Combo("Shader", &currentShaderIndex,
-                     "PBR\0Pathtrace\0"))
+                     "PBR\0"))
     {
 
     }
