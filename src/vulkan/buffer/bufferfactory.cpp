@@ -21,6 +21,7 @@ uPtr<Buffer> BufferFactory::createBuffer(vk::DeviceSize size, vk::BufferUsageFla
     bufferCreateInfo.sType = vk::StructureType::eBufferCreateInfo;
     bufferCreateInfo.size = size;
     bufferCreateInfo.usage = usage;
+    bufferCreateInfo.sharingMode = vk::SharingMode::eExclusive; // TODO: ownership transfer
 
     VmaAllocationCreateInfo allocationCreateInfo{};
     allocationCreateInfo.usage = VMA_MEMORY_USAGE_AUTO;
@@ -74,7 +75,7 @@ vk::ImageViewCreateInfo BufferFactory::imageViewInfo(vk::Image image, vk::Format
     return info;
 }
 
-uPtr<FrameBufferAttachment> BufferFactory::createAttachment(
+sPtr<FrameBufferAttachment> BufferFactory::createAttachment(
     vk::Format format, vk::Extent3D extent,
     vk::ImageUsageFlags imageUsage, vk::ImageAspectFlags aspectFlags)
 {
@@ -96,12 +97,13 @@ uPtr<FrameBufferAttachment> BufferFactory::createAttachment(
     if (result != vk::Result::eSuccess)
         throw std::runtime_error("failed to create image view");
 
-    return mkU<FrameBufferAttachment>(device, allocator, allocation, image, imageView, format);
+    return mkS<FrameBufferAttachment>(device, allocator, allocation, image, imageView, format);
 }
 
-uPtr<Image> BufferFactory::createTextureImage(CommandPool &commandPool, QueueManager &queueManager,
-                                              vk::Format format, vk::Extent3D extent, vk::Flags<vk::ImageUsageFlagBits> imageUsage,
-                                              vk::Flags<vk::ImageAspectFlagBits> aspectFlags, void *data)
+DeferredImage BufferFactory::createTextureImageDeferred(
+        CommandPool &commandPool,
+        vk::Format format, vk::Extent3D extent, vk::Flags<vk::ImageUsageFlagBits> imageUsage,
+        vk::Flags<vk::ImageAspectFlagBits> aspectFlags, void *data)
 {
     auto texture = mkU<Image>(createAttachment(format, extent, imageUsage, aspectFlags));
     texture->attachment->create(this->device);
@@ -134,7 +136,8 @@ uPtr<Image> BufferFactory::createTextureImage(CommandPool &commandPool, QueueMan
     region.imageSubresource.layerCount = 1;
     region.imageExtent = extent;
 
-    commandBuffer.copyBufferToImage(stagingBuffer->buffer, texture->attachment->image, vk::ImageLayout::eTransferDstOptimal, 1, &region);
+    commandBuffer.copyBufferToImage(stagingBuffer->buffer, texture->attachment->image,
+                                    vk::ImageLayout::eTransferDstOptimal, 1, &region);
 
     texture->recordTransitionImageLayout(
             vk::ImageLayout::eTransferDstOptimal,
@@ -143,8 +146,19 @@ uPtr<Image> BufferFactory::createTextureImage(CommandPool &commandPool, QueueMan
 
     commandBuffer.end();
 
-    // TODO: could be changed to return the commandBuffer and the stating buffer, such that they can be executed at once and destroyed together
-    commandPool.submitSingleTimeCommands(queueManager, {commandBuffer});
+    return {std::move(texture), commandBuffer, std::move(stagingBuffer)};
+}
+
+uPtr<Image> BufferFactory::createTextureImage(CommandPool &commandPool, QueueManager &queueManager,
+                                              vk::Format format, vk::Extent3D extent, vk::Flags<vk::ImageUsageFlagBits> imageUsage,
+                                              vk::Flags<vk::ImageAspectFlagBits> aspectFlags, void *data)
+{
+    auto deferredImage = createTextureImageDeferred(commandPool, format, extent, imageUsage, aspectFlags, data);
+    auto texture = std::move(deferredImage.image);
+    auto commandBuffer = deferredImage.cmd;
+    auto stagingBuffer = std::move(deferredImage.stagingBufferToDestroy);
+
+    commandPool.submitSingleTimeCommands(queueManager, {commandBuffer}, vkb::QueueType::graphics, true);
 
     stagingBuffer->destroy();
 

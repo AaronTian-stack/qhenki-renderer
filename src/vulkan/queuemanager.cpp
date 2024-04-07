@@ -2,16 +2,15 @@
 
 QueueManager::QueueManager() {}
 
-void QueueManager::initQueues(vk::Queue graphicsQueue, vk::Queue presentQueue)
+void QueueManager::initQueues(QueuesIndices queuesIndices)
 {
-    this->graphicsQueue = graphicsQueue;
-    this->presentQueue = presentQueue;
+    this->queuesIndices = queuesIndices;
 }
 
 vk::Result QueueManager::submitGraphics(vk::SubmitInfo submitInfo, vk::Fence fence)
 {
     // see vkQueueSubmit
-    return graphicsQueue.submit(1, &submitInfo, fence);
+    return queuesIndices.graphics.submit(1, &submitInfo, fence);
 }
 
 vk::Result QueueManager::present(const uPtr<SwapChain> &swapChain, const std::vector<vk::Semaphore> &signalSemaphores)
@@ -24,6 +23,6 @@ vk::Result QueueManager::present(const uPtr<SwapChain> &swapChain, const std::ve
         &swapChain->imageIndex
     );
 
-    return presentQueue.presentKHR(presentInfo);
+    return queuesIndices.present.presentKHR(presentInfo);
 }
 

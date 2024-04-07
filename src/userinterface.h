@@ -7,6 +7,7 @@
 #include "vulkan/commandpool.h"
 #include "vulkan/context/vulkancontext.h"
 #include "camera.h"
+#include <functional>
 
 struct ImGuiCreateParameters
 {
@@ -36,8 +37,10 @@ public:
     void begin();
     void end(VkCommandBuffer commandBuffer);
 
+    std::function<void(std::string)> modelSelectCallback;
+
     std::vector<float> frameTimes;
     int currentShaderIndex = 0;
-    float clearColor[3] = {0.0f, 0.0f, 0.0f };
+    float clearColor[3] = {0.25f, 0.25f, 0.25f };
 };
 

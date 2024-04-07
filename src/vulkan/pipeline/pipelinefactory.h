@@ -27,7 +27,7 @@ private:
     vk::PipelineRasterizationStateCreateInfo rasterizer{};
     vk::PipelineMultisampleStateCreateInfo multisampling{};
     vk::PipelineDepthStencilStateCreateInfo depthStencil{}; // not used right now
-    vk::PipelineColorBlendAttachmentState colorBlendAttachment{}; // you would make one of these for each attachment (specified in render pass)
+    std::vector<vk::PipelineColorBlendAttachmentState> colorBlendAttachments; // you would make one of these for each attachment (specified in render pass)
     vk::PipelineColorBlendStateCreateInfo colorBlending{};
 
     std::unordered_map<uint32_t, std::pair<std::vector<vk::DescriptorSetLayoutBinding>, bool>> bindingsMap;
@@ -44,7 +44,7 @@ private:
 public:
     PipelineBuilder();
 
-    uPtr<Pipeline> buildPipeline(RenderPass* renderPass, Shader* shader);
+    uPtr<Pipeline> buildPipeline(RenderPass* renderPass, int subpass, Shader* shader);
     void addPushConstant(uint32_t size, vk::ShaderStageFlags stageFlags = vk::ShaderStageFlagBits::eAll);
 
     void processPushConstants(spirv_cross::CompilerGLSL &glsl, spirv_cross::ShaderResources &resources,
@@ -61,14 +61,16 @@ public:
     // attributes for buffer
     void addVertexInputAttribute(vk::VertexInputAttributeDescription attribute);
 
+    void addDefaultColorBlendAttachment(int count);
+
     vk::PipelineRasterizationStateCreateInfo& getRasterizer();
+    vk::PipelineColorBlendStateCreateInfo& getColorBlending();
 
     void reset();
 
     void destroy() override;
 
-    void
-    parseShader(const char *filePath1, const char *filePath2, DescriptorLayoutCache &layoutCache, bool interleaved);
+    void parseShader(const char *filePath1, const char *filePath2, DescriptorLayoutCache &layoutCache, bool interleaved);
 };
 
 std::pair<vk::Format, size_t> mapTypeToFormat(const spirv_cross::SPIRType &type);

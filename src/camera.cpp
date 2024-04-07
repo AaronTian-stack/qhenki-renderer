@@ -8,7 +8,7 @@ glm::mat4 Camera::getViewMatrix() const
     return glm::lookAt(smooth.position, smooth.target, worldUp);
 }
 
-Camera::Camera(glm::vec3 position, CameraOptions options) : options(options)
+Camera::Camera(CameraOptions options) : options(options)
 {}
 
 void Camera::update()
@@ -64,6 +64,36 @@ void Camera::lerp(float delta)
 glm::vec3 Camera::getPosition() const
 {
     return smooth.position;
+}
+
+void Camera::setTarget(glm::vec3 position)
+{
+    regular.target = position;
+}
+
+void Camera::setThetaPhi(float theta, float phi)
+{
+    regular.theta = theta;
+    regular.phi = phi;
+}
+
+void Camera::setTargetDistance(float distance)
+{
+    regular.targetDistance = distance;
+}
+
+void Camera::simpleReset()
+{
+    regular.target = {0.f, 0.f, 0.f};
+    regular.theta = 0.f;
+    regular.phi = 90.f;
+    regular.targetDistance = 2.f;
+    recalculateFields();
+}
+
+glm::vec4 Camera::getForwardVector() const
+{
+    return {smooth.target - smooth.position, 1.0f};
 }
 
 glm::vec3 sphericalToCartesian(float theta, float phi, float radius)

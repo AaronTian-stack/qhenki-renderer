@@ -18,7 +18,8 @@ vk::Extent2D SwapChain::getExtent() const
 vk::Framebuffer SwapChain::nextImage(vk::Semaphore imageAvailable)
 {
     auto device = vk::Device(this->vkbSwapchain.device);
-    auto result = device.acquireNextImageKHR(swapChain, UINT64_MAX, imageAvailable, VK_NULL_HANDLE);
+    auto result = device.acquireNextImageKHR(swapChain, UINT64_MAX,
+                                             imageAvailable, VK_NULL_HANDLE);
     imageIndex = result.value;
     return frameBuffers[imageIndex].framebuffer;
 }
@@ -43,7 +44,7 @@ void SwapChain::createFramebuffers(vk::RenderPass renderPass, vk::ImageView dept
                 extent.height,
                 1);
         auto framebuffer = device.createFramebuffer(createInfo);
-        auto attachment = FrameBufferAttachment(images[i], imageViews[i], getFormat());
+        auto attachment = mkS<FrameBufferAttachment>(images[i], imageViews[i], getFormat());
         auto fb = FrameBuffer(device, framebuffer, {attachment});
         frameBuffers.push_back(fb);
     }
@@ -57,7 +58,7 @@ void SwapChain::destroy()
         device.destroy(frameBuffer.framebuffer);
         for (auto &attachment : frameBuffer.attachments)
         {
-            device.destroyImageView(attachment.imageView);
+            device.destroyImageView(attachment->imageView);
         }
     }
     // images are destroyed with the swapchain

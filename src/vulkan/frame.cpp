@@ -51,6 +51,6 @@ vk::SubmitInfo Frame::getSubmitInfo()
 
 void Frame::finish(Syncer &syncer)
 {
-    syncer.waitForFence(inFlightFence);
+    syncer.waitForFences({inFlightFence});
     syncer.resetFence(inFlightFence);
 }

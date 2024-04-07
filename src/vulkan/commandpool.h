@@ -9,12 +9,13 @@
 class CommandPool : public Destroyable
 {
 private:
-    vk::Fence singleCommandFence;
+    vk::Fence blockCommandFence;
+    std::vector<vk::Fence> waitingFences;
     vk::CommandPool commandPool;
     std::unordered_map<const char*, vk::CommandBuffer> commandBuffers;
 
 public:
-    void create(Device &device);
+    void create(Device &device, uint32_t queueFamilyIndex);
     void destroy() override;
 
     vk::CommandBuffer createCommandBuffer(vk::CommandBufferLevel level = vk::CommandBufferLevel::ePrimary);
@@ -22,5 +23,6 @@ public:
     vk::CommandBuffer getCommandBuffer(const char* name);
 
     vk::CommandBuffer beginSingleCommand();
-    void submitSingleTimeCommands(QueueManager &queueManager, std::vector<vk::CommandBuffer> commandBuffers);
+    void submitSingleTimeCommands(QueueManager &queueManager, std::vector<vk::CommandBuffer> commandBuffers,
+                                  vkb::QueueType queueType, bool wait);
 };

@@ -5,6 +5,8 @@
 #include <iterator>
 #include <filesystem>
 #include "inputprocesser.h"
+#include <iostream>
+#include "ImGuiFileDialog-0.6.7/ImGuiFileDialog.h"
 
 UserInterface::UserInterface() {}
 
@@ -64,7 +66,7 @@ void UserInterface::create(ImGuiCreateParameters param, CommandPool commandPool)
     init_info.Instance = param.context->vkbInstance.instance;
     init_info.PhysicalDevice = param.context->device.physicalDevice;
     init_info.Device = param.context->device.logicalDevice;
-    init_info.Queue = param.context->queueManager.graphicsQueue;
+    init_info.Queue = param.context->queueManager.queuesIndices.graphics;
     init_info.DescriptorPool = imguiPool;
     init_info.MinImageCount = param.framesInFlight;
     init_info.ImageCount = param.framesInFlight;
@@ -77,7 +79,8 @@ void UserInterface::create(ImGuiCreateParameters param, CommandPool commandPool)
     auto commandBuffer = commandPool.beginSingleCommand();
     ImGui_ImplVulkan_CreateFontsTexture(commandBuffer);
     commandBuffer.end();
-    commandPool.submitSingleTimeCommands(param.context->queueManager, {commandBuffer});
+    commandPool.submitSingleTimeCommands(param.context->queueManager, {commandBuffer},
+                                         vkb::QueueType::graphics, true);
 }
 
 void UserInterface::destroy()
@@ -140,7 +143,7 @@ void UserInterface::render()
     ImGui::SetNextWindowPos(ImVec2(ImGui::GetIO().DisplaySize.x, y), 0, ImVec2(1.0f, 0));
     ImGui::Begin("Visual Options", nullptr, flags);
     if (ImGui::Combo("Shader", &currentShaderIndex,
-                     "PBR\0Pathtrace\0"))
+                     "PBR\0"))
     {
 
     }
@@ -164,6 +167,7 @@ void UserInterface::end(VkCommandBuffer commandBuffer)
 void UserInterface::renderMenuBar()
 {
     bool about = false;
+
     if (ImGui::BeginMainMenuBar())
     {
         if (ImGui::MenuItem("Quit"))
@@ -174,10 +178,29 @@ void UserInterface::renderMenuBar()
         if (ImGui::MenuItem("About"))
             about = true;
 
+        if (ImGui::MenuItem("Load Model"))
+        {
+            IGFD::FileDialogConfig config;config.path = ".";
+            ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose File", ".gltf,.glb", config);
+        }
+
         // hack to get the menu to the right
         ImGui::SameLine(ImGui::GetWindowWidth() - 120);
         ImGui::Text("Aaron Tian 2024");
         ImGui::EndMainMenuBar();
+    }
+
+    if (ImGuiFileDialog::Instance()->Display("ChooseFileDlgKey")) {
+        if (ImGuiFileDialog::Instance()->IsOk())
+        {
+            std::string filePathName = ImGuiFileDialog::Instance()->GetFilePathName();
+            std::cout << "File Path: " << filePathName << std::endl;
+            // call a function passed from vulkan app
+            modelSelectCallback(filePathName);
+        }
+
+        // close
+        ImGuiFileDialog::Instance()->Close();
     }
 
     if (about)

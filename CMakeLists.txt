@@ -13,7 +13,10 @@ file(GLOB_RECURSE SOURCE_FILES CONFIGURE_DEPENDS
 
 file(GLOB_RECURSE IMGUI CONFIGURE_DEPENDS
         ${CMAKE_CURRENT_SOURCE_DIR}/dependencies/include/imgui/*.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/dependencies/include/imgui/*.h)
+        ${CMAKE_CURRENT_SOURCE_DIR}/dependencies/include/imgui/*.h
+        ${CMAKE_CURRENT_SOURCE_DIR}/dependencies/include/ImGuiFileDialog-0.6.7/*.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/dependencies/include/ImGuiFileDialog-0.6.7/*.h
+)
 
 file(GLOB_RECURSE SPIRV CONFIGURE_DEPENDS
         ${CMAKE_CURRENT_SOURCE_DIR}/dependencies/include/spirv_cross/*.cpp
@@ -26,6 +29,8 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${dir}/build)
 
 # static linking for debugging
 # set(CMAKE_EXE_LINKER_FLAGS "-static")
+
+# if on macOS you will need to set MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS=1 in environment variables in run configuration
 
 #Include library files
 include_directories(dependencies/include)

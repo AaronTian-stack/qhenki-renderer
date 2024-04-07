@@ -33,27 +33,44 @@ void RenderPassBuilder::addDepthAttachment(vk::Format format)
 
 void RenderPassBuilder::addAttachment(vk::AttachmentDescription *attachment, vk::ImageLayout layout)
 {
-    vk::AttachmentReference attachmentRef{
-        static_cast<uint32_t>(attachments.size()),
-        layout
-    };
+    vk::AttachmentReference attachmentRef{static_cast<uint32_t>(attachments.size()),layout};
     attachments.push_back(*attachment);
     attachmentRefs.push_back(attachmentRef);
 }
 
-void RenderPassBuilder::addSubPass(const std::vector<uint32_t> &indices, int depthIndex)
+void RenderPassBuilder::addSubPass(const std::vector<uint32_t> &inputIndices,
+                                   const std::vector<vk::ImageLayout> &inputLayouts,
+                                   const std::vector<uint32_t> &outputIndices,
+                                   const std::vector<vk::ImageLayout> &outputLayouts,
+                                   int depthIndex)
 {
     // attachments subpass is writing to
     vk::SubpassDescription description{};
-    refsVector.emplace_back(indices.size());
-    auto &refs = refsVector.back();
-    for (int i = 0; i < indices.size(); i++)
+    outputRefsVector.emplace_back(outputIndices.size());
+    auto &outputRefs = outputRefsVector.back();
+    for (int i = 0; i < outputIndices.size(); i++)
     {
-        refs[i] = attachmentRefs[indices[i]];
+        outputRefs[i] = attachmentRefs[outputIndices[i]];
+        if (!outputLayouts.empty())
+            outputRefs[i].layout = outputLayouts[i % inputLayouts.size()];
     }
+    description.colorAttachmentCount = outputRefs.size(); // this is output
+    description.pColorAttachments = outputRefs.data();
+
+    // attachments subpass is reading from
+    inputRefsVector.emplace_back(inputIndices.size());
+    auto &inputRefs = inputRefsVector.back();
+    for (int i = 0; i < inputIndices.size(); i++)
+    {
+        inputRefs[i] = attachmentRefs[inputIndices[i]];
+        if (!inputLayouts.empty())
+            inputRefs[i].layout = inputLayouts[i % inputLayouts.size()];
+    }
+    description.inputAttachmentCount = inputRefs.size();
+    description.pInputAttachments = inputRefs.data();
+
     description.pipelineBindPoint = vk::PipelineBindPoint::eGraphics;
-    description.colorAttachmentCount = refs.size();
-    description.pColorAttachments = refs.data();
+
     if (depthIndex != -1)
         description.pDepthStencilAttachment = &attachmentRefs[depthIndex];
     subPasses.push_back(description);
@@ -66,6 +83,8 @@ uPtr<RenderPass> RenderPassBuilder::buildRenderPass()
     renderPassInfo.pAttachments = attachments.data(); // attachment array
     renderPassInfo.subpassCount = subPasses.size();
     renderPassInfo.pSubpasses = subPasses.data();
+    renderPassInfo.dependencyCount = dependencies.size();
+    renderPassInfo.pDependencies = dependencies.data();
     vk::RenderPass renderPass = device.createRenderPass(renderPassInfo);
     std::vector<vk::Format> formats(attachments.size());
     for (int i = 0; i < attachments.size(); i++)
@@ -80,5 +99,20 @@ void RenderPassBuilder::reset()
     attachments.clear();
     attachmentRefs.clear();
     subPasses.clear();
-    refsVector.clear();
+    inputRefsVector.clear();
+    outputRefsVector.clear();
+    dependencies.clear();
+}
+
+void RenderPassBuilder::addColorDependency(int srcSubpass, int dstSubpass)
+{
+    vk::SubpassDependency dependency{};
+    dependency.srcSubpass = srcSubpass;
+    dependency.dstSubpass = dstSubpass;
+    dependency.srcStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput;
+    dependency.dstStageMask = vk::PipelineStageFlagBits::eFragmentShader;
+    dependency.srcAccessMask = vk::AccessFlagBits::eColorAttachmentWrite;
+    dependency.dstAccessMask = vk::AccessFlagBits::eShaderRead;
+    dependency.dependencyFlags = vk::DependencyFlagBits::eByRegion;
+    dependencies.push_back(dependency);
 }

@@ -19,9 +19,10 @@ int main()
     UserInterface ui;
     auto param = app.getImGuiCreateParameters();
     param.window = &window;
-    ui.create(param, app.getCommandPool());
+    ui.create(param, app.getGraphicsCommandPool());
 
     app.ui = &ui;
+    app.setUpCallbacks();
 
     while (!window.shouldClose()) {
         glfwPollEvents();

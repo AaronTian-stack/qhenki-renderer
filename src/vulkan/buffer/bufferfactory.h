@@ -1,3 +1,4 @@
+
 #pragma once
 
 #include "vulkan/vulkan.h"
@@ -15,6 +16,13 @@ struct ImageAndImageView
     VmaAllocation allocation;
 };
 
+struct DeferredImage
+{
+    uPtr<Image> image;
+    vk::CommandBuffer cmd;
+    uPtr<Buffer> stagingBufferToDestroy;
+};
+
 class BufferFactory : public Destroyable
 {
 private:
@@ -26,13 +34,18 @@ public:
     void create(VulkanContext &context);
 
     uPtr<Buffer> createBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage, VmaAllocationCreateFlagBits flags = static_cast<VmaAllocationCreateFlagBits>(0));
-    uPtr<FrameBufferAttachment> createAttachment(vk::Format format, vk::Extent3D extent,
+    sPtr<FrameBufferAttachment> createAttachment(vk::Format format, vk::Extent3D extent,
                                                  vk::ImageUsageFlags imageUsage, vk::ImageAspectFlags aspectFlags);
+
+    void destroy();
+
+    DeferredImage createTextureImageDeferred(CommandPool &commandPool, vk::Format format, vk::Extent3D extent,
+                               vk::Flags<vk::ImageUsageFlagBits> imageUsage,
+                               vk::Flags<vk::ImageAspectFlagBits> aspectFlags,
+                               void *data);
 
     uPtr<Image> createTextureImage(CommandPool &commandPool, QueueManager &queueManager,
                                    vk::Format format, vk::Extent3D extent,
                                    vk::Flags<vk::ImageUsageFlagBits> imageUsage, vk::Flags<vk::ImageAspectFlagBits> aspectFlags,
                                    void *data);
-
-    void destroy();
 };

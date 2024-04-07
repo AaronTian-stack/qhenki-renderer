@@ -19,22 +19,15 @@
 #include "camera.h"
 #include "inputprocesser.h"
 #include "vulkan/renderpass/renderpassbuilder.h"
+#include <atomic>
 
 class VulkanApp
 {
 private:
-    uPtr<Model> model;
-    //uPtr<Buffer> buffer;
+    std::vector<uPtr<Model>> models;
 
-    //// DEBUG BUFFERS
-    uPtr<Buffer> positionBuffer;
-    uPtr<Buffer> normalBuffer;
-    uPtr<Buffer> indexBuffer;
-
-    uPtr<Image> textureImage;
-    uPtr<Texture> texture;
-
-    uPtr<FrameBufferAttachment> depthBuffer;
+    uPtr<FrameBuffer> gBuffer;
+    sPtr<FrameBufferAttachment> depthBuffer;
 
     GLTFLoader gltfLoad;
     BufferFactory bufferFactory;
@@ -42,14 +35,18 @@ private:
     VulkanContext vulkanContext;
 
     RenderPassBuilder renderPassBuilder;
-    uPtr<RenderPass> renderPass;
+    uPtr<RenderPass> displayRenderPass;
+    uPtr<RenderPass> offscreenRenderPass;
 
     PipelineBuilder pipelineFactory;
 
-    uPtr<Pipeline> pathPipeline, triPipeline;
-    uPtr<Shader> shader1, shader2;
+    uPtr<Pipeline> gBufferPipeline, lightingPipeline, postProcessPipeline;
 
-    CommandPool commandPool; // one pool per thread
+    uPtr<Shader> gBufferShader, lightingShader, postProcessShader;
+
+    std::atomic<bool> readyToRender;
+    CommandPool graphicsCommandPool; // one pool per thread
+    CommandPool transferCommandPool;
     Syncer syncer;
 
     int currentFrame = 0;
@@ -62,22 +59,25 @@ private:
     DescriptorLayoutCache layoutCache;
     std::vector<DescriptorAllocator> allocators;
 
-    glm::mat4 modelTransform;
-
 public:
     VulkanApp();
     ~VulkanApp();
 
+    void createGbuffer(vk::Extent2D extent, vk::RenderPass renderPass);
     void create(Window &window);
     void render();
     void resize();
 
     void handleInput();
     void updateCameraBuffer();
+    void recordOffscreenBuffer(vk::CommandBuffer buffer, DescriptorAllocator &allocator);
     void recordCommandBuffer(vk::Framebuffer framebuffer); // TODO: NEED TO DELETE THIS LATER
 
     UserInterface *ui;
     ImGuiCreateParameters getImGuiCreateParameters();
 
-    CommandPool& getCommandPool();
+    CommandPool& getGraphicsCommandPool();
+
+    void setUpCallbacks();
+    void setModel(const std::string &filePath);
 };

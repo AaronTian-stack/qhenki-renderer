@@ -8,18 +8,24 @@ private:
     std::vector<vk::AttachmentDescription> attachments;
     std::vector<vk::AttachmentReference> attachmentRefs;
 
-    std::vector<std::vector<vk::AttachmentReference>> refsVector;
+    std::vector<std::vector<vk::AttachmentReference>> inputRefsVector;
+    std::vector<std::vector<vk::AttachmentReference>> outputRefsVector;
     std::vector<vk::SubpassDescription> subPasses;
-    //std::vector<vk::SubpassDependency> dependencies;
+    std::vector<vk::SubpassDependency> dependencies;
+
+    void addAttachment(vk::AttachmentDescription *attachment, vk::ImageLayout layout);
 
 public:
 
     void addColorAttachment(vk::Format format);
     void addDepthAttachment(vk::Format format);
-    void addAttachment(vk::AttachmentDescription *attachment, vk::ImageLayout layout);
 
-    void addSubPass(const std::vector<uint32_t> &indices, int depthIndex = -1);
-    //void addDependency(vk::SubpassDependency dependency);
+    void addSubPass(const std::vector<uint32_t> &inputIndices,
+                    const std::vector<vk::ImageLayout> &inputLayouts,
+                    const std::vector<uint32_t> &outputIndices,
+                    const std::vector<vk::ImageLayout> &outputLayouts,
+                    int depthIndex = -1);
+    void addColorDependency(int srcSubpass, int dstSubpass);
 
     uPtr<RenderPass> buildRenderPass();
     void reset();

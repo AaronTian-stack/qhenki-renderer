@@ -87,12 +87,20 @@ vk::DescriptorSetLayout DescriptorLayoutCache::createDescriptorLayout(vk::Descri
     else
     {
         vk::DescriptorSetLayoutBindingFlagsCreateInfo extendedInfo{};
-        extendedInfo.bindingCount = layoutInfo.bindings.size();
-        // update after bind is not very feasible due to limitations on hardware ie NV pascal
-        // but enable partial binding to silence errors
-        vk::DescriptorBindingFlags test = vk::DescriptorBindingFlagBits::ePartiallyBound;
-        extendedInfo.pBindingFlags = &test;
-        info->pNext = &extendedInfo;
+        // only do this if any of the descriptor counts are > 1
+        for (const vk::DescriptorSetLayoutBinding &b : layoutInfo.bindings)
+        {
+            if (b.descriptorCount > 1)
+            {
+                extendedInfo.bindingCount = layoutInfo.bindings.size();
+                // update after bind is not very feasible due to limitations on hardware ie NV pascal
+                // enable partial binding to silence errors
+                vk::DescriptorBindingFlags partial = vk::DescriptorBindingFlagBits::ePartiallyBound;
+                extendedInfo.pBindingFlags = &partial;
+                info->pNext = &extendedInfo;
+                break;
+            }
+        }
 
         // create a new one (not found)
         vk::DescriptorSetLayout layout = device.createDescriptorSetLayout(*info);

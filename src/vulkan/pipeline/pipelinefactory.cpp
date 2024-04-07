@@ -54,25 +54,7 @@ void PipelineBuilder::reset()
     depthStencil.depthBoundsTestEnable = VK_FALSE;
     depthStencil.stencilTestEnable = VK_FALSE;
 
-    colorBlendAttachment.colorWriteMask = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA;
-    colorBlendAttachment.blendEnable = VK_FALSE;
-    colorBlendAttachment.srcColorBlendFactor = vk::BlendFactor::eOne; // Optional
-    colorBlendAttachment.dstColorBlendFactor = vk::BlendFactor::eZero; // Optional
-    colorBlendAttachment.colorBlendOp = vk::BlendOp::eAdd; // Optional
-    colorBlendAttachment.srcAlphaBlendFactor = vk::BlendFactor::eOne; // Optional
-    colorBlendAttachment.dstAlphaBlendFactor = vk::BlendFactor::eZero; // Optional
-    colorBlendAttachment.alphaBlendOp = vk::BlendOp::eAdd; // Optional
-
-    colorBlending.logicOpEnable = VK_FALSE;
-    colorBlending.logicOp = vk::LogicOp::eCopy; // Optional
-    // number of color attachments
-    colorBlending.attachmentCount = 1;
-    // all the color attachments
-    colorBlending.pAttachments = &colorBlendAttachment;
-    colorBlending.blendConstants[0] = 0.0f; // Optional
-    colorBlending.blendConstants[1] = 0.0f; // Optional
-    colorBlending.blendConstants[2] = 0.0f; // Optional
-    colorBlending.blendConstants[3] = 0.0f; // Optional
+    colorBlendAttachments.clear();
 
     //// PIPELINE LAYOUT ////
 
@@ -87,7 +69,7 @@ void PipelineBuilder::reset()
     pipelineLayoutInfo.pSetLayouts = nullptr;
 }
 
-uPtr<Pipeline> PipelineBuilder::buildPipeline(RenderPass* renderPass, Shader* shader)
+uPtr<Pipeline> PipelineBuilder::buildPipeline(RenderPass* renderPass, int subpass, Shader* shader)
 {
     auto pipeline = mkU<Pipeline>(device);
 
@@ -102,13 +84,16 @@ uPtr<Pipeline> PipelineBuilder::buildPipeline(RenderPass* renderPass, Shader* sh
     pipelineInfo.pRasterizationState = &rasterizer;
     pipelineInfo.pMultisampleState = &multisampling;
     pipelineInfo.pDepthStencilState = &depthStencil;
+
+    addDefaultColorBlendAttachment(colorBlending.attachmentCount); // TODO: change this
+
     pipelineInfo.pColorBlendState = &colorBlending;
     pipelineInfo.pDynamicState = &dynamicState;
 
     pipelineInfo.layout = pipeline->createPipelineLayout(pipelineLayoutInfo);
 
     pipelineInfo.renderPass = renderPass->getRenderPass();
-    pipelineInfo.subpass = 0;
+    pipelineInfo.subpass = subpass;
 
     pipelineInfo.basePipelineHandle = VK_NULL_HANDLE; // Optional
     pipelineInfo.basePipelineIndex = -1; // Optional
@@ -257,7 +242,7 @@ void PipelineBuilder::parseFragmentShader(const char *filePath, DescriptorLayout
         uint32_t set = glsl.get_decoration(sampledImage.id, spv::DecorationDescriptorSet);
         uint32_t arrayLength = 1;
         auto sizes = glsl.get_type(sampledImage.type_id).array;
-        if (!sizes.empty()) // no array
+        if (!sizes.empty()) // array
         {
             arrayLength = sizes[0];
         }
@@ -269,6 +254,29 @@ void PipelineBuilder::parseFragmentShader(const char *filePath, DescriptorLayout
                                             nullptr
                                             );
     }
+
+    // get subpass inputs
+    for (auto &subpassInput : resources.subpass_inputs)
+    {
+        std::cout << "Subpass Input: " << subpassInput.name << std::endl;
+
+        uint32_t bindingNum = glsl.get_decoration(subpassInput.id, spv::DecorationBinding);
+        uint32_t set = glsl.get_decoration(subpassInput.id, spv::DecorationDescriptorSet);
+        uint32_t arrayLength = 1;
+        auto sizes = glsl.get_type(subpassInput.type_id).array;
+        if (!sizes.empty()) // array
+        {
+            arrayLength = sizes[0];
+        }
+
+        bindingsMap[set].first.emplace_back(bindingNum,
+                                            vk::DescriptorType::eInputAttachment,
+                                            arrayLength, // number of values in array
+                                            vk::ShaderStageFlagBits::eFragment,
+                                            nullptr
+                                            );
+    }
+
     updateDescriptorSetLayouts(layoutCache);
 }
 
@@ -336,3 +344,37 @@ vk::PipelineRasterizationStateCreateInfo& PipelineBuilder::getRasterizer()
 {
     return rasterizer;
 }
+
+vk::PipelineColorBlendStateCreateInfo &PipelineBuilder::getColorBlending()
+{
+    return colorBlending;
+}
+
+void PipelineBuilder::addDefaultColorBlendAttachment(int count)
+{
+    colorBlending.logicOpEnable = VK_FALSE;
+    colorBlending.logicOp = vk::LogicOp::eCopy; // Optional
+    colorBlending.blendConstants[0] = 0.0f; // Optional
+    colorBlending.blendConstants[1] = 0.0f; // Optional
+    colorBlending.blendConstants[2] = 0.0f; // Optional
+    colorBlending.blendConstants[3] = 0.0f; // Optional
+
+    for (int i = 0; i < count; i++)
+    {
+        vk::PipelineColorBlendAttachmentState colorBlendAttachment{};
+        colorBlendAttachment.colorWriteMask =
+                vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB |
+                vk::ColorComponentFlagBits::eA;
+        colorBlendAttachment.blendEnable = VK_FALSE;
+        colorBlendAttachment.srcColorBlendFactor = vk::BlendFactor::eOne; // Optional
+        colorBlendAttachment.dstColorBlendFactor = vk::BlendFactor::eZero; // Optional
+        colorBlendAttachment.colorBlendOp = vk::BlendOp::eAdd; // Optional
+        colorBlendAttachment.srcAlphaBlendFactor = vk::BlendFactor::eOne; // Optional
+        colorBlendAttachment.dstAlphaBlendFactor = vk::BlendFactor::eZero; // Optional
+        colorBlendAttachment.alphaBlendOp = vk::BlendOp::eAdd; // Optional
+        colorBlendAttachments.push_back(colorBlendAttachment);
+    }
+    colorBlending.attachmentCount = colorBlendAttachments.size();
+    colorBlending.pAttachments = colorBlendAttachments.data();
+}
+

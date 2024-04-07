@@ -55,15 +55,15 @@ void Syncer::resetFence(const char* name)
     resetFence(fences[name]);
 }
 
-vk::Result Syncer::waitForFence(vk::Fence fence)
+vk::Result Syncer::waitForFences(std::vector<vk::Fence> fences)
 {
-    return device.waitForFences(fence, VK_TRUE, UINT64_MAX);
+    return device.waitForFences(fences, VK_TRUE, UINT64_MAX);
 }
 
 void Syncer::waitForFence(const char *name)
 {
     auto fence = fences[name];
-    waitForFence(fence);
+    waitForFences({fence});
 }
 
 void Syncer::destroy()
