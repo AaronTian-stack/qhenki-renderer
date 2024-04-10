@@ -33,8 +33,6 @@
 
 # compiled shaders
 *.spv
-build/*.spv
 
 # glb files I add
 *.glb
-build/*.glb

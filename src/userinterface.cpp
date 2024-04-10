@@ -26,8 +26,11 @@ void UserInterface::create(ImGuiCreateParameters param, CommandPool commandPool)
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO();
-    if (std::filesystem::exists("Roboto-Medium.ttf"))
-        io.Fonts->AddFontFromFileTTF("Roboto-Medium.ttf", 16);
+    const char* path = "../resources/fonts/Roboto-Medium.ttf";
+    if (std::filesystem::exists(path))
+        io.Fonts->AddFontFromFileTTF(path, 16);
+    else
+        std::cerr << "Could not find font" << std::endl;
     io.ConfigWindowsMoveFromTitleBarOnly = true;
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
 
@@ -181,7 +184,7 @@ void UserInterface::renderMenuBar()
 
         if (ImGui::MenuItem("Load Model"))
         {
-            IGFD::FileDialogConfig config;config.path = ".";
+            IGFD::FileDialogConfig config;config.path = "../resources/gltf/";
             ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose File", ".gltf,.glb", config);
         }
 

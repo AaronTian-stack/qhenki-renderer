@@ -201,7 +201,7 @@ void VulkanApp::create(Window &window)
         allocators.emplace_back(vulkanContext.device.logicalDevice);
     }
 
-    envMap.create(bufferFactory, graphicsCommandPool, vulkanContext.queueManager, "envmaps/small_room_radiance.dds");
+    envMap.create(bufferFactory, graphicsCommandPool, vulkanContext.queueManager, "../resources/envmaps/small_room_radiance.dds");
 }
 
 void VulkanApp::setUpCallbacks() {
