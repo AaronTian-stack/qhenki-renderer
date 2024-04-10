@@ -26,6 +26,7 @@ public:
                     const std::vector<vk::ImageLayout> &outputLayouts,
                     int depthIndex = -1);
     void addColorDependency(int srcSubpass, int dstSubpass);
+    void addDepthDependency(int srcSubpass, int dstSubpass);
 
     uPtr<RenderPass> buildRenderPass();
     void reset();

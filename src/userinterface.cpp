@@ -133,8 +133,9 @@ void UserInterface::render()
     if (cameraOptionsOpen)
     {
         ImGui::Begin("Camera Options", &cameraOptionsOpen, ImGuiWindowFlags_AlwaysAutoResize);
-        ImGui::SliderFloat("Rotate Sensitivity", &InputProcesser::SENSITIVITY_ROTATE, 0.0f, 0.5f);
-        ImGui::SliderFloat("Translate Sensitivity", &InputProcesser::SENSITIVITY_TRANSLATE, 0.0f, 0.5f);
+        ImGui::SliderFloat("Rotate Sensitivity", &InputProcesser::SENSITIVITY_ROTATE, 0.0f, 0.2f);
+        ImGui::SliderFloat("Translate Sensitivity", &InputProcesser::SENSITIVITY_TRANSLATE, 0.0f, 0.2f);
+        ImGui::SliderFloat("Zoom Sensitivity", &InputProcesser::SENSITIVITY_ZOOM, 0.0f, 0.2f);
         ImGui::End();
     }
 
@@ -143,7 +144,7 @@ void UserInterface::render()
     ImGui::SetNextWindowPos(ImVec2(ImGui::GetIO().DisplaySize.x, y), 0, ImVec2(1.0f, 0));
     ImGui::Begin("Visual Options", nullptr, flags);
     if (ImGui::Combo("Shader", &currentShaderIndex,
-                     "PBR\0"))
+                     "FXAA\0"))
     {
 
     }

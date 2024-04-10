@@ -35,7 +35,7 @@ void Camera::update()
 
 void Camera::zoom(float yOffset)
 {
-    regular.targetDistance -= yOffset * 0.2f;
+    regular.targetDistance -= yOffset * InputProcesser::SENSITIVITY_ZOOM;
     regular.targetDistance = glm::clamp(regular.targetDistance, 1.0f, 100.0f);
     if (regular.targetDistance <= 1.0f)
     {

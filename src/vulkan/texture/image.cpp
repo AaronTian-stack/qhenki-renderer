@@ -4,8 +4,11 @@ Image::Image(const sPtr<FrameBufferAttachment> attachment) : attachment(attachme
 {}
 
 void Image::recordTransitionImageLayout(vk::ImageLayout oldLayout, vk::ImageLayout newLayout,
-                                        vk::Image image, vk::CommandBuffer commandBuffer)
+                                        vk::Image image, vk::CommandBuffer commandBuffer, int mipCount, int layerCount)
 {
+    auto aspectMask = oldLayout == vk::ImageLayout::eDepthStencilAttachmentOptimal ?
+            vk::ImageAspectFlagBits::eDepth : vk::ImageAspectFlagBits::eColor;
+
     // TODO: mip levels
     auto barrier = vk::ImageMemoryBarrier(
             vk::AccessFlags(),
@@ -15,7 +18,9 @@ void Image::recordTransitionImageLayout(vk::ImageLayout oldLayout, vk::ImageLayo
             VK_QUEUE_FAMILY_IGNORED,
             VK_QUEUE_FAMILY_IGNORED,
             image,
-            vk::ImageSubresourceRange(vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1)
+            vk::ImageSubresourceRange(aspectMask,
+                                      0, mipCount,
+                                      0, layerCount)
     );
 
     vk::PipelineStageFlags sourceStage;
@@ -50,6 +55,16 @@ void Image::recordTransitionImageLayout(vk::ImageLayout oldLayout, vk::ImageLayo
         sourceStage = vk::PipelineStageFlagBits::eTopOfPipe;
         destinationStage = vk::PipelineStageFlagBits::eFragmentShader;
     }
+    else if (oldLayout == vk::ImageLayout::eDepthStencilAttachmentOptimal &&
+                newLayout == vk::ImageLayout::eShaderReadOnlyOptimal)
+    {
+        // depth attachment -> shader read only optimal
+        barrier.srcAccessMask = vk::AccessFlagBits::eDepthStencilAttachmentWrite;
+        barrier.dstAccessMask = vk::AccessFlagBits::eShaderRead;
+
+        sourceStage = vk::PipelineStageFlagBits::eEarlyFragmentTests;
+        destinationStage = vk::PipelineStageFlagBits::eFragmentShader;
+    }
     else
     {
         throw std::invalid_argument("unsupported layout transition!");
@@ -65,7 +80,7 @@ void Image::recordTransitionImageLayout(vk::ImageLayout oldLayout, vk::ImageLayo
 void Image::recordTransitionImageLayout(vk::ImageLayout oldLayout, vk::ImageLayout newLayout,
                                         vk::CommandBuffer commandBuffer)
 {
-    recordTransitionImageLayout(oldLayout, newLayout, attachment->image, commandBuffer);
+    recordTransitionImageLayout(oldLayout, newLayout, attachment->image, commandBuffer, 1, 1);
 }
 
 void Image::destroy()

@@ -153,6 +153,17 @@ void GLTFLoader::processNode(BufferFactory &bufferFactory, tinygltf::Model &gltf
                 auto vBuffer = getBuffer(bufferFactory, gltfModel, primitive.attributes.at(type.first), vk::BufferUsageFlagBits::eVertexBuffer, vertexSize);
                 mesh->vertexBuffers.emplace_back(std::move(vBuffer), type.second);
             }
+            if (primitive.attributes.count("TANGENT") == 0)
+            {
+                std::cerr << "Tangent vectors manually generated!" << std::endl;
+                // no tangent vectors, need to manually create them
+                mesh->vertexBuffers.emplace_back(
+                        createTangentVectors(bufferFactory, gltfModel,
+                                             primitive.attributes.at("POSITION"),
+                                             primitive.attributes.at("TEXCOORD_0"),
+                                             vk::BufferUsageFlagBits::eVertexBuffer), VertexBufferType::TANGENT);
+            }
+
 
             // extract index data
             mesh->indexBuffer = getBuffer(bufferFactory, gltfModel, primitive.indices, vk::BufferUsageFlagBits::eIndexBuffer, 0);
@@ -243,7 +254,7 @@ void GLTFLoader::makeMaterialsAndTextures(CommandPool &commandPool, QueueManager
         stagingBuffers.push_back(std::move(deferredImage.stagingBufferToDestroy));
         model->images.push_back(std::move(imageTexture));
     }
-    // submit as a async batch to make it smoother
+    // submit as an async batch to make it smoother
     commandPool.submitSingleTimeCommands(queueManager, commandBuffers, vkb::QueueType::transfer, true);
 
     for (auto &buffer : stagingBuffers)
@@ -253,7 +264,20 @@ void GLTFLoader::makeMaterialsAndTextures(CommandPool &commandPool, QueueManager
     {
         const tinygltf::Texture &texture = gltfModel.textures[i];
         // a texture is an image and a sampler
-        const tinygltf::Sampler &sampler = gltfModel.samplers[texture.sampler];
+        tinygltf::Sampler sampler;
+
+        if (texture.sampler != -1)
+        {
+            sampler = gltfModel.samplers[texture.sampler];
+        }
+        else
+        {
+            sampler.minFilter = TINYGLTF_TEXTURE_FILTER_LINEAR;
+            sampler.magFilter = TINYGLTF_TEXTURE_FILTER_LINEAR;
+            sampler.wrapS = TINYGLTF_TEXTURE_WRAP_REPEAT;
+            sampler.wrapT = TINYGLTF_TEXTURE_WRAP_REPEAT;
+        }
+
         vk::SamplerCreateInfo samplerInfo{};
         switch(sampler.magFilter)
         {
@@ -332,5 +356,53 @@ void GLTFLoader::makeMaterialsAndTextures(CommandPool &commandPool, QueueManager
 
         model->materials.push_back(material);
     }
+}
 
+uPtr<Buffer> GLTFLoader::createTangentVectors(BufferFactory &bufferFactory, tinygltf::Model &gltfModel, int verticesType,
+                                              int uvType, vk::BufferUsageFlagBits flag)
+{
+    const tinygltf::Accessor &vAccessor = gltfModel.accessors[verticesType];
+    const tinygltf::BufferView &vBufferView = gltfModel.bufferViews[vAccessor.bufferView];
+    const tinygltf::Buffer &vBuffer = gltfModel.buffers[vBufferView.buffer];
+    const auto* positions = reinterpret_cast<const glm::vec3*>(&vBuffer.data[vBufferView.byteOffset + vAccessor.byteOffset]);
+
+    const tinygltf::Accessor &uvAccessor = gltfModel.accessors[uvType];
+    const tinygltf::BufferView &uvBufferView = gltfModel.bufferViews[uvAccessor.bufferView];
+    const tinygltf::Buffer &uvBuffer = gltfModel.buffers[uvBufferView.buffer];
+    const auto* uvs = reinterpret_cast<const glm::vec2*>(&uvBuffer.data[uvBufferView.byteOffset + uvAccessor.byteOffset]);
+
+    size_t count = vAccessor.count;
+    if (vAccessor.count != uvAccessor.count)
+    {
+        std::cerr << "Vertex count " << vAccessor.count << " does not match UV count " << uvAccessor.count << std::endl;
+    }
+
+    auto buffer = bufferFactory.createBuffer(count * sizeof(glm::vec3), flag,
+                                              VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
+    std::vector<glm::vec3> tangents(count);
+    for (size_t i = 0; i < count; ++i)
+    {
+        // pretty sure these don't work but whatever
+        glm::vec3 v0 = positions[i+0];
+        glm::vec3 v1 = positions[i+1];
+        glm::vec3 v2 = positions[i+2];
+
+        glm::vec2 uv0 = uvs[i+0];
+        glm::vec2 uv1 = uvs[i+1];
+        glm::vec2 uv2 = uvs[i+2];
+
+        glm::vec3 deltaPos1 = v1 - v0;
+        glm::vec3 deltaPos2 = v2 - v0;
+
+        // UV delta
+        glm::vec2 deltaUV1 = uv1 - uv0;
+        glm::vec2 deltaUV2 = uv2 - uv0;
+
+        float r = 1.0f / (deltaUV1.x * deltaUV2.y - deltaUV1.y * deltaUV2.x);
+        glm::vec3 tangent = (deltaPos1 * deltaUV2.y   - deltaPos2 * deltaUV1.y)*r;
+        tangents[i] = tangent;
+    }
+
+    buffer->fill(tangents.data());
+    return buffer;
 }

@@ -8,8 +8,8 @@ enum VertexBufferType
 {
     POSITION = 1 << 0,
     NORMAL = 1 << 1,
-    UV = 1 << 2,
-    COLOR = 1 << 3,
+    TANGENT = 1 << 2,
+    UV = 1 << 3,
 };
 
 class Mesh

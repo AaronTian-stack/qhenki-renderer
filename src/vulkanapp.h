@@ -19,11 +19,13 @@
 #include "camera.h"
 #include "inputprocesser.h"
 #include "vulkan/renderpass/renderpassbuilder.h"
+#include "vulkan/texture/envmap.h"
 #include <atomic>
 
 class VulkanApp
 {
 private:
+    EnvironmentMap envMap;
     std::vector<uPtr<Model>> models;
 
     uPtr<FrameBuffer> gBuffer;

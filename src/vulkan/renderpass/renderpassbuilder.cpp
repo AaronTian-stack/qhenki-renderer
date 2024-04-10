@@ -116,3 +116,17 @@ void RenderPassBuilder::addColorDependency(int srcSubpass, int dstSubpass)
     dependency.dependencyFlags = vk::DependencyFlagBits::eByRegion;
     dependencies.push_back(dependency);
 }
+
+void RenderPassBuilder::addDepthDependency(int srcSubpass, int dstSubpass)
+{
+    vk::SubpassDependency dependency{};
+    dependency.srcSubpass = srcSubpass;
+    dependency.dstSubpass = dstSubpass;
+    dependency.srcStageMask = vk::PipelineStageFlagBits::eLateFragmentTests;
+    dependency.dstStageMask = vk::PipelineStageFlagBits::eFragmentShader;
+    dependency.srcAccessMask = vk::AccessFlagBits::eDepthStencilAttachmentWrite;
+    dependency.dstAccessMask = vk::AccessFlagBits::eShaderRead;
+    dependency.dependencyFlags = vk::DependencyFlagBits::eByRegion;
+    dependencies.push_back(dependency);
+}
+

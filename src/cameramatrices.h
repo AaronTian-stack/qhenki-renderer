@@ -5,4 +5,5 @@ struct CameraMatrices
     alignas(16) glm::vec4 position;
     alignas(16) glm::vec4 forward;
     alignas(16) glm::mat4 viewProj;
+    alignas(16) glm::mat4 inverseViewProj;
 };

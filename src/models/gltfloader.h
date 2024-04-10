@@ -12,11 +12,14 @@ private:
     {
         {"POSITION", VertexBufferType::POSITION},
         {"NORMAL", VertexBufferType::NORMAL},
-        {"COLOR", VertexBufferType::COLOR},
-        {"TEXCOORD_0", VertexBufferType::UV}
+//        {"COLOR", VertexBufferType::COLOR},
+        {"TEXCOORD_0", VertexBufferType::UV},
+        {"TANGENT", VertexBufferType::TANGENT},
     };
     static void makeMaterialsAndTextures(CommandPool &commandPool, QueueManager &queueManager, BufferFactory &bufferFactory, tinygltf::Model &gltfModel, Model *model);
     static void processNode(BufferFactory &bufferFactory, tinygltf::Model &gltfModel, Model *model, Node *parent, int nodeIndex);
+    static uPtr<Buffer> createTangentVectors(BufferFactory &bufferFactory, tinygltf::Model &gltfModel , int verticesType,
+                                             int uvType, vk::BufferUsageFlagBits flag);
     static uPtr<Buffer> getBuffer(BufferFactory &bufferFactory, tinygltf::Model &gltfModel,
                           int type, vk::BufferUsageFlagBits flag, size_t vertexSize);
 

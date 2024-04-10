@@ -75,6 +75,23 @@ vk::ImageViewCreateInfo BufferFactory::imageViewInfo(vk::Image image, vk::Format
     return info;
 }
 
+sPtr<FrameBufferAttachment> BufferFactory::createAttachment(vk::ImageCreateInfo imageCreateInfo, vk::ImageViewCreateInfo imageViewCreateInfo, vk::Format format)
+{
+    vk::Image image;
+    VmaAllocationCreateInfo allocationCreateInfo{};
+    allocationCreateInfo.usage = VMA_MEMORY_USAGE_AUTO;
+    VmaAllocation allocation;
+    vmaCreateImage(allocator, (VkImageCreateInfo*) &imageCreateInfo, &allocationCreateInfo, (VkImage*) &image, &allocation, nullptr);
+
+    imageViewCreateInfo.image = image;
+    vk::ImageView imageView;
+    auto result = device.createImageView(&imageViewCreateInfo, nullptr, &imageView);
+    if (result != vk::Result::eSuccess)
+        throw std::runtime_error("failed to create image view");
+
+    return mkS<FrameBufferAttachment>(device, allocator, allocation, image, imageView, format);
+}
+
 sPtr<FrameBufferAttachment> BufferFactory::createAttachment(
     vk::Format format, vk::Extent3D extent,
     vk::ImageUsageFlags imageUsage, vk::ImageAspectFlags aspectFlags)

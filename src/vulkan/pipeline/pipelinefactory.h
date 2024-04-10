@@ -26,7 +26,7 @@ private:
     vk::PipelineViewportStateCreateInfo viewportState{};
     vk::PipelineRasterizationStateCreateInfo rasterizer{};
     vk::PipelineMultisampleStateCreateInfo multisampling{};
-    vk::PipelineDepthStencilStateCreateInfo depthStencil{}; // not used right now
+    vk::PipelineDepthStencilStateCreateInfo depthStencil{};
     std::vector<vk::PipelineColorBlendAttachmentState> colorBlendAttachments; // you would make one of these for each attachment (specified in render pass)
     vk::PipelineColorBlendStateCreateInfo colorBlending{};
 
@@ -65,6 +65,7 @@ public:
 
     vk::PipelineRasterizationStateCreateInfo& getRasterizer();
     vk::PipelineColorBlendStateCreateInfo& getColorBlending();
+    vk::PipelineDepthStencilStateCreateInfo& getDepthStencil();
 
     void reset();
 

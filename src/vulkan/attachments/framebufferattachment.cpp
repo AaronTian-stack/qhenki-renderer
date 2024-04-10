@@ -24,16 +24,16 @@ vk::DescriptorImageInfo FrameBufferAttachment::getDescriptorInfo()
     return {sampler, imageView, vk::ImageLayout::eShaderReadOnlyOptimal};
 }
 
-void FrameBufferAttachment::createGenericSampler()
+void FrameBufferAttachment::createGenericSampler(vk::Filter filter, vk::SamplerMipmapMode mipmapMode)
 {
     vk::SamplerCreateInfo samplerInfo{
             vk::SamplerCreateFlags(),
-            vk::Filter::eLinear,
-            vk::Filter::eLinear,
-            vk::SamplerMipmapMode::eLinear,
-            vk::SamplerAddressMode::eRepeat,
-            vk::SamplerAddressMode::eRepeat,
-            vk::SamplerAddressMode::eRepeat,
+            filter,
+            filter,
+            mipmapMode,
+            vk::SamplerAddressMode::eClampToEdge,
+            vk::SamplerAddressMode::eClampToEdge,
+            vk::SamplerAddressMode::eClampToEdge,
             0.0f,
             VK_FALSE, // TODO: needs hardware support
             16,
@@ -45,4 +45,9 @@ void FrameBufferAttachment::createGenericSampler()
             VK_FALSE
     };
     sampler = device.createSampler(samplerInfo);
+}
+
+void FrameBufferAttachment::createGenericSampler()
+{
+    createGenericSampler(vk::Filter::eLinear, vk::SamplerMipmapMode::eLinear);
 }

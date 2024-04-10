@@ -26,6 +26,9 @@ private:
     bool optionsOpen = false;
     bool cameraOptionsOpen = false;
 
+    int currentShaderIndex = 0;
+    float clearColor[3] = {0.25f, 0.25f, 0.25f };
+
 public:
     UserInterface();
     ~UserInterface();
@@ -40,7 +43,7 @@ public:
     std::function<void(std::string)> modelSelectCallback;
 
     std::vector<float> frameTimes;
-    int currentShaderIndex = 0;
-    float clearColor[3] = {0.25f, 0.25f, 0.25f };
+
+    friend class VulkanApp;
 };
 

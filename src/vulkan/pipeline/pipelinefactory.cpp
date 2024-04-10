@@ -350,6 +350,11 @@ vk::PipelineColorBlendStateCreateInfo &PipelineBuilder::getColorBlending()
     return colorBlending;
 }
 
+vk::PipelineDepthStencilStateCreateInfo &PipelineBuilder::getDepthStencil()
+{
+    return depthStencil;
+}
+
 void PipelineBuilder::addDefaultColorBlendAttachment(int count)
 {
     colorBlending.logicOpEnable = VK_FALSE;
@@ -377,4 +382,3 @@ void PipelineBuilder::addDefaultColorBlendAttachment(int count)
     colorBlending.attachmentCount = colorBlendAttachments.size();
     colorBlending.pAttachments = colorBlendAttachments.data();
 }
-
