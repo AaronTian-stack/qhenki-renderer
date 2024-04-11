@@ -7,11 +7,10 @@ layout(location = 3) in vec3 fragNormal;
 layout(location = 4) in vec3 fragTangent;
 layout(location = 5) in vec3 fragBiTangent;
 
-layout(location = 0) out vec4 outPosition; // location is index of framebuffer / attachment
-layout(location = 1) out vec4 outAlbedo;
-layout(location = 2) out vec4 outNormal;
-layout(location = 3) out vec4 outMetalRoughnessAO;
-layout(location = 4) out vec4 outEmissive;
+layout(location = 0) out vec4 outAlbedo; // location is index of framebuffer / attachment
+layout(location = 1) out vec4 outNormal;
+layout(location = 2) out vec4 outMetalRoughnessAO;
+layout(location = 3) out vec4 outEmissive;
 
 // 80 is max number of samplers in any shader on macOS (with argument buffers turned on, validation still complains)
 // since partial binding is on, indexing into undefined sampler will not show errors!
@@ -62,8 +61,6 @@ void setValues(out vec4 albedo, out vec3 normal, out vec4 metalRoughness, out fl
     {
         normal = normalize(fragNormal);
     }
-    // turn into 0-1 range for writing to texture
-    normal = normal + 1.0 * 0.5;
 
     if (material.metallicRoughnessTexture != -1)
         metalRoughness = texture(texSampler[material.metallicRoughnessTexture], fragUV);
@@ -96,7 +93,6 @@ void main()
     float thres = dither[int(mod(gl_FragCoord.y, 4.0)) * 4 + int(mod(gl_FragCoord.x, 4.0))];
     if (albedo.a < thres) discard;
 
-    outPosition = vec4(fragPos, 1.0);
     outAlbedo = vec4(albedo.rgb, 1.0);
     outNormal = vec4(normal, 1.0);
     outMetalRoughnessAO = vec4(metalRoughness.rgb, AO);

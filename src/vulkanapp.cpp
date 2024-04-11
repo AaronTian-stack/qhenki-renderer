@@ -4,6 +4,7 @@
 #include "glm/glm.hpp"
 #include "inputprocesser.h"
 #include "imgui/imgui.h"
+#include "models/primitives/primitive.h"
 #include <thread>
 
 VulkanApp::VulkanApp() {}
@@ -39,6 +40,7 @@ VulkanApp::~VulkanApp()
 
     envMap.destroy();
 
+    Primitive::destroy();
     for (auto &model : models)
         model->destroy();
 
@@ -56,17 +58,12 @@ void VulkanApp::createGbuffer(vk::Extent2D extent, vk::RenderPass renderPass)
 {
     // create each attachment
 
-    auto positionAttachment = bufferFactory.createAttachment(vk::Format::eR16G16B16A16Sfloat,
-                                                          {extent.width, extent.height, 1},
-                                                          vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eInputAttachment,
-                                                          vk::ImageAspectFlagBits::eColor);
-
     auto colorAttachment = bufferFactory.createAttachment(vk::Format::eR8G8B8A8Unorm,
                                                           {extent.width, extent.height, 1},
                                                           vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eInputAttachment,
                                                           vk::ImageAspectFlagBits::eColor);
 
-    auto normalAttachment = bufferFactory.createAttachment(vk::Format::eR8G8B8A8Unorm,
+    auto normalAttachment = bufferFactory.createAttachment(vk::Format::eR8G8B8A8Snorm,
                                                            {extent.width, extent.height, 1},
                                                            vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eInputAttachment,
                                                            vk::ImageAspectFlagBits::eColor);
@@ -90,13 +87,12 @@ void VulkanApp::createGbuffer(vk::Extent2D extent, vk::RenderPass renderPass)
     outputAttachment->createGenericSampler();
 
     std::vector<vk::ImageView> attachments = {
-            positionAttachment->imageView, // 0
-            colorAttachment->imageView, // 1
-            normalAttachment->imageView, // 2
-            metalRoughnessAOAttachment->imageView, // 3
-            emissiveAttachment->imageView, // 4
-            depthBuffer->imageView, // 5
-            outputAttachment->imageView // 6
+            colorAttachment->imageView, // 0
+            normalAttachment->imageView, // 1
+            metalRoughnessAOAttachment->imageView, // 2
+            emissiveAttachment->imageView, // 3
+            depthBuffer->imageView, // 4
+            outputAttachment->imageView // 5
     };
     auto device = vulkanContext.device.logicalDevice;
     vk::FramebufferCreateInfo createInfo(
@@ -109,7 +105,7 @@ void VulkanApp::createGbuffer(vk::Extent2D extent, vk::RenderPass renderPass)
             1);
     auto framebuffer = device.createFramebuffer(createInfo);
 
-    std::vector<sPtr<FrameBufferAttachment>> attachmentsVec = {positionAttachment, colorAttachment, normalAttachment,
+    std::vector<sPtr<FrameBufferAttachment>> attachmentsVec = {colorAttachment, normalAttachment,
                                                                metalRoughnessAOAttachment, emissiveAttachment, outputAttachment};
     gBuffer = mkU<FrameBuffer>(device, framebuffer, attachmentsVec);
 }
@@ -144,17 +140,16 @@ void VulkanApp::create(Window &window)
     displayRenderPass = renderPassBuilder.buildRenderPass();
 
     renderPassBuilder.reset();
-    renderPassBuilder.addColorAttachment(vk::Format::eR16G16B16A16Sfloat); // position 0
-    renderPassBuilder.addColorAttachment(vk::Format::eR8G8B8A8Unorm); // albedo 1
-    renderPassBuilder.addColorAttachment(vk::Format::eR8G8B8A8Unorm); // normal 2
-    renderPassBuilder.addColorAttachment(vk::Format::eR8G8B8A8Unorm); // metal roughness ao 3
-    renderPassBuilder.addColorAttachment(vk::Format::eR8G8B8A8Unorm); // emissive 4
+    renderPassBuilder.addColorAttachment(vk::Format::eR8G8B8A8Unorm); // albedo 0
+    renderPassBuilder.addColorAttachment(vk::Format::eR8G8B8A8Snorm); // normal 1
+    renderPassBuilder.addColorAttachment(vk::Format::eR8G8B8A8Unorm); // metal roughness ao 2
+    renderPassBuilder.addColorAttachment(vk::Format::eR8G8B8A8Unorm); // emissive 3
     renderPassBuilder.addDepthAttachment(depthBuffer->format); // depth 4
-    renderPassBuilder.addColorAttachment(vk::Format::eR8G8B8A8Srgb); // final output 6
-    renderPassBuilder.addSubPass({}, {}, {0, 1, 2, 3, 4}, {}, 5);
-    renderPassBuilder.addSubPass({0, 1, 2, 3, 4, 5},
+    renderPassBuilder.addColorAttachment(vk::Format::eR8G8B8A8Srgb); // final output 5
+    renderPassBuilder.addSubPass({}, {}, {0, 1, 2, 3}, {}, 4);
+    renderPassBuilder.addSubPass({0, 1, 2, 3, 4},
                                  {vk::ImageLayout::eShaderReadOnlyOptimal},
-                                 {6}, {}
+                                 {5}, {}
                                  );
     renderPassBuilder.addColorDependency(0, 1);
 //    renderPassBuilder.addDepthDependency(0, 0);
@@ -167,7 +162,7 @@ void VulkanApp::create(Window &window)
     pipelineFactory.addVertexInputBinding({2, sizeof(glm::vec3), vk::VertexInputRate::eVertex}); // tangent
     pipelineFactory.addVertexInputBinding({3, sizeof(glm::vec2), vk::VertexInputRate::eVertex}); // uv
     pipelineFactory.parseShader("gbuffer_vert.spv", "gbuffer_frag.spv", layoutCache, false);
-    pipelineFactory.getColorBlending().attachmentCount = 5; // blending is disabled for now. pipeline factory does not set color blendings correctly
+    pipelineFactory.getColorBlending().attachmentCount = 4; // blending is disabled for now. pipeline factory does not set color blendings correctly
 //    pipelineFactory.getRasterizer().cullMode = vk::CullModeFlagBits::eBack;
     gBufferPipeline = pipelineFactory.buildPipeline(offscreenRenderPass.get(), 0, gBufferShader.get());
 
@@ -202,6 +197,8 @@ void VulkanApp::create(Window &window)
     }
 
     envMap.create(bufferFactory, graphicsCommandPool, vulkanContext.queueManager, "../resources/envmaps/small_room_radiance.dds");
+
+    Primitive::create(bufferFactory);
 }
 
 void VulkanApp::setUpCallbacks() {
@@ -264,35 +261,19 @@ void VulkanApp::recordOffscreenBuffer(vk::CommandBuffer commandBuffer, Descripto
 
         offscreenRenderPass->nextSubpass();
 
-        // transition the depth buffer to be readable by shader
-//        Image::recordTransitionImageLayout(vk::ImageLayout::eDepthStencilAttachmentOptimal,
-//                                           vk::ImageLayout::eShaderReadOnlyOptimal,
-//                                           depthBuffer->image, commandBuffer);
-
         commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, lightingPipeline->getGraphicsPipeline());
 
         vk::DescriptorSet inputSet;
-        std::vector<vk::DescriptorImageInfo> inputImageInfos = {
-                gBuffer->attachments[0]->getDescriptorInfo(),
-                gBuffer->attachments[1]->getDescriptorInfo(),
-                gBuffer->attachments[2]->getDescriptorInfo(),
-                gBuffer->attachments[3]->getDescriptorInfo(),
-                gBuffer->attachments[4]->getDescriptorInfo()
-        };
-        DescriptorBuilder::beginSet(&layoutCache, &allocator)
-                .bindImage(0, {inputImageInfos[0]},
-                           1, vk::DescriptorType::eInputAttachment, vk::ShaderStageFlagBits::eFragment)
-                .bindImage(1, {inputImageInfos[1]},
-                           1, vk::DescriptorType::eInputAttachment, vk::ShaderStageFlagBits::eFragment)
-                .bindImage(2, {inputImageInfos[2]},
-                           1, vk::DescriptorType::eInputAttachment, vk::ShaderStageFlagBits::eFragment)
-                .bindImage(3, {inputImageInfos[3]},
-                           1, vk::DescriptorType::eInputAttachment, vk::ShaderStageFlagBits::eFragment)
-                .bindImage(4, {inputImageInfos[4]},
-                           1, vk::DescriptorType::eInputAttachment, vk::ShaderStageFlagBits::eFragment)
-                .bindImage(5, {depthBuffer->getDescriptorInfo()},
+        auto builder = DescriptorBuilder::beginSet(&layoutCache, &allocator);
+        for (int i = 0; i < 4; i++)
+        {
+            builder.bindImage(i, {gBuffer->attachments[i]->getDescriptorInfo()},
+                              1, vk::DescriptorType::eInputAttachment, vk::ShaderStageFlagBits::eFragment);
+        }
+        builder.bindImage(4, {depthBuffer->getDescriptorInfo()},
                            1, vk::DescriptorType::eInputAttachment, vk::ShaderStageFlagBits::eFragment)
                 .build(inputSet, layout);
+
         commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, lightingPipeline->getPipelineLayout(),
                                          0, {cameraSet, inputSet}, nullptr);
         commandBuffer.draw(3, 1, 0, 0);
@@ -417,6 +398,8 @@ void VulkanApp::updateCameraBuffer()
     cameraMatrices.forward = camera.getForwardVector();
     cameraMatrices.viewProj = proj * view;
     cameraMatrices.inverseViewProj = glm::inverse(cameraMatrices.viewProj);
+    cameraMatrices.view = view;
+    cameraMatrices.proj = proj;
     cameraBuffers[currentFrame]->fill(&cameraMatrices);
 }
 

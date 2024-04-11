@@ -5,6 +5,8 @@ layout(std140, set = 0, binding = 0) uniform cameraInfo {
     vec4 forward;
     mat4 viewProj;
     mat4 invViewProj;
+    mat4 view;
+    mat4 proj;
 } ubo;
 
 layout(location = 0) out vec2 fragUV;

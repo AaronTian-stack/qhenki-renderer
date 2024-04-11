@@ -382,7 +382,6 @@ uPtr<Buffer> GLTFLoader::createTangentVectors(BufferFactory &bufferFactory, tiny
     std::vector<glm::vec3> tangents(count);
     for (size_t i = 0; i < count; ++i)
     {
-        // pretty sure these don't work but whatever
         glm::vec3 v0 = positions[i+0];
         glm::vec3 v1 = positions[i+1];
         glm::vec3 v2 = positions[i+2];

@@ -77,10 +77,5 @@ void main()
 {
     vec2 viewportInv = vec2(1.0) / pc.viewport;
     vec3 color = fxaa(fragUV, viewportInv);
-//    vec3 color = texture(texSampler, fragUV).xyz;
-
-//    vec4 dither = vec4(texture(texSampler, gl_FragCoord.xy / 8.0).r / 32.0 - (1.0 / 128.0));
-//    color += dither.xyz;
-
     outColor = vec4(color, 1.0);
 }

@@ -22,7 +22,7 @@ void Camera::update()
         auto offset = InputProcesser::deltaMouse * InputProcesser::SENSITIVITY_ROTATE;
         regular.theta += offset.x;
         regular.phi += offset.y;
-        regular.phi = glm::clamp(regular.phi, 0.f, 180.0f);
+        regular.phi = glm::clamp(regular.phi, 1.f, 179.0f);
     }
     if (InputProcesser::mouseButtons[GLFW_MOUSE_BUTTON_RIGHT])
     {

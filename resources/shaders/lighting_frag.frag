@@ -1,11 +1,10 @@
 #version 450
 
-layout (input_attachment_index = 0, set = 1, binding = 0) uniform subpassInput inputPosition;
-layout (input_attachment_index = 1, set = 1, binding = 1) uniform subpassInput inputAlbedo;
-layout (input_attachment_index = 2, set = 1, binding = 2) uniform subpassInput inputNormal;
-layout (input_attachment_index = 3, set = 1, binding = 3) uniform subpassInput inputMetalRoughnessAO;
-layout (input_attachment_index = 4, set = 1, binding = 4) uniform subpassInput inputEmissive;
-layout (input_attachment_index = 5, set = 1, binding = 5) uniform subpassInput depthBuffer;
+layout (input_attachment_index = 0, set = 1, binding = 0) uniform subpassInput inputAlbedo;
+layout (input_attachment_index = 1, set = 1, binding = 1) uniform subpassInput inputNormal;
+layout (input_attachment_index = 2, set = 1, binding = 2) uniform subpassInput inputMetalRoughnessAO;
+layout (input_attachment_index = 3, set = 1, binding = 3) uniform subpassInput inputEmissive;
+layout (input_attachment_index = 4, set = 1, binding = 4) uniform subpassInput depthBuffer;
 
 layout(location = 0) in vec2 fragUV;
 layout(location = 1) in vec4 cameraPos;
@@ -40,7 +39,7 @@ PointLight pointLights[2] = PointLight[2](
 );
 
 SphereLight sphereLights[1] = SphereLight[1](
-    SphereLight(vec4(0.0, 100.0, 100.0, 40.0), vec4(0.0, 1.0, 1.0, 20000.0))
+    SphereLight(vec4(0.0, 1000.0, 100.0, 40.0), vec4(1.0, 0.9, 1.0, 20000000.0))
 );
 
 const float PI = 3.14159f;
@@ -121,7 +120,7 @@ void calculateForLight(inout vec3 Lo, Light light, vec3 N, vec3 V, Material mate
 
     vec3 L = normalize(light.position - fragPos);
     vec3 H = normalize(V + L);
-    float distance    = length(light.position - fragPos);
+    float distance    = distance(light.position, fragPos);
     float attenuation = 1.0 / (distance * distance);
 
     vec3 lightColor = light.color * light.intensity;
@@ -166,22 +165,19 @@ const float[16] dither =
 void main()
 {
     float depth = subpassLoad(depthBuffer).r;
-//    vec4 position = reconstructPosition(depth);
+    vec4 position = reconstructPosition(depth);
 
-    vec4 position = subpassLoad(inputPosition);
     vec4 albedo = subpassLoad(inputAlbedo);
-    vec3 unconvertedNormal = subpassLoad(inputNormal).xyz;
+    vec3 normal = subpassLoad(inputNormal).xyz;
     vec4 metalRoughnessAO = subpassLoad(inputMetalRoughnessAO);
     vec4 emissive = subpassLoad(inputEmissive);
 
-    if (position.a == 0.0)
+    if (depth == 1.0)
     {
         outColor = albedo;
         return;
     }
 
-    // convert normal back to [-1, 1] range
-    vec3 normal = unconvertedNormal * 2.0 - 1.0;
     float metallic = metalRoughnessAO.b;
     float roughness = metalRoughnessAO.g;
     float ao = metalRoughnessAO.a;
@@ -191,15 +187,6 @@ void main()
 
     vec3 F0 = mix(vec3(0.04), albedo.rgb, metallic);
 
-//    //// SPHERE LIGHT TEST
-//    vec3 lightPosition = vec3(0.0, 0.0, 10.0);
-//    vec3 r = reflect(-V, N);
-//    vec3 L = lightPosition.xyz - position.xyz;
-//    vec3 centerToRay = (dot(L, r) * r) - L;
-//    float sphereRadius = 2.0;
-//    vec3 closestPoint = L + centerToRay * clamp(sphereRadius / length(centerToRay), 0, 1);
-//    ////
-
     Material material = Material(albedo.rgb, metallic, roughness);
 
     vec3 Lo = vec3(0.0);
@@ -208,11 +195,11 @@ void main()
         Light light = Light(closestPointSphere(sphereLights[i], N, V, position.xyz), sphereLights[i].color.rgb, sphereLights[i].color.a);
         calculateForLight(Lo, light, N, V, material, position.xyz);
     }
-    for(int i = 0; i < 2; ++i)
-    {
-        Light light = Light(pointLights[i].position.xyz, pointLights[i].color.rgb, pointLights[i].color.a);
-        calculateForLight(Lo, light, N, V, material, position.xyz);
-    }
+//    for(int i = 0; i < 2; ++i)
+//    {
+//        Light light = Light(pointLights[i].position.xyz, pointLights[i].color.rgb, pointLights[i].color.a);
+//        calculateForLight(Lo, light, N, V, material, position.xyz);
+//    }
 
     vec3 ambient = vec3(0.03) * albedo.rgb * ao;
     vec3 color = ambient + Lo + emissive.rgb;
@@ -226,4 +213,10 @@ void main()
     color = color / (color + vec3(1.0));
 
     outColor = vec4(color.xyz, 1.0);
+
+    // basic blinn phong as debug for normals
+//    vec3 lightDir = normalize(vec3(0.0, 0.0, 1.0) - position.xyz);
+//    float diff = max(dot(N, lightDir), 0.0) + 0.2;
+//    vec3 diffuse = diff * albedo.rgb;
+//    outColor = vec4(diffuse, 1.0);
 }

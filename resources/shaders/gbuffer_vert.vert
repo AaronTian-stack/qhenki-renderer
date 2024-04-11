@@ -5,6 +5,8 @@ layout(std140, set = 0, binding = 0) uniform cameraInfo {
     vec4 forward;
     mat4 viewProj;
     mat4 invViewProj;
+    mat4 view;
+    mat4 proj;
 } ubo;
 
 layout(push_constant) uniform constants {
@@ -35,11 +37,11 @@ void main()
 {
     vec4 worldPos = modelTransform.matrix * vec4(inPosition, 1.0);
     gl_Position = ubo.viewProj * worldPos;
-    fragPos = inPosition;
+    fragPos = worldPos.xyz;
     mat3 matN = transpose(inverse(mat3(modelTransform.matrix)));
     fragNormal = normalize(matN * inNormal);
     fragTangent = normalize(matN * inTangent);
-    fragBiTangent = cross(fragNormal, fragTangent);
+    fragBiTangent = normalize(cross(fragNormal, fragTangent));
 
     fragColor = colors[0];
     fragUV = inUV;

@@ -680,7 +680,7 @@ bool ParseTextureNameAndOption(std::string *texname, texture_option_t *texopt,
 
 #include <array>
 
-#include "mapbox/earcut.hpp"
+//#include "mapbox/earcut.hpp"
 
 #ifdef __clang__
 #pragma clang diagnostic pop
