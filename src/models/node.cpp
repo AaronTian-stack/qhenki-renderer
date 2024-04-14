@@ -4,19 +4,19 @@
 Node::Node() : parent(nullptr), mesh(nullptr), translate(0.f), scale(1.f)
 {}
 
-void Node::draw(vk::CommandBuffer commandBuffer, Pipeline &pipeline)
+void Node::draw(Node *node, vk::CommandBuffer commandBuffer, Pipeline &pipeline)
 {
     auto wt = getWorldTransform();
-    if (mesh)
+    if (node->mesh)
     {
         pipeline.setPushConstant(commandBuffer, &wt, sizeof(glm::mat4), 0, vk::ShaderStageFlagBits::eVertex);
-        auto &material = mesh->material;
+        auto &material = node->mesh->material;
         pipeline.setPushConstant(commandBuffer, &material, sizeof(Material), sizeof(glm::mat4), vk::ShaderStageFlagBits::eFragment);
-        mesh->draw(commandBuffer);
+        node->mesh->draw(commandBuffer);
     }
     for (auto &child : children)
     {
-        child->draw(commandBuffer, pipeline);
+        child->draw(child.get(), commandBuffer, pipeline);
     }
 }
 

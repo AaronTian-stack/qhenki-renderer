@@ -21,13 +21,12 @@ public:
 
     std::vector<uPtr<Node>> children;
 
-    // TODO: add support for multiple meshes
     Mesh *mesh;
 
     Node();
     glm::mat4 getLocalTransform();
     glm::mat4 getWorldTransform();
-    void draw(vk::CommandBuffer commandBuffer, Pipeline &pipeline);
+    void draw(Node *node, vk::CommandBuffer commandBuffer, Pipeline &pipeline);
     friend class GLTFLoader;
 };
 

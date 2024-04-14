@@ -51,6 +51,8 @@ uPtr<Model> GLTFLoader::create(CommandPool &commandPool, QueueManager &queueMana
     loadStatus = LoadStatus::LOAD_NODE;
     processNode(bufferFactory, gltfModel, model.get(), nullptr, rootNodeIndex);
 
+    std::cout << "FINISHED" << std::endl;
+
     return model;
 }
 
