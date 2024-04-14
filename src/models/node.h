@@ -20,13 +20,11 @@ public:
     glm::vec3 scale;
 
     std::vector<uPtr<Node>> children;
-
-    Mesh *mesh;
+    std::vector<Mesh*> meshes;
 
     Node();
     glm::mat4 getLocalTransform();
     glm::mat4 getWorldTransform();
-    void draw(Node *node, vk::CommandBuffer commandBuffer, Pipeline &pipeline);
+    static void draw(const uPtr<Node> &node, vk::CommandBuffer commandBuffer, Pipeline &pipeline);
     friend class GLTFLoader;
 };
-

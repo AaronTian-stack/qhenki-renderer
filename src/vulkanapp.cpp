@@ -256,7 +256,7 @@ void VulkanApp::recordOffscreenBuffer(vk::CommandBuffer commandBuffer, Descripto
                                              0, {cameraSet, samplerSet}, nullptr);
         }
 
-        model->root->draw(model->root.get(), commandBuffer, *gBufferPipeline);
+        Node::draw(model->root, commandBuffer, *gBufferPipeline);
 
         offscreenRenderPass->nextSubpass();
 

@@ -51,8 +51,6 @@ uPtr<Model> GLTFLoader::create(CommandPool &commandPool, QueueManager &queueMana
     loadStatus = LoadStatus::LOAD_NODE;
     processNode(bufferFactory, gltfModel, model.get(), nullptr, rootNodeIndex);
 
-    std::cout << "FINISHED" << std::endl;
-
     return model;
 }
 
@@ -157,7 +155,7 @@ void GLTFLoader::processNode(BufferFactory &bufferFactory, tinygltf::Model &gltf
             mesh->material = &model->materials[primitive.material];
 
             model->meshes.push_back(std::move(mesh));
-            node->mesh = model->meshes.back().get();
+            node->meshes.push_back(model->meshes.back().get());
         }
     }
 
