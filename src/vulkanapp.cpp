@@ -79,7 +79,7 @@ void VulkanApp::createGbuffer(vk::Extent2D extent, vk::RenderPass renderPass)
                                                                      vk::ImageAspectFlagBits::eColor);
 
 
-    auto outputAttachment = bufferFactory.createAttachment(vk::Format::eR8G8B8A8Srgb,
+    auto outputAttachment = bufferFactory.createAttachment(vk::Format::eR16G16B16A16Sfloat,
                                                            {extent.width, extent.height, 1},
                                                            vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled,
                                                            vk::ImageAspectFlagBits::eColor);
@@ -145,7 +145,7 @@ void VulkanApp::create(Window &window)
     renderPassBuilder.addColorAttachment(vk::Format::eR8G8B8A8Unorm); // metal roughness ao 2
     renderPassBuilder.addColorAttachment(vk::Format::eR8G8B8A8Unorm); // emissive 3
     renderPassBuilder.addDepthAttachment(depthBuffer->format); // depth 4
-    renderPassBuilder.addColorAttachment(vk::Format::eR8G8B8A8Srgb); // final output 5
+    renderPassBuilder.addColorAttachment(vk::Format::eR16G16B16A16Sfloat); // final output 5
     renderPassBuilder.addSubPass({}, {}, {0, 1, 2, 3}, {}, 4);
     renderPassBuilder.addSubPass({0, 1, 2, 3, 4},
                                  {vk::ImageLayout::eShaderReadOnlyOptimal},
@@ -212,11 +212,10 @@ void VulkanApp::setModel(const std::string& filePath)
 {
     // reset camera position
     camera.simpleReset();
-    readyToRender = false;
     std::thread t([this, filePath](){
         models.push_back(GLTFLoader::create(transferCommandPool,  vulkanContext.queueManager,
                                             bufferFactory, filePath.c_str()));
-        readyToRender = true;
+        GLTFLoader::setLoadStatus(LoadStatus::READY);
     });
     t.detach();
 }
@@ -231,7 +230,7 @@ void VulkanApp::recordOffscreenBuffer(vk::CommandBuffer commandBuffer, Descripto
     ScreenUtils::setViewport(commandBuffer, extent.width, extent.height);
     ScreenUtils::setScissor(commandBuffer, extent);
 
-    if (readyToRender && !models.empty())
+    if (GLTFLoader::getLoadStatus() == LoadStatus::READY && !models.empty())
     {
         commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, gBufferPipeline->getGraphicsPipeline());
         auto &model = models.back();
@@ -250,27 +249,39 @@ void VulkanApp::recordOffscreenBuffer(vk::CommandBuffer commandBuffer, Descripto
         {
             DescriptorBuilder::beginSet(&layoutCache, &allocator)
                     .bindImage(0, imageInfos,
-                               60, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eFragment)
+                               80, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eFragment)
                     .build(samplerSet, layout);
 
             commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, gBufferPipeline->getPipelineLayout(),
                                              0, {cameraSet, samplerSet}, nullptr);
         }
 
-        model->root->draw(commandBuffer, *gBufferPipeline, *model->root);
+        model->root->draw(commandBuffer, *gBufferPipeline);
 
         offscreenRenderPass->nextSubpass();
 
         commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, lightingPipeline->getGraphicsPipeline());
 
         vk::DescriptorSet inputSet;
-        auto builder = DescriptorBuilder::beginSet(&layoutCache, &allocator);
-        for (int i = 0; i < 4; i++)
-        {
-            builder.bindImage(i, {gBuffer->attachments[i]->getDescriptorInfo()},
-                              1, vk::DescriptorType::eInputAttachment, vk::ShaderStageFlagBits::eFragment);
-        }
-        builder.bindImage(4, {depthBuffer->getDescriptorInfo()},
+//        auto builder = DescriptorBuilder::beginSet(&layoutCache, &allocator);
+//        for (int i = 0; i < 4; i++)
+//        {
+//            builder.bindImage(i, {gBuffer->attachments[i]->getDescriptorInfo()},
+//                              1, vk::DescriptorType::eInputAttachment, vk::ShaderStageFlagBits::eFragment);
+//        }
+//        builder.bindImage(4, {depthBuffer->getDescriptorInfo()},
+//                           1, vk::DescriptorType::eInputAttachment, vk::ShaderStageFlagBits::eFragment)
+//                .build(inputSet, layout);
+        DescriptorBuilder::beginSet(&layoutCache, &allocator)
+                .bindImage(0, {gBuffer->attachments[0]->getDescriptorInfo()},
+                           1, vk::DescriptorType::eInputAttachment, vk::ShaderStageFlagBits::eFragment)
+                .bindImage(1, {gBuffer->attachments[1]->getDescriptorInfo()},
+                           1, vk::DescriptorType::eInputAttachment, vk::ShaderStageFlagBits::eFragment)
+                .bindImage(2, {gBuffer->attachments[2]->getDescriptorInfo()},
+                           1, vk::DescriptorType::eInputAttachment, vk::ShaderStageFlagBits::eFragment)
+                .bindImage(3, {gBuffer->attachments[3]->getDescriptorInfo()},
+                           1, vk::DescriptorType::eInputAttachment, vk::ShaderStageFlagBits::eFragment)
+                .bindImage(4, {depthBuffer->getDescriptorInfo()},
                            1, vk::DescriptorType::eInputAttachment, vk::ShaderStageFlagBits::eFragment)
                 .build(inputSet, layout);
 

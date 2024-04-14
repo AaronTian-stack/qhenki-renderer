@@ -65,4 +65,7 @@ void Primitive::destroy()
     cubeIndexBuffer->destroy();
     spherePosBuffer->destroy();
     sphereIndexBuffer->destroy();
+
+//    primitivePipeline->destroy();
+//    primitiveShader->destroy();
 }

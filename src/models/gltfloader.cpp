@@ -9,25 +9,6 @@
 #include "glm/vec3.hpp"
 #include <glm/gtx/matrix_decompose.hpp>
 
-void GLTFLoader::benchmarkTest(const char* filename)
-{
-    tinygltf::TinyGLTF loader;
-    tinygltf::Model gltfModel;
-    std::string err;
-    std::string warn;
-
-    bool ret = false;
-    // check extension of filename
-    std::string ext = filename;
-    ext = ext.substr(ext.find_last_of('.') + 1);
-    if (ext == "gltf")
-        ret = loader.LoadASCIIFromFile(&gltfModel, &err, &warn, filename);
-    else if (ext == "glb")
-        ret = loader.LoadBinaryFromFile(&gltfModel, &err, &warn, filename);
-    else
-        throw std::runtime_error("Invalid file extension");
-}
-
 uPtr<Model> GLTFLoader::create(CommandPool &commandPool, QueueManager &queueManager, BufferFactory &bufferFactory, const char* filename)
 {
     tinygltf::TinyGLTF loader;
@@ -35,6 +16,7 @@ uPtr<Model> GLTFLoader::create(CommandPool &commandPool, QueueManager &queueMana
     std::string err;
     std::string warn;
 
+    loadStatus = LoadStatus::PARSING;
     bool ret = false;
     // check extension of filename
     std::string ext = filename;
@@ -64,7 +46,9 @@ uPtr<Model> GLTFLoader::create(CommandPool &commandPool, QueueManager &queueMana
 
     int rootNodeIndex = gltfModel.scenes[gltfModel.defaultScene].nodes[0];
 
+    loadStatus = LoadStatus::LOAD_MAT_TEX;
     makeMaterialsAndTextures(commandPool, queueManager, bufferFactory, gltfModel, model.get());
+    loadStatus = LoadStatus::LOAD_NODE;
     processNode(bufferFactory, gltfModel, model.get(), nullptr, rootNodeIndex);
 
     return model;
@@ -133,10 +117,9 @@ void GLTFLoader::processNode(BufferFactory &bufferFactory, tinygltf::Model &gltf
     {
         const tinygltf::Mesh &gltfMesh = gltfModel.meshes[gltfNode.mesh];
 
-        for (const auto &primitive : gltfMesh.primitives)
-        {
-            if (primitive.mode != TINYGLTF_MODE_TRIANGLES)
-            {
+        std::cout << "Primitive Count: " << gltfMesh.primitives.size() << std::endl;
+        for (const auto &primitive : gltfMesh.primitives) {
+            if (primitive.mode != TINYGLTF_MODE_TRIANGLES) {
                 std::cout << "Not triangles\n";
                 continue;
             }
@@ -144,17 +127,16 @@ void GLTFLoader::processNode(BufferFactory &bufferFactory, tinygltf::Model &gltf
             uPtr<Mesh> mesh = mkU<Mesh>();
 
             // extract vertex data
-            for (auto &type : typeMap)
-            {
+            for (auto &type: typeMap) {
                 if (primitive.attributes.count(type.first) == 0)
                     continue;
 
                 size_t vertexSize = type.second == VertexBufferType::UV ? sizeof(glm::vec2) : sizeof(glm::vec3);
-                auto vBuffer = getBuffer(bufferFactory, gltfModel, primitive.attributes.at(type.first), vk::BufferUsageFlagBits::eVertexBuffer, vertexSize);
+                auto vBuffer = getBuffer(bufferFactory, gltfModel, primitive.attributes.at(type.first),
+                                         vk::BufferUsageFlagBits::eVertexBuffer, vertexSize);
                 mesh->vertexBuffers.emplace_back(std::move(vBuffer), type.second);
             }
-            if (primitive.attributes.count("TANGENT") == 0)
-            {
+            if (primitive.attributes.count("TANGENT") == 0) {
                 std::cerr << "Tangent vectors manually generated!" << std::endl;
                 // no tangent vectors, need to manually create them
                 mesh->vertexBuffers.emplace_back(
@@ -166,14 +148,18 @@ void GLTFLoader::processNode(BufferFactory &bufferFactory, tinygltf::Model &gltf
 
 
             // extract index data
-            mesh->indexBuffer = getBuffer(bufferFactory, gltfModel, primitive.indices, vk::BufferUsageFlagBits::eIndexBuffer, 0);
+            mesh->indexBuffer = getBuffer(bufferFactory, gltfModel, primitive.indices,
+                                          vk::BufferUsageFlagBits::eIndexBuffer, 0);
 
             mesh->material = &model->materials[primitive.material];
 
+            node->meshes.push_back(mesh.get());
             model->meshes.push_back(std::move(mesh));
-            node->mesh = model->meshes.back().get();
+//            node->meshes.push_back(model->meshes.back().get());
+
         }
     }
+    std::cout << "Mesh Count of node: " << model->meshes.size() << std::endl;
 
     // recursively process child nodes
     for (int childIndex : gltfNode.children)
@@ -404,4 +390,14 @@ uPtr<Buffer> GLTFLoader::createTangentVectors(BufferFactory &bufferFactory, tiny
 
     buffer->fill(tangents.data());
     return buffer;
+}
+
+LoadStatus GLTFLoader::getLoadStatus()
+{
+    return loadStatus.load();
+}
+
+void GLTFLoader::setLoadStatus(LoadStatus status)
+{
+    loadStatus.store(status);
 }

@@ -1,3 +1,5 @@
+#pragma once
+
 #include "../../vulkan/buffer/bufferfactory.h"
 #include "../../vulkan/pipeline/shader.h"
 #include "../../vulkan/pipeline/pipeline.h"

@@ -7,6 +7,7 @@
 #include "inputprocesser.h"
 #include <iostream>
 #include "ImGuiFileDialog-0.6.7/ImGuiFileDialog.h"
+#include "models/gltfloader.h"
 
 UserInterface::UserInterface() {}
 
@@ -188,9 +189,36 @@ void UserInterface::renderMenuBar()
             ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose File", ".gltf,.glb", config);
         }
 
-        // hack to get the menu to the right
-        ImGui::SameLine(ImGui::GetWindowWidth() - 120);
-        ImGui::Text("Aaron Tian 2024");
+        auto status = GLTFLoader::getLoadStatus();
+
+        ImVec4 textColor;
+        std::string statusText = "Status: ";
+        switch(status)
+        {
+            case LoadStatus::READY:
+                statusText += "Ready";
+                textColor = ImVec4(0.0f, 1.0f, 0.0f, 1.0f);
+                break;
+            case LoadStatus::PARSING:
+                statusText += "Parsing File...";
+                textColor = ImVec4(1.0f, 1.0f, 0.0f, 1.0f);
+                break;
+            case LoadStatus::LOAD_MAT_TEX:
+                statusText += "Loading Materials and Textures...";
+                textColor = ImVec4(1.0f, 0.0f, 1.0f, 1.0f);
+                break;
+            case LoadStatus::LOAD_NODE:
+                statusText += "Loading Nodes...";
+                textColor = ImVec4(1.0f, 0.0f, 0.0f, 1.0f);
+                break;
+        }
+
+        auto cString = statusText.c_str();
+        ImGui::TextColored(textColor, cString);
+
+        const char* name = "Aaron Tian 2024";
+        ImGui::SameLine(ImGui::GetWindowWidth() - ImGui::CalcTextSize(name).x - 15);
+        ImGui::Text(name);
         ImGui::EndMainMenuBar();
     }
 

@@ -132,7 +132,6 @@ bool VulkanContext::create(Window &window)
     vkb::SwapchainBuilder swapchain_builder{ vkb_device };
     auto swap_ret = swapchain_builder
             .set_desired_format(format)
-            //.set_desired_format()
             .set_desired_present_mode(VK_PRESENT_MODE_MAILBOX_KHR)
             .build();
     if (!swap_ret){

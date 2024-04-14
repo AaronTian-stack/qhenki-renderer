@@ -1,22 +1,23 @@
 #include "node.h"
 #include "glm/gtx/transform.hpp"
 
-Node::Node() : parent(nullptr), mesh(nullptr), translate(0.f), scale(1.f)
+Node::Node() : parent(nullptr), translate(0.f), scale(1.f)
 {}
 
-void Node::draw(vk::CommandBuffer commandBuffer, Pipeline &pipeline, Node &node)
+void Node::draw(vk::CommandBuffer commandBuffer, Pipeline &pipeline)
 {
-    auto wt = node.getWorldTransform();
-    if (node.mesh)
+    auto wt = getWorldTransform();
+    for (auto &mesh : meshes)
     {
+        auto &material = mesh->material;
         pipeline.setPushConstant(commandBuffer, &wt, sizeof(glm::mat4), 0, vk::ShaderStageFlagBits::eVertex);
-        auto &material = *node.mesh->material;
         pipeline.setPushConstant(commandBuffer, &material, sizeof(Material), sizeof(glm::mat4), vk::ShaderStageFlagBits::eFragment);
-        node.mesh->draw(commandBuffer);
+        mesh->draw(commandBuffer);
+        break;
     }
-    for (auto &child : node.children)
+    for (auto &child : children)
     {
-        draw(commandBuffer, pipeline, *child);
+        child->draw(commandBuffer, pipeline);
     }
 }
 
