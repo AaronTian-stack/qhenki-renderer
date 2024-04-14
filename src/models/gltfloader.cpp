@@ -117,9 +117,10 @@ void GLTFLoader::processNode(BufferFactory &bufferFactory, tinygltf::Model &gltf
     {
         const tinygltf::Mesh &gltfMesh = gltfModel.meshes[gltfNode.mesh];
 
-        std::cout << "Primitive Count: " << gltfMesh.primitives.size() << std::endl;
-        for (const auto &primitive : gltfMesh.primitives) {
-            if (primitive.mode != TINYGLTF_MODE_TRIANGLES) {
+        for (const auto &primitive : gltfMesh.primitives)
+        {
+            if (primitive.mode != TINYGLTF_MODE_TRIANGLES)
+            {
                 std::cout << "Not triangles\n";
                 continue;
             }
@@ -127,16 +128,17 @@ void GLTFLoader::processNode(BufferFactory &bufferFactory, tinygltf::Model &gltf
             uPtr<Mesh> mesh = mkU<Mesh>();
 
             // extract vertex data
-            for (auto &type: typeMap) {
+            for (auto &type : typeMap)
+            {
                 if (primitive.attributes.count(type.first) == 0)
                     continue;
 
                 size_t vertexSize = type.second == VertexBufferType::UV ? sizeof(glm::vec2) : sizeof(glm::vec3);
-                auto vBuffer = getBuffer(bufferFactory, gltfModel, primitive.attributes.at(type.first),
-                                         vk::BufferUsageFlagBits::eVertexBuffer, vertexSize);
+                auto vBuffer = getBuffer(bufferFactory, gltfModel, primitive.attributes.at(type.first), vk::BufferUsageFlagBits::eVertexBuffer, vertexSize);
                 mesh->vertexBuffers.emplace_back(std::move(vBuffer), type.second);
             }
-            if (primitive.attributes.count("TANGENT") == 0) {
+            if (primitive.attributes.count("TANGENT") == 0)
+            {
                 std::cerr << "Tangent vectors manually generated!" << std::endl;
                 // no tangent vectors, need to manually create them
                 mesh->vertexBuffers.emplace_back(
@@ -148,18 +150,14 @@ void GLTFLoader::processNode(BufferFactory &bufferFactory, tinygltf::Model &gltf
 
 
             // extract index data
-            mesh->indexBuffer = getBuffer(bufferFactory, gltfModel, primitive.indices,
-                                          vk::BufferUsageFlagBits::eIndexBuffer, 0);
+            mesh->indexBuffer = getBuffer(bufferFactory, gltfModel, primitive.indices, vk::BufferUsageFlagBits::eIndexBuffer, 0);
 
             mesh->material = &model->materials[primitive.material];
 
-            node->meshes.push_back(mesh.get());
             model->meshes.push_back(std::move(mesh));
-//            node->meshes.push_back(model->meshes.back().get());
-
+            node->mesh = model->meshes.back().get();
         }
     }
-    std::cout << "Mesh Count of node: " << model->meshes.size() << std::endl;
 
     // recursively process child nodes
     for (int childIndex : gltfNode.children)

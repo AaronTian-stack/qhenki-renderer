@@ -22,8 +22,7 @@ public:
     std::vector<uPtr<Node>> children;
 
     // TODO: add support for multiple meshes
-//    Mesh *mesh;
-    std::vector<Mesh*> meshes;
+    Mesh *mesh;
 
     Node();
     glm::mat4 getLocalTransform();

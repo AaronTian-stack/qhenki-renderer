@@ -212,12 +212,16 @@ void VulkanApp::setModel(const std::string& filePath)
 {
     // reset camera position
     camera.simpleReset();
-    std::thread t([this, filePath](){
-        models.push_back(GLTFLoader::create(transferCommandPool,  vulkanContext.queueManager,
+    readyToRender = false;
+//    std::thread t([this, filePath](){
+//        models.push_back(GLTFLoader::create(transferCommandPool,  vulkanContext.queueManager,
+//                                            bufferFactory, filePath.c_str()));
+//        readyToRender = true;
+//    });
+//    t.detach();
+    models.push_back(GLTFLoader::create(transferCommandPool,  vulkanContext.queueManager,
                                             bufferFactory, filePath.c_str()));
-        GLTFLoader::setLoadStatus(LoadStatus::READY);
-    });
-    t.detach();
+        readyToRender = true;
 }
 
 void VulkanApp::recordOffscreenBuffer(vk::CommandBuffer commandBuffer, DescriptorAllocator &allocator)
@@ -230,7 +234,7 @@ void VulkanApp::recordOffscreenBuffer(vk::CommandBuffer commandBuffer, Descripto
     ScreenUtils::setViewport(commandBuffer, extent.width, extent.height);
     ScreenUtils::setScissor(commandBuffer, extent);
 
-    if (GLTFLoader::getLoadStatus() == LoadStatus::READY && !models.empty())
+    if (readyToRender && !models.empty())
     {
         commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, gBufferPipeline->getGraphicsPipeline());
         auto &model = models.back();
@@ -370,12 +374,12 @@ void VulkanApp::render()
 
     currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 
-    if (models.size() > 1)
-    {
-        // remove first model
-        models[0]->destroy();
-        models.erase(models.begin());
-    }
+//    if (models.size() > 1)
+//    {
+//        // remove first model
+//        models[0]->destroy();
+//        models.erase(models.begin());
+//    }
 }
 
 void VulkanApp::resize()

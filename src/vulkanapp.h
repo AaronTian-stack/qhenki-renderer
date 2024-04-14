@@ -46,6 +46,7 @@ private:
 
     uPtr<Shader> gBufferShader, lightingShader, postProcessShader;
 
+    std::atomic<bool> readyToRender;
     CommandPool graphicsCommandPool; // one pool per thread
     CommandPool transferCommandPool;
     Syncer syncer;
