@@ -4,6 +4,8 @@
 #include "../vulkan/buffer/buffer.h"
 #include "material.h"
 
+class Model;
+
 enum VertexBufferType
 {
     POSITION = 1 << 0,
@@ -14,7 +16,8 @@ enum VertexBufferType
 
 class Mesh
 {
-private:
+private:;
+    int materialIndex; // used in loading only
     std::vector<std::pair<uPtr<Buffer>, VertexBufferType>> vertexBuffers;
     uPtr<Buffer> indexBuffer;
 

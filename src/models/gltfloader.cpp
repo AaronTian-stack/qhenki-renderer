@@ -8,6 +8,7 @@
 #include "gltfloader.h"
 #include "glm/vec3.hpp"
 #include <glm/gtx/matrix_decompose.hpp>
+#include <thread>
 
 uPtr<Model> GLTFLoader::create(CommandPool &commandPool, QueueManager &queueManager, BufferFactory &bufferFactory, const char* filename)
 {
@@ -16,7 +17,7 @@ uPtr<Model> GLTFLoader::create(CommandPool &commandPool, QueueManager &queueMana
     std::string err;
     std::string warn;
 
-    loadStatus = LoadStatus::PARSING;
+    loadStatus.store(LoadStatus::PARSING);
     bool ret = false;
     // check extension of filename
     std::string ext = filename;
@@ -46,10 +47,36 @@ uPtr<Model> GLTFLoader::create(CommandPool &commandPool, QueueManager &queueMana
 
     int rootNodeIndex = gltfModel.scenes[gltfModel.defaultScene].nodes[0];
 
-    loadStatus = LoadStatus::LOAD_MAT_TEX;
-    makeMaterialsAndTextures(commandPool, queueManager, bufferFactory, gltfModel, model.get());
-    loadStatus = LoadStatus::LOAD_NODE;
-    processNode(bufferFactory, gltfModel, model.get(), nullptr, rootNodeIndex);
+    auto loadMaterials = [&]()
+    {
+        makeMaterialsAndTextures(commandPool, queueManager, bufferFactory, gltfModel, model.get());
+//        loadStatus.store(static_cast<LoadStatus>(loadStatus.load() & LoadStatus::LOADED_MAT_TEX));
+        loadStatus.store(LoadStatus::LOADED_MAT_TEX);
+    };
+
+    auto processNodes = [&]()
+    {
+        processNode(bufferFactory, gltfModel, model.get(), nullptr, rootNodeIndex);
+//        loadStatus.store(static_cast<LoadStatus>(loadStatus.load() & LoadStatus::LOADED_NODE));
+        loadStatus.store(LoadStatus::LOADED_NODE);
+    };
+
+    std::thread matThread(loadMaterials);
+    std::thread nodeThread(processNodes);
+
+    matThread.join();
+    nodeThread.join();
+
+    for (auto &mesh : model->meshes)
+    {
+        mesh->material = &model->materials[mesh->materialIndex];
+    }
+
+//    makeMaterialsAndTextures(commandPool, queueManager, bufferFactory, gltfModel, model.get());
+//    loadStatus.store(LoadStatus::LOADED_MAT_TEX);
+//    processNode(bufferFactory, gltfModel, model.get(), nullptr, rootNodeIndex);
+//    loadStatus.store(LoadStatus::LOADED_NODE);
+
 
     return model;
 }
@@ -139,8 +166,9 @@ void GLTFLoader::processNode(BufferFactory &bufferFactory, tinygltf::Model &gltf
             }
             if (primitive.attributes.count("TANGENT") == 0)
             {
-                std::cerr << "Tangent vectors manually generated!" << std::endl;
+                std::cerr << "[incorrect] Tangent vectors manually generated!" << std::endl;
                 // no tangent vectors, need to manually create them
+                // TODO: this is wrong!!
                 mesh->vertexBuffers.emplace_back(
                         createTangentVectors(bufferFactory, gltfModel,
                                              primitive.attributes.at("POSITION"),
@@ -153,6 +181,7 @@ void GLTFLoader::processNode(BufferFactory &bufferFactory, tinygltf::Model &gltf
             mesh->indexBuffer = getBuffer(bufferFactory, gltfModel, primitive.indices, vk::BufferUsageFlagBits::eIndexBuffer, 0);
 
             mesh->material = &model->materials[primitive.material];
+            mesh->materialIndex = primitive.material;
 
             model->meshes.push_back(std::move(mesh));
             node->meshes.push_back(model->meshes.back().get());
@@ -366,6 +395,8 @@ uPtr<Buffer> GLTFLoader::createTangentVectors(BufferFactory &bufferFactory, tiny
     std::vector<glm::vec3> tangents(count);
     for (size_t i = 0; i < count; ++i)
     {
+        // TODO: this is wrong!
+
         glm::vec3 v0 = positions[i+0];
         glm::vec3 v1 = positions[i+1];
         glm::vec3 v2 = positions[i+2];

@@ -274,6 +274,7 @@ void VulkanApp::recordOffscreenBuffer(vk::CommandBuffer commandBuffer, Descripto
         auto builder = DescriptorBuilder::beginSet(&layoutCache, &allocator);
         for (int i = 0; i <= 4; i++)
         {
+            // vectors need to remain in scope until build is called
             builder.bindImage(i, gBufferInfo[i],
                               1, vk::DescriptorType::eInputAttachment, vk::ShaderStageFlagBits::eFragment);
         }

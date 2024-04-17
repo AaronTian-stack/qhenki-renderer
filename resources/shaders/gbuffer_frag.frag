@@ -52,9 +52,9 @@ void setValues(out vec4 albedo, out vec3 normal, out vec4 metalRoughness, out fl
 
     if (material.normalTexture != -1)
     {
-        mat3 TBN = mat3(fragTangent, fragBiTangent, fragNormal);
-        normal = texture(texSampler[material.normalTexture], fragUV).rgb;
-        normal = normalize(normal * 2.0 - 1.0);
+        mat3 TBN = mat3(normalize(fragTangent), normalize(fragBiTangent), normalize(fragNormal));
+        vec3 nt = texture(texSampler[material.normalTexture], fragUV).rgb;
+        normal = nt * 2.0 - 1.0; // convert normal from 0 to 1 range to -1 to 1 range
         normal = normalize(TBN * normal);
     }
     else
@@ -94,6 +94,7 @@ void main()
     if (albedo.a < thres) discard;
 
     outAlbedo = vec4(albedo.rgb, 1.0);
+    normal = normal * 0.5 + 0.5; // pack normal from -1 to 1 range to 0 to 1 range
     outNormal = vec4(normal, 1.0);
     outMetalRoughnessAO = vec4(metalRoughness.rgb, AO);
     outEmissive = vec4(emissive, 1.0);

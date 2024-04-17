@@ -203,12 +203,16 @@ void UserInterface::renderMenuBar()
                 statusText += "Parsing File...";
                 textColor = ImVec4(1.0f, 1.0f, 0.0f, 1.0f);
                 break;
-            case LoadStatus::LOAD_MAT_TEX:
-                statusText += "Loading Materials and Textures...";
+            case LoadStatus::LOADING:
+                statusText += "Loading Nodes, Materials...";
+                textColor = ImVec4(1.0f, 1.0f, 0.0f, 1.0f);
+                break;
+            case LoadStatus::LOADED_MAT_TEX:
+                statusText += "Loading Nodes...";
                 textColor = ImVec4(1.0f, 0.0f, 1.0f, 1.0f);
                 break;
-            case LoadStatus::LOAD_NODE:
-                statusText += "Loading Nodes...";
+            case LoadStatus::LOADED_NODE:
+                statusText += "Loading Materials and Textures...";
                 textColor = ImVec4(1.0f, 0.0f, 0.0f, 1.0f);
                 break;
         }

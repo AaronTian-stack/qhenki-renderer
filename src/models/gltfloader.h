@@ -9,8 +9,9 @@ enum LoadStatus
 {
     READY,
     PARSING,
-    LOAD_MAT_TEX,
-    LOAD_NODE
+    LOADING,
+    LOADED_MAT_TEX,
+    LOADED_NODE
 };
 
 class GLTFLoader
@@ -18,11 +19,10 @@ class GLTFLoader
 private:
     static inline std::atomic<LoadStatus> loadStatus = LoadStatus::READY;
 
-    static const inline std::unordered_map<const char*, VertexBufferType> typeMap =
+    static const inline std::vector<std::pair<const char*, VertexBufferType>> typeMap =
     {
         {"POSITION", VertexBufferType::POSITION},
         {"NORMAL", VertexBufferType::NORMAL},
-//        {"COLOR", VertexBufferType::COLOR},
         {"TEXCOORD_0", VertexBufferType::UV},
         {"TANGENT", VertexBufferType::TANGENT},
     };

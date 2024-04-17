@@ -39,9 +39,10 @@ void main()
     gl_Position = ubo.viewProj * worldPos;
     fragPos = worldPos.xyz;
     mat3 matN = transpose(inverse(mat3(modelTransform.matrix)));
-    fragNormal = normalize(matN * inNormal);
-    fragTangent = normalize(matN * inTangent);
-    fragBiTangent = normalize(cross(fragNormal, fragTangent));
+
+    fragNormal = matN * inNormal;
+    fragTangent = matN * inTangent;
+    fragBiTangent = cross(fragNormal, fragTangent);
 
     fragColor = colors[0];
     fragUV = inUV;

@@ -32,14 +32,12 @@ struct SphereLight
     vec4 color; // last parameter is intensity
 };
 
-
-PointLight pointLights[2] = PointLight[2](
-    PointLight(vec4(0.0, 2.0, -10.0, 1.0), vec4(0.0, 1.0, 0.0, 100.0)),
-    PointLight(vec4(0.0, 10.0, 10.0, 1.0), vec4(1.0, 0.0, 1.0, 1000.0))
+PointLight pointLights[1] = PointLight[1](
+    PointLight(vec4(0.0, 0.0, 5.0, 1.0), vec4(0.0, 1.0, 0.0, 10.0))
 );
 
 SphereLight sphereLights[1] = SphereLight[1](
-    SphereLight(vec4(0.0, 1000.0, 100.0, 40.0), vec4(1.0, 0.9, 1.0, 20000000.0))
+    SphereLight(vec4(0.0, 0.0, -5.0, 3.0), vec4(1.0, 0.9, 1.0, 10.0))
 );
 
 const float PI = 3.14159f;
@@ -69,39 +67,10 @@ vec3 fresnelSchlick(float cosTheta, vec3 F0)
     return F0 + (1.0 - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
 }
 
-vec3 aces_tonemap(vec3 color)
-{
-    mat3 m1 = mat3(
-    0.59719, 0.07600, 0.02840,
-    0.35458, 0.90834, 0.13383,
-    0.04823, 0.01566, 0.83777
-    );
-    mat3 m2 = mat3(
-    1.60475, -0.10208, -0.00327,
-    -0.53108,  1.10813, -0.07276,
-    -0.07367, -0.00605,  1.07602
-    );
-    vec3 v = m1 * color;
-    vec3 a = v * (v + 0.0245786) - 0.000090537;
-    vec3 b = v * (0.983729 * v + 0.4329510) + 0.238081;
-    return pow(clamp(m2 * (a / b), 0.0, 1.0), vec3(1.0 / 2.2));
-}
-
-vec3 uncharted_tonemap(vec3 x)
-{
-    float A = 0.15;
-    float B = 0.50;
-    float C = 0.10;
-    float D = 0.20;
-    float E = 0.02;
-    float F = 0.30;
-    float W = 11.2;
-    return ((x*(A*x+C*B)+D*E)/(x*(A*x+B)+D*F))-E/F;
-}
-
 vec4 reconstructPosition(float depth)
 {
-    vec4 ndc = vec4(fragUV * 2.0 - 1.0, depth * 2.0 - 1.0, 1.0);
+    // depth is 0 to 1 because vulkan
+    vec4 ndc = vec4(fragUV * 2.0 - 1.0, depth, 1.0);
     vec4 pos = inverse(cameraViewProj) * ndc;
     pos /= pos.w;
     return pos;
@@ -168,7 +137,7 @@ void main()
     vec4 position = reconstructPosition(depth);
 
     vec4 albedo = subpassLoad(inputAlbedo);
-    vec3 normal = subpassLoad(inputNormal).xyz;
+    vec3 normalTexture = subpassLoad(inputNormal).xyz;
     vec4 metalRoughnessAO = subpassLoad(inputMetalRoughnessAO);
     vec4 emissive = subpassLoad(inputEmissive);
 
@@ -182,6 +151,7 @@ void main()
     float roughness = metalRoughnessAO.g;
     float ao = metalRoughnessAO.a;
 
+    vec3 normal = normalTexture * 2.0 - 1.0; // transform from [0, 1] to [-1, 1]
     vec3 N = normalize(normal);
     vec3 V = normalize(cameraPos.xyz - position.xyz);
 
@@ -195,11 +165,11 @@ void main()
         Light light = Light(closestPointSphere(sphereLights[i], N, V, position.xyz), sphereLights[i].color.rgb, sphereLights[i].color.a);
         calculateForLight(Lo, light, N, V, material, position.xyz);
     }
-//    for(int i = 0; i < 2; ++i)
-//    {
-//        Light light = Light(pointLights[i].position.xyz, pointLights[i].color.rgb, pointLights[i].color.a);
-//        calculateForLight(Lo, light, N, V, material, position.xyz);
-//    }
+    for(int i = 0; i < 1; ++i)
+    {
+        Light light = Light(pointLights[i].position.xyz, pointLights[i].color.rgb, pointLights[i].color.a);
+        calculateForLight(Lo, light, N, V, material, position.xyz);
+    }
 
     vec3 ambient = vec3(0.03) * albedo.rgb * ao;
     vec3 color = ambient + Lo + emissive.rgb;
@@ -209,7 +179,7 @@ void main()
 //    float d = dither[int(mod(gl_FragCoord.y, 4.0)) * 4 + int(mod(gl_FragCoord.x, 4.0))];
 //    color += vec3(d / 32.0 - (1.0 / 128.0));
 
-//    color = uncharted_tonemap(color);
+    // TODO: move tonemapping to post process shader. store this output in 16f
     color = color / (color + vec3(1.0));
 
     outColor = vec4(color.xyz, 1.0);
