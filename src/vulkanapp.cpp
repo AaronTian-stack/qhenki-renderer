@@ -4,7 +4,7 @@
 #include "glm/glm.hpp"
 #include "inputprocesser.h"
 #include "imgui/imgui.h"
-#include "models/primitives/primitive.h"
+#include "models/primitives/primitivedrawer.h"
 #include <thread>
 
 VulkanApp::VulkanApp() {}
@@ -17,8 +17,8 @@ VulkanApp::~VulkanApp()
         frame.destroy();
 
     syncer.destroy();
-    graphicsCommandPool.destroy();
-    transferCommandPool.destroy();
+    graphicsCommandPool->destroy();
+    transferCommandPool->destroy();
 
     gBufferPipeline->destroy();
     gBufferShader->destroy();
@@ -40,7 +40,7 @@ VulkanApp::~VulkanApp()
 
     envMap.destroy();
 
-    Primitive::destroy();
+//    Primitive::destroy();
     for (auto &model : models)
         model->destroy();
 
@@ -63,7 +63,7 @@ void VulkanApp::createGbuffer(vk::Extent2D extent, vk::RenderPass renderPass)
                                                           vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eInputAttachment,
                                                           vk::ImageAspectFlagBits::eColor);
 
-    auto normalAttachment = bufferFactory.createAttachment(vk::Format::eR8G8B8A8Snorm,
+    auto normalAttachment = bufferFactory.createAttachment(vk::Format::eR8G8B8A8Unorm,
                                                            {extent.width, extent.height, 1},
                                                            vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eInputAttachment,
                                                            vk::ImageAspectFlagBits::eColor);
@@ -73,7 +73,7 @@ void VulkanApp::createGbuffer(vk::Extent2D extent, vk::RenderPass renderPass)
                                                                     vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eInputAttachment,
                                                                     vk::ImageAspectFlagBits::eColor);
 
-    auto emissiveAttachment = bufferFactory.createAttachment(vk::Format::eR8G8B8A8Unorm,
+    auto emissiveAttachment = bufferFactory.createAttachment(vk::Format::eR16G16B16A16Sfloat,
                                                                      {extent.width, extent.height, 1},
                                                                      vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eInputAttachment,
                                                                      vk::ImageAspectFlagBits::eColor);
@@ -120,8 +120,8 @@ void VulkanApp::create(Window &window)
     allocators.emplace_back(vulkanContext.device.logicalDevice);
 
     auto device = vulkanContext.device.logicalDevice;
-    graphicsCommandPool.create(vulkanContext.device, vulkanContext.queueManager.getGraphicsIndex());
-    transferCommandPool.create(vulkanContext.device, vulkanContext.queueManager.getTransferIndex());
+    graphicsCommandPool = mkU<CommandPool>(vulkanContext.device, vkb::QueueType::graphics, vulkanContext.queueManager.getGraphicsIndex());
+    transferCommandPool = mkU<CommandPool>(vulkanContext.device, vkb::QueueType::transfer, vulkanContext.queueManager.getTransferIndex());
     pipelineFactory.create(device);
 
     bufferFactory.create(vulkanContext);
@@ -141,18 +141,19 @@ void VulkanApp::create(Window &window)
 
     renderPassBuilder.reset();
     renderPassBuilder.addColorAttachment(vk::Format::eR8G8B8A8Unorm); // albedo 0
-    renderPassBuilder.addColorAttachment(vk::Format::eR8G8B8A8Snorm); // normal 1
+    renderPassBuilder.addColorAttachment(vk::Format::eR8G8B8A8Unorm); // normal 1
     renderPassBuilder.addColorAttachment(vk::Format::eR8G8B8A8Unorm); // metal roughness ao 2
-    renderPassBuilder.addColorAttachment(vk::Format::eR8G8B8A8Unorm); // emissive 3
+    renderPassBuilder.addColorAttachment(vk::Format::eR16G16B16A16Sfloat); // emissive 3
     renderPassBuilder.addDepthAttachment(depthBuffer->format); // depth 4
     renderPassBuilder.addColorAttachment(vk::Format::eR16G16B16A16Sfloat); // final output 5
     renderPassBuilder.addSubPass({}, {}, {0, 1, 2, 3}, {}, 4);
     renderPassBuilder.addSubPass({0, 1, 2, 3, 4},
                                  {vk::ImageLayout::eShaderReadOnlyOptimal},
-                                 {5}, {}
-                                 );
+                                 {5}, {});
+//    renderPassBuilder.addSubPass({},{vk::ImageLayout::eShaderReadOnlyOptimal},
+//                                 {5}, {});
     renderPassBuilder.addColorDependency(0, 1);
-//    renderPassBuilder.addDepthDependency(0, 0);
+//    renderPassBuilder.addColorDependency(1, 2);
     offscreenRenderPass = renderPassBuilder.buildRenderPass();
 
     gBufferShader = mkU<Shader>(device, "gbuffer_vert.spv", "gbuffer_frag.spv");
@@ -173,6 +174,12 @@ void VulkanApp::create(Window &window)
     pipelineFactory.getColorBlending().attachmentCount = 1;
     lightingPipeline = pipelineFactory.buildPipeline(offscreenRenderPass.get(), 1, lightingShader.get());
 
+//    cubeMapShader = mkU<Shader>(device, "cubemap_vert.spv", "cubemap_frag.spv");
+//    pipelineFactory.reset();
+//    pipelineFactory.parseShader("cubemap_vert.spv", "cubemap_frag.spv", layoutCache, true);
+//    pipelineFactory.getColorBlending().attachmentCount = 1;
+//    cubeMapPipeline = pipelineFactory.buildPipeline(offscreenRenderPass.get(), 2, cubeMapShader.get());
+
     postProcessShader = mkU<Shader>(device, "passthrough_vert.spv", "passthrough_frag.spv");
     pipelineFactory.reset();
     pipelineFactory.parseShader("passthrough_vert.spv", "passthrough_frag.spv", layoutCache, false);
@@ -187,7 +194,7 @@ void VulkanApp::create(Window &window)
     syncer.create(device);
     for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
     {
-        frames.emplace_back(device, graphicsCommandPool, syncer);
+        frames.emplace_back(device, *graphicsCommandPool, syncer);
         auto flags = static_cast<VmaAllocationCreateFlagBits>(VMA_ALLOCATION_CREATE_MAPPED_BIT |
                                                                                     VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
         cameraBuffers.emplace_back(bufferFactory.createBuffer(sizeof(CameraMatrices),
@@ -196,9 +203,9 @@ void VulkanApp::create(Window &window)
         allocators.emplace_back(vulkanContext.device.logicalDevice);
     }
 
-    envMap.create(bufferFactory, graphicsCommandPool, vulkanContext.queueManager, "../resources/envmaps/small_room_radiance.dds");
+    envMap.create(bufferFactory, *graphicsCommandPool, vulkanContext.queueManager, "../resources/envmaps/small_room_radiance.dds");
 
-    Primitive::create(bufferFactory);
+//    PrimitiveDrawer::create(bufferFactory);
 }
 
 void VulkanApp::setUpCallbacks() {
@@ -213,8 +220,10 @@ void VulkanApp::setModel(const std::string& filePath)
     // reset camera position
     camera.simpleReset();
     std::thread t([this, filePath](){
-        models.push_back(GLTFLoader::create(transferCommandPool,  vulkanContext.queueManager,
-                                            bufferFactory, filePath.c_str()));
+        auto newModel = GLTFLoader::create(*transferCommandPool, vulkanContext.queueManager,
+                                           bufferFactory, filePath.c_str());
+        std::lock_guard lock(modelMutex);
+        models.push_back(std::move(newModel));
         GLTFLoader::setLoadStatus(LoadStatus::READY);
     });
     t.detach();
@@ -230,20 +239,22 @@ void VulkanApp::recordOffscreenBuffer(vk::CommandBuffer commandBuffer, Descripto
     ScreenUtils::setViewport(commandBuffer, extent.width, extent.height);
     ScreenUtils::setScissor(commandBuffer, extent);
 
-    if (GLTFLoader::getLoadStatus() == LoadStatus::READY && !models.empty())
+    vk::DescriptorSetLayout layout;
+    vk::DescriptorSet cameraSet;
+    auto bufferInfo = cameraBuffers[currentFrame]->getDescriptorInfo();
+
+    DescriptorBuilder::beginSet(&layoutCache, &allocator)
+            .bindBuffer(0, &bufferInfo, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eVertex)
+            .build(cameraSet, layout);
+
+    std::unique_lock lock(modelMutex);
+    if (!models.empty())
     {
         commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, gBufferPipeline->getGraphicsPipeline());
         auto &model = models.back();
         // get image infos of all model textures
         std::vector<vk::DescriptorImageInfo> imageInfos = model->getDescriptorImageInfo();
         vk::DescriptorSet samplerSet;
-        vk::DescriptorSetLayout layout;
-
-        auto bufferInfo = cameraBuffers[currentFrame]->getDescriptorInfo();
-        vk::DescriptorSet cameraSet;
-        DescriptorBuilder::beginSet(&layoutCache, &allocator)
-                .bindBuffer(0, &bufferInfo, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eVertex)
-                .build(cameraSet, layout);
 
         if (!imageInfos.empty()) // pipeline still expects uv though
         {
@@ -257,34 +268,35 @@ void VulkanApp::recordOffscreenBuffer(vk::CommandBuffer commandBuffer, Descripto
         }
 
         Node::draw(model->root, commandBuffer, *gBufferPipeline);
-
-        offscreenRenderPass->nextSubpass();
-
-        commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, lightingPipeline->getGraphicsPipeline());
-
-        std::vector<std::vector<vk::DescriptorImageInfo>> gBufferInfo =
-        {
-            {gBuffer->attachments[0]->getDescriptorInfo()},
-            {gBuffer->attachments[1]->getDescriptorInfo()},
-            {gBuffer->attachments[2]->getDescriptorInfo()},
-            {gBuffer->attachments[3]->getDescriptorInfo()},
-            {depthBuffer->getDescriptorInfo()}
-        };
-        vk::DescriptorSet inputSet;
-        auto builder = DescriptorBuilder::beginSet(&layoutCache, &allocator);
-        for (int i = 0; i <= 4; i++)
-        {
-            // vectors need to remain in scope until build is called
-            builder.bindImage(i, gBufferInfo[i],
-                              1, vk::DescriptorType::eInputAttachment, vk::ShaderStageFlagBits::eFragment);
-        }
-        builder.build(inputSet, layout);
-
-        commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, lightingPipeline->getPipelineLayout(),
-                                         0, {cameraSet, inputSet}, nullptr);
-        commandBuffer.draw(3, 1, 0, 0);
     }
-    else offscreenRenderPass->nextSubpass();
+    lock.unlock();
+
+    offscreenRenderPass->nextSubpass();
+
+    commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, lightingPipeline->getGraphicsPipeline());
+
+    std::vector<std::vector<vk::DescriptorImageInfo>> gBufferInfo =
+    {
+        {gBuffer->attachments[0]->getDescriptorInfo()},
+        {gBuffer->attachments[1]->getDescriptorInfo()},
+        {gBuffer->attachments[2]->getDescriptorInfo()},
+        {gBuffer->attachments[3]->getDescriptorInfo()},
+        {depthBuffer->getDescriptorInfo()}
+    };
+    vk::DescriptorSet inputSet;
+    auto builder = DescriptorBuilder::beginSet(&layoutCache, &allocator);
+    for (int i = 0; i <= 4; i++)
+    {
+        // vectors need to remain in scope until build is called
+        builder.bindImage(i, gBufferInfo[i],
+                          1, vk::DescriptorType::eInputAttachment, vk::ShaderStageFlagBits::eFragment);
+    }
+    builder.build(inputSet, layout);
+
+    commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, lightingPipeline->getPipelineLayout(),
+                                     0, {cameraSet, inputSet}, nullptr);
+
+    commandBuffer.draw(3, 1, 0, 0);
 
     offscreenRenderPass->end();
 }
@@ -346,6 +358,32 @@ void VulkanApp::render()
     auto &frame = frames[currentFrame];
     frame.finish(syncer); // waits for fence to be signalled (finished frame) and resets the frames inFlightFence
 
+    std::unique_lock lock(modelMutex);
+    if (models.size() > 1)
+    {
+        bool canDelete = true;
+        for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
+        {
+            auto result = vulkanContext.device.logicalDevice.getFenceStatus(frames[0].inFlightFence);
+            if (result != vk::Result::eSuccess)
+            {
+                canDelete = false;
+                break;
+            }
+        }
+        if (canDelete)
+        {
+            // remove first model. it will get deleted. eventually...
+            while(models.size() > 1)
+            {
+                models[0]->destroy();
+                models.erase(models.begin());
+            }
+            std::cout << "DELETED MODEL" << std::endl;
+        }
+    }
+    lock.unlock();
+
     auto commandBuffer = frame.commandBuffer;
 
     auto &swapChain = vulkanContext.swapChain;
@@ -364,13 +402,6 @@ void VulkanApp::render()
     queueManager.present(swapChain, signalSemaphores);
 
     currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
-
-    if (models.size() > 1)
-    {
-        // remove first model
-        models[0]->destroy();
-        models.erase(models.begin());
-    }
 }
 
 void VulkanApp::resize()
@@ -389,7 +420,7 @@ ImGuiCreateParameters VulkanApp::getImGuiCreateParameters()
 
 CommandPool& VulkanApp::getGraphicsCommandPool()
 {
-    return graphicsCommandPool;
+    return *graphicsCommandPool;
 }
 
 void VulkanApp::updateCameraBuffer()

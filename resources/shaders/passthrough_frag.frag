@@ -19,7 +19,7 @@ vec3 fxaa(vec2 texCoords, vec2 viewportInv)
     vec3 rgbNW = texture(texSampler, texCoords.xy + (vec2(-1.0, -1.0) * viewportInv)).xyz;
     vec3 rgbNE = texture(texSampler, texCoords.xy + (vec2(+1.0, -1.0) * viewportInv)).xyz;
     vec3 rgbSW = texture(texSampler, texCoords.xy + (vec2(-1.0, +1.0) * viewportInv)).xyz;
-    vec3 rgbSE = texture(texSampler,	texCoords.xy + (vec2(+1.0, +1.0) * viewportInv)).xyz;
+    vec3 rgbSE = texture(texSampler, texCoords.xy + (vec2(+1.0, +1.0) * viewportInv)).xyz;
     vec3 rgbN = texture(texSampler, texCoords.xy + (vec2(0.0, -1.0) * viewportInv)).xyz;
     vec3 rgbS = texture(texSampler, texCoords.xy + (vec2(0.0, 1.0) * viewportInv)).xyz;
     vec3 rgbE= texture(texSampler, texCoords.xy + (vec2(1.0, 0.0) * viewportInv)).xyz;

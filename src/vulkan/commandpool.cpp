@@ -1,8 +1,9 @@
 #include "commandpool.h"
 
-void CommandPool::create(Device &device, uint32_t queueFamilyIndex)
+CommandPool::CommandPool(Device &device, vkb::QueueType queueType, uint32_t queueFamilyIndex)
 {
     this->device = vk::Device(device.vkbDevice.device);
+    this->queueType = queueType;
     auto poolInfo = vk::CommandPoolCreateInfo(
             vk::CommandPoolCreateFlagBits::eResetCommandBuffer,
             queueFamilyIndex
@@ -52,6 +53,8 @@ vk::CommandBuffer CommandPool::beginSingleCommand()
 void CommandPool::submitSingleTimeCommands(QueueManager &queueManager, std::vector<vk::CommandBuffer> commandBuffers,
                                            vkb::QueueType queueType, bool wait)
 {
+    if (!wait) throw std::runtime_error("async not implemented yet");
+
     vk::SubmitInfo submitInfo{};
     submitInfo.commandBufferCount = commandBuffers.size();
     submitInfo.pCommandBuffers = commandBuffers.data();

@@ -1,6 +1,6 @@
 #include "image.h"
 
-Image::Image(const sPtr<FrameBufferAttachment> attachment) : attachment(attachment), destroyed(false)
+Image::Image(const sPtr<FrameBufferAttachment> &attachment) : attachment(attachment), destroyed(false)
 {}
 
 void Image::recordTransitionImageLayout(vk::ImageLayout oldLayout, vk::ImageLayout newLayout,

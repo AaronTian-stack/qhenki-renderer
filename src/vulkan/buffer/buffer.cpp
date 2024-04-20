@@ -100,6 +100,6 @@ void bind(vk::CommandBuffer commandBuffer, const std::vector<Buffer*> &buffers)
     {
         rawBuffers.push_back(buffer->buffer);
     }
-    std::vector<VkDeviceSize> offsets(rawBuffers.size());
+    std::vector<vk::DeviceSize> offsets(rawBuffers.size());
     commandBuffer.bindVertexBuffers(0, rawBuffers.size(), rawBuffers.data(), offsets.data());
 }

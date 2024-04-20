@@ -59,10 +59,10 @@ void EnvironmentMap::create(BufferFactory &bufferFactory, CommandPool &commandPo
         imageFormat = vk::Format::eR16G16B16A16Sfloat;
         break;
     case DDSKTX_FORMAT_RGBA8: // should be irradiance map
-        imageFormat = vk::Format::eR8G8B8A8Srgb;
+        imageFormat = vk::Format::eR8G8B8A8Unorm;
         break;
     case DDSKTX_FORMAT_BGRA8: // should be irradiance map
-        imageFormat = vk::Format::eB8G8R8A8Srgb;
+        imageFormat = vk::Format::eB8G8R8A8Unorm;
         break;
     default:
         throw std::runtime_error("Unsupported format");

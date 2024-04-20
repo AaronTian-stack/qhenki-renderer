@@ -42,12 +42,13 @@ private:
 
     PipelineBuilder pipelineFactory;
 
-    uPtr<Pipeline> gBufferPipeline, lightingPipeline, postProcessPipeline;
+    uPtr<Pipeline> gBufferPipeline, lightingPipeline, postProcessPipeline, cubeMapPipeline;
 
-    uPtr<Shader> gBufferShader, lightingShader, postProcessShader;
+    uPtr<Shader> gBufferShader, lightingShader, postProcessShader, cubeMapShader;
 
-    CommandPool graphicsCommandPool; // one pool per thread
-    CommandPool transferCommandPool;
+    std::mutex modelMutex;
+    uPtr<CommandPool> graphicsCommandPool; // one pool per thread
+    uPtr<CommandPool> transferCommandPool;
     Syncer syncer;
 
     int currentFrame = 0;

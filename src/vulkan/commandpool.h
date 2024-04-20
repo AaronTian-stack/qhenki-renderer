@@ -13,9 +13,11 @@ private:
     std::vector<vk::Fence> waitingFences;
     vk::CommandPool commandPool;
     std::unordered_map<const char*, vk::CommandBuffer> commandBuffers;
+    vkb::QueueType queueType;
 
 public:
-    void create(Device &device, uint32_t queueFamilyIndex);
+    CommandPool(Device &device, vkb::QueueType queueType, uint32_t queueFamilyIndex);
+//    void create(Device &device, vkb::QueueType queueType, uint32_t queueFamilyIndex);
     void destroy() override;
 
     vk::CommandBuffer createCommandBuffer(vk::CommandBufferLevel level = vk::CommandBufferLevel::ePrimary);
@@ -25,4 +27,6 @@ public:
     vk::CommandBuffer beginSingleCommand();
     void submitSingleTimeCommands(QueueManager &queueManager, std::vector<vk::CommandBuffer> commandBuffers,
                                   vkb::QueueType queueType, bool wait);
+
+    friend class GLTFLoader;
 };

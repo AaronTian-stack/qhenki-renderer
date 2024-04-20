@@ -11,7 +11,7 @@ private:
     bool destroyed;
 
 public:
-    Image(const sPtr<FrameBufferAttachment> attachment);
+    explicit Image(const sPtr<FrameBufferAttachment> &attachment);
 
     static void recordTransitionImageLayout(vk::ImageLayout oldLayout, vk::ImageLayout newLayout,
                                             vk::Image image, vk::CommandBuffer commandBuffer, int mipCount, int layerCount);

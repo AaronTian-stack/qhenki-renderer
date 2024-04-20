@@ -5,7 +5,7 @@
 #include "primitive.h"
 #include <iostream>
 
-std::pair<uPtr<Buffer>, uPtr<Buffer>> Primitive::create(BufferFactory &bufferFactory, std::string path)
+Primitive::Primitive(BufferFactory &bufferFactory, std::string path)
 {
     tinyobj::ObjReaderConfig reader_config;
 
@@ -30,10 +30,10 @@ std::pair<uPtr<Buffer>, uPtr<Buffer>> Primitive::create(BufferFactory &bufferFac
 
     auto &shape = shapes[0];
 
-    auto posBuffer = bufferFactory.createBuffer(attrib.vertices.size() * sizeof(float),
+    positionBuffer = bufferFactory.createBuffer(attrib.vertices.size() * sizeof(float),
                                                 vk::BufferUsageFlagBits::eVertexBuffer,
                                                 VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
-    posBuffer->fill(attrib.vertices.data());
+    positionBuffer->fill(attrib.vertices.data());
 
     auto positionIndices = std::vector<uint16_t>(shape.mesh.indices.size());
     for (size_t i = 0; i < shape.mesh.indices.size(); i++)
@@ -41,31 +41,25 @@ std::pair<uPtr<Buffer>, uPtr<Buffer>> Primitive::create(BufferFactory &bufferFac
         positionIndices[i] = shape.mesh.indices[i].vertex_index;
     }
 
-    auto indexBuffer = bufferFactory.createBuffer(positionIndices.size() * sizeof(uint16_t),
+    indexBuffer = bufferFactory.createBuffer(positionIndices.size() * sizeof(uint16_t),
                                                   vk::BufferUsageFlagBits::eIndexBuffer,
                                                   VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
     indexBuffer->fill(positionIndices.data());
-
-    return {std::move(posBuffer), std::move(indexBuffer)};
-}
-
-void Primitive::create(BufferFactory &bufferFactory)
-{
-    auto cube = create(bufferFactory, "../resources/objs/cube.obj");
-    auto sphere = create(bufferFactory, "../resources/objs/sphere.obj");
-    cubePosBuffer = std::move(cube.first);
-    cubeIndexBuffer = std::move(cube.second);
-    spherePosBuffer = std::move(sphere.first);
-    sphereIndexBuffer = std::move(sphere.second);
 }
 
 void Primitive::destroy()
 {
-    cubePosBuffer->destroy();
-    cubeIndexBuffer->destroy();
-    spherePosBuffer->destroy();
-    sphereIndexBuffer->destroy();
+    positionBuffer->destroy();
+    indexBuffer->destroy();
+}
 
-//    primitivePipeline->destroy();
-//    primitiveShader->destroy();
+void Primitive::draw(vk::CommandBuffer commandBuffer)
+{
+    // TODO: instanced rendering
+    vk::DeviceSize offset = 0;
+    size_t size = indexBuffer->getIndexType() == vk::IndexType::eUint16 ? sizeof(uint16_t) : sizeof(uint32_t);
+    auto count = indexBuffer->info.size / size;
+    commandBuffer.bindVertexBuffers(0, 1, &positionBuffer->buffer, &offset);
+    indexBuffer->bind(commandBuffer);
+    commandBuffer.drawIndexed(count, 1, 0, 0, 0);
 }

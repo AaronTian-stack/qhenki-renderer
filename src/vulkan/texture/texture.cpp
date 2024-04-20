@@ -1,10 +1,7 @@
 #include "texture.h"
 
 Texture::Texture(Image *image) : Destroyable(image->device), image(image)
-{
-    if (image == nullptr)
-        throw std::invalid_argument("image cannot be null");
-}
+{}
 
 void Texture::createSampler()
 {
@@ -47,6 +44,7 @@ vk::DescriptorImageInfo Texture::getDescriptorInfo()
 
 void Texture::destroy()
 {
+    // multiple textures can share the same image
     if (!image->destroyed)
         image->destroy();
     image->destroyed = true;

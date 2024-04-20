@@ -50,14 +50,12 @@ uPtr<Model> GLTFLoader::create(CommandPool &commandPool, QueueManager &queueMana
     auto loadMaterials = [&]()
     {
         makeMaterialsAndTextures(commandPool, queueManager, bufferFactory, gltfModel, model.get());
-//        loadStatus.store(static_cast<LoadStatus>(loadStatus.load() & LoadStatus::LOADED_MAT_TEX));
         loadStatus.store(LoadStatus::LOADED_MAT_TEX);
     };
 
     auto processNodes = [&]()
     {
         processNode(bufferFactory, gltfModel, model.get(), nullptr, rootNodeIndex);
-//        loadStatus.store(static_cast<LoadStatus>(loadStatus.load() & LoadStatus::LOADED_NODE));
         loadStatus.store(LoadStatus::LOADED_NODE);
     };
 
@@ -76,7 +74,6 @@ uPtr<Model> GLTFLoader::create(CommandPool &commandPool, QueueManager &queueMana
 //    loadStatus.store(LoadStatus::LOADED_MAT_TEX);
 //    processNode(bufferFactory, gltfModel, model.get(), nullptr, rootNodeIndex);
 //    loadStatus.store(LoadStatus::LOADED_NODE);
-
 
     return model;
 }
@@ -267,11 +264,6 @@ void GLTFLoader::makeMaterialsAndTextures(CommandPool &commandPool, QueueManager
         stagingBuffers.push_back(std::move(deferredImage.stagingBufferToDestroy));
         model->images.push_back(std::move(imageTexture));
     }
-    // submit as an async batch to make it smoother
-    commandPool.submitSingleTimeCommands(queueManager, commandBuffers, vkb::QueueType::transfer, true);
-
-    for (auto &buffer : stagingBuffers)
-        buffer->destroy();
 
     for (int i = 0; i < gltfModel.textures.size(); i++)
     {
@@ -366,9 +358,19 @@ void GLTFLoader::makeMaterialsAndTextures(CommandPool &commandPool, QueueManager
         material.occlusionStrength = mat.occlusionTexture.strength;
 
         material.emissiveTexture = mat.emissiveTexture.index;
+        material.emissiveFactor = glm::vec4(mat.emissiveFactor[0], mat.emissiveFactor[1], mat.emissiveFactor[2], 1.0f);
 
         model->materials.push_back(material);
     }
+
+    // submit as an async batch to make it smoother
+    // note: cannot submit to same queue on different threads
+//    std::lock_guard lock(mutex);
+// TODO: if using two different queue families, it needs to be transferred. but validation is not complaining?
+    commandPool.submitSingleTimeCommands(queueManager, commandBuffers, commandPool.queueType, true);
+
+    for (auto &buffer : stagingBuffers)
+        buffer->destroy();
 }
 
 uPtr<Buffer> GLTFLoader::createTangentVectors(BufferFactory &bufferFactory, tinygltf::Model &gltfModel, int verticesType,
@@ -401,9 +403,9 @@ uPtr<Buffer> GLTFLoader::createTangentVectors(BufferFactory &bufferFactory, tiny
         glm::vec3 v1 = positions[i+1];
         glm::vec3 v2 = positions[i+2];
 
-        glm::vec2 uv0 = uvs[i+0];
-        glm::vec2 uv1 = uvs[i+1];
-        glm::vec2 uv2 = uvs[i+2];
+        glm::vec2 uv0 = glm::clamp(uvs[i+0], glm::vec2(0.0f), glm::vec2(1.0f));
+        glm::vec2 uv1 = glm::clamp(uvs[i+1], glm::vec2(0.0f), glm::vec2(1.0f));
+        glm::vec2 uv2 = glm::clamp(uvs[i+2], glm::vec2(0.0f), glm::vec2(1.0f));
 
         glm::vec3 deltaPos1 = v1 - v0;
         glm::vec3 deltaPos2 = v2 - v0;

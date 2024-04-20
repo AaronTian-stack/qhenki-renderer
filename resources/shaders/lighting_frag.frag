@@ -37,7 +37,7 @@ PointLight pointLights[1] = PointLight[1](
 );
 
 SphereLight sphereLights[1] = SphereLight[1](
-    SphereLight(vec4(0.0, 0.0, -5.0, 3.0), vec4(1.0, 0.9, 1.0, 10.0))
+    SphereLight(vec4(0.0, 5.0, 0.0, 1.0), vec4(1.0, 0.9, 1.0, 10.0))
 );
 
 const float PI = 3.14159f;
@@ -113,11 +113,10 @@ void calculateForLight(inout vec3 Lo, Light light, vec3 N, vec3 V, Material mate
     Lo += (kD * material.albedo / PI + specular) * radiance * NdotL;
 }
 
-vec3 closestPointSphere(SphereLight light, vec3 N, vec3 V, vec3 fragPos)
+vec3 closestPointSphere(SphereLight light, vec3 R, vec3 fragPos)
 {
-    vec3 r = reflect(-V, N);
     vec3 L = light.position.xyz - fragPos;
-    vec3 centerToRay = (dot(L, r) * r) - L;
+    vec3 centerToRay = (dot(L, R) * R) - L;
     float sphereRadius = light.position.w;
     vec3 closestPoint = L + centerToRay * clamp(sphereRadius / length(centerToRay), 0, 1);
     return closestPoint;
@@ -162,14 +161,15 @@ void main()
     vec3 Lo = vec3(0.0);
     for(int i = 0; i < 1; ++i)
     {
-        Light light = Light(closestPointSphere(sphereLights[i], N, V, position.xyz), sphereLights[i].color.rgb, sphereLights[i].color.a);
+        vec3 R = reflect(-V, N);
+        Light light = Light(closestPointSphere(sphereLights[i], R, position.xyz), sphereLights[i].color.rgb, sphereLights[i].color.a);
         calculateForLight(Lo, light, N, V, material, position.xyz);
     }
-    for(int i = 0; i < 1; ++i)
-    {
-        Light light = Light(pointLights[i].position.xyz, pointLights[i].color.rgb, pointLights[i].color.a);
-        calculateForLight(Lo, light, N, V, material, position.xyz);
-    }
+//    for(int i = 0; i < 1; ++i)
+//    {
+//        Light light = Light(pointLights[i].position.xyz, pointLights[i].color.rgb, pointLights[i].color.a);
+//        calculateForLight(Lo, light, N, V, material, position.xyz);
+//    }
 
     vec3 ambient = vec3(0.03) * albedo.rgb * ao;
     vec3 color = ambient + Lo + emissive.rgb;

@@ -19,14 +19,16 @@ class GLTFLoader
 private:
     static inline std::atomic<LoadStatus> loadStatus = LoadStatus::READY;
 
-    static const inline std::vector<std::pair<const char*, VertexBufferType>> typeMap =
+    static const inline std::array<std::pair<const char*, VertexBufferType>, 4> typeMap =
     {
-        {"POSITION", VertexBufferType::POSITION},
-        {"NORMAL", VertexBufferType::NORMAL},
-        {"TEXCOORD_0", VertexBufferType::UV},
-        {"TANGENT", VertexBufferType::TANGENT},
+        std::make_pair("POSITION", VertexBufferType::POSITION),
+        std::make_pair("NORMAL", VertexBufferType::NORMAL),
+        std::make_pair("TEXCOORD_0", VertexBufferType::UV),
+        std::make_pair("TANGENT", VertexBufferType::TANGENT),
     };
-    static void makeMaterialsAndTextures(CommandPool &commandPool, QueueManager &queueManager, BufferFactory &bufferFactory, tinygltf::Model &gltfModel, Model *model);
+
+    static void makeMaterialsAndTextures(CommandPool &commandPool, QueueManager &queueManager,
+                                         BufferFactory &bufferFactory, tinygltf::Model &gltfModel, Model *model);
     static void processNode(BufferFactory &bufferFactory, tinygltf::Model &gltfModel, Model *model, Node *parent, int nodeIndex);
     static uPtr<Buffer> createTangentVectors(BufferFactory &bufferFactory, tinygltf::Model &gltfModel , int verticesType,
                                              int uvType, vk::BufferUsageFlagBits flag);

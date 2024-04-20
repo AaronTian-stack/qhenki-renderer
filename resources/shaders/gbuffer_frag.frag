@@ -30,6 +30,7 @@ layout(push_constant) uniform mats {
     float occlusionStrength;
 
     int emissiveTexture;
+    vec4 emissiveFactor;
 } material;
 
 const float[16] dither =
@@ -76,6 +77,7 @@ void setValues(out vec4 albedo, out vec3 normal, out vec4 metalRoughness, out fl
     {
         emissive = texture(texSampler[material.emissiveTexture], fragUV).rgb;
         emissive.rgb = pow(emissive.rgb, vec3(2.2));
+        emissive *= material.emissiveFactor.rgb;
     }
     else
         emissive = vec3(0.0);
