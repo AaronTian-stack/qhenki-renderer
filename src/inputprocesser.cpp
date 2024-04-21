@@ -10,6 +10,16 @@ void InputProcesser::mouse_button_callback(GLFWwindow *window, int button, int a
         glfwGetCursorPos(window, &xpos, &ypos);
         lastMousePos = {static_cast<float>(xpos), static_cast<float>(ypos)};
     }
+    if (button == GLFW_MOUSE_BUTTON_4 || button == GLFW_MOUSE_BUTTON_5)
+    {
+        float adjust = button == GLFW_MOUSE_BUTTON_4 ? 5.0f : -5.0f;
+        auto* cam = static_cast<Camera*>(glfwGetWindowUserPointer(window));
+        if (cam)
+        {
+            if (action == GLFW_PRESS)
+                cam->options.fov += adjust;
+        }
+    }
     mouseButtons[button] = action;
 }
 

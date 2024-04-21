@@ -13,6 +13,9 @@ private:
 public:
     static inline uPtr<Primitive> cube, sphere;
     static void create(BufferFactory &bufferFactory, vk::Device device, PipelineBuilder *pipelineFactory, RenderPass *renderPass, int subpass);
+    static void destroy();
+    static void drawCube(vk::CommandBuffer commandBuffer);
     static void drawCube(vk::CommandBuffer commandBuffer, glm::vec4 color, glm::mat4 transform);
+    static void drawSphere(vk::CommandBuffer commandBuffer);
     static void drawSphere(vk::CommandBuffer commandBuffer, glm::vec4 color, glm::mat4 transform);
 };

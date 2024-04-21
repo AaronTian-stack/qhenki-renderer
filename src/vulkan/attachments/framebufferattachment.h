@@ -22,4 +22,6 @@ public:
     void createGenericSampler();
     vk::DescriptorImageInfo getDescriptorInfo();
     void destroy() override;
+
+    friend class Image;
 };

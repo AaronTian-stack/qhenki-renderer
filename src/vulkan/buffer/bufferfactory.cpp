@@ -124,7 +124,6 @@ DeferredImage BufferFactory::createTextureImageDeferred(
 {
     auto texture = mkU<Image>(createAttachment(format, extent, imageUsage, aspectFlags));
     texture->attachment->create(this->device);
-    texture->create(this->device);
 
     // copy data to buffer
     auto stagingBuffer = createBuffer(

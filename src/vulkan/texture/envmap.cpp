@@ -93,7 +93,7 @@ void EnvironmentMap::create(BufferFactory &bufferFactory, CommandPool &commandPo
 
     this->maxMipLevels = tc.num_mips;
 
-    cubeMap = mkU<Image>(bufferFactory.createAttachment(imageInfo, viewInfo, imageFormat));
+    cubeImage = mkU<Image>(bufferFactory.createAttachment(imageInfo, viewInfo, imageFormat));
 
     auto commandBuffer = commandPool.beginSingleCommand();
 
@@ -114,7 +114,7 @@ void EnvironmentMap::create(BufferFactory &bufferFactory, CommandPool &commandPo
 //
 //     commandBuffer.pipelineBarrier(sourceStage, destinationStage, vk::DependencyFlags(), nullptr, nullptr, barrier);
     Image::recordTransitionImageLayout(vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal,
-                                       cubeMap->attachment->image, commandBuffer, tc.num_mips, 6);
+                                       cubeImage->attachment->image, commandBuffer, tc.num_mips, 6);
 
     std::vector<vk::BufferImageCopy> regions;
 
@@ -140,11 +140,11 @@ void EnvironmentMap::create(BufferFactory &bufferFactory, CommandPool &commandPo
         }
     }
 
-    commandBuffer.copyBufferToImage(stagingBuffer->buffer, cubeMap->attachment->image,
+    commandBuffer.copyBufferToImage(stagingBuffer->buffer, cubeImage->attachment->image,
                                     vk::ImageLayout::eTransferDstOptimal, regions.size(), regions.data());
 
     Image::recordTransitionImageLayout(vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::eShaderReadOnlyOptimal,
-                                       cubeMap->attachment->image, commandBuffer, tc.num_mips, 6);
+                                       cubeImage->attachment->image, commandBuffer, tc.num_mips, 6);
 
     commandBuffer.end();
 
@@ -170,7 +170,9 @@ void EnvironmentMap::create(BufferFactory &bufferFactory, CommandPool &commandPo
 //            VK_FALSE
 //    };
 //    cubeMap->attachment->sampler = bufferFactory.device.createSampler(samplerInfo);
-    cubeMap->attachment->createGenericSampler();
+
+    cubeMap = mkU<Texture>(cubeImage.get());
+    cubeMap->createSampler();
 
     // destroy the staging buffer
     stagingBuffer->destroy();

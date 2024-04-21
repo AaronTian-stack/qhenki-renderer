@@ -10,8 +10,9 @@ layout(std140, set = 0, binding = 0) uniform cameraInfo {
 } ubo;
 
 layout(push_constant) uniform constants {
+    vec4 color;
     mat4 matrix;
-} modelTransform;
+} pc;
 
 layout(location = 0) out vec3 localPos;
 

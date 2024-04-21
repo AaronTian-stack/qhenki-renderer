@@ -26,6 +26,9 @@ VulkanApp::~VulkanApp()
     lightingPipeline->destroy();
     lightingShader->destroy();
 
+    cubeMapPipeline->destroy();
+    cubeMapShader->destroy();
+
     postProcessPipeline->destroy();
     postProcessShader->destroy();
 
@@ -40,7 +43,7 @@ VulkanApp::~VulkanApp()
 
     envMap.destroy();
 
-//    Primitive::destroy();
+    PrimitiveDrawer::destroy();
     for (auto &model : models)
         model->destroy();
 
@@ -150,10 +153,10 @@ void VulkanApp::create(Window &window)
     renderPassBuilder.addSubPass({0, 1, 2, 3, 4},
                                  {vk::ImageLayout::eShaderReadOnlyOptimal},
                                  {5}, {});
-//    renderPassBuilder.addSubPass({},{vk::ImageLayout::eShaderReadOnlyOptimal},
-//                                 {5}, {});
+    renderPassBuilder.addSubPass({},{vk::ImageLayout::eShaderReadOnlyOptimal},
+                                 {5}, {});
     renderPassBuilder.addColorDependency(0, 1);
-//    renderPassBuilder.addColorDependency(1, 2);
+    renderPassBuilder.addColorDependency(1, 2);
     offscreenRenderPass = renderPassBuilder.buildRenderPass();
 
     gBufferShader = mkU<Shader>(device, "gbuffer_vert.spv", "gbuffer_frag.spv");
@@ -174,11 +177,15 @@ void VulkanApp::create(Window &window)
     pipelineFactory.getColorBlending().attachmentCount = 1;
     lightingPipeline = pipelineFactory.buildPipeline(offscreenRenderPass.get(), 1, lightingShader.get());
 
-//    cubeMapShader = mkU<Shader>(device, "cubemap_vert.spv", "cubemap_frag.spv");
-//    pipelineFactory.reset();
-//    pipelineFactory.parseShader("cubemap_vert.spv", "cubemap_frag.spv", layoutCache, true);
-//    pipelineFactory.getColorBlending().attachmentCount = 1;
-//    cubeMapPipeline = pipelineFactory.buildPipeline(offscreenRenderPass.get(), 2, cubeMapShader.get());
+    cubeMapShader = mkU<Shader>(device, "cubemap_vert.spv", "cubemap_frag.spv");
+    pipelineFactory.reset();
+    pipelineFactory.addVertexInputBinding({0, sizeof(glm::vec3), vk::VertexInputRate::eVertex}); // position
+    pipelineFactory.parseShader("cubemap_vert.spv", "cubemap_frag.spv", layoutCache, false);
+    pipelineFactory.getDepthStencil().depthWriteEnable = VK_TRUE;
+    pipelineFactory.getColorBlending().attachmentCount = 1;
+    cubeMapPipeline = pipelineFactory.buildPipeline(offscreenRenderPass.get(), 2, cubeMapShader.get());
+
+    PrimitiveDrawer::create(bufferFactory, vulkanContext.device.logicalDevice, &pipelineFactory, offscreenRenderPass.get(), 2);
 
     postProcessShader = mkU<Shader>(device, "passthrough_vert.spv", "passthrough_frag.spv");
     pipelineFactory.reset();
@@ -203,9 +210,7 @@ void VulkanApp::create(Window &window)
         allocators.emplace_back(vulkanContext.device.logicalDevice);
     }
 
-    envMap.create(bufferFactory, *graphicsCommandPool, vulkanContext.queueManager, "../resources/envmaps/small_room_radiance.dds");
-
-//    PrimitiveDrawer::create(bufferFactory);
+    envMap.create(bufferFactory, *graphicsCommandPool, vulkanContext.queueManager, "../resources/envmaps/small_room.dds");
 }
 
 void VulkanApp::setUpCallbacks() {
@@ -271,7 +276,7 @@ void VulkanApp::recordOffscreenBuffer(vk::CommandBuffer commandBuffer, Descripto
     }
     lock.unlock();
 
-    offscreenRenderPass->nextSubpass();
+    offscreenRenderPass->nextSubpass(); // composition pass`
 
     commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, lightingPipeline->getGraphicsPipeline());
 
@@ -297,6 +302,20 @@ void VulkanApp::recordOffscreenBuffer(vk::CommandBuffer commandBuffer, Descripto
                                      0, {cameraSet, inputSet}, nullptr);
 
     commandBuffer.draw(3, 1, 0, 0);
+
+    offscreenRenderPass->nextSubpass(); // cube map pass
+
+    vk::DescriptorSet cubeSamplerSet;
+    commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, cubeMapPipeline->getGraphicsPipeline());
+    DescriptorBuilder::beginSet(&layoutCache, &allocator)
+            .bindImage(0, {envMap.cubeMap->getDescriptorInfo()}, // env map sampler
+                       1, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eFragment)
+            .build(cubeSamplerSet, layout);
+
+    commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, cubeMapPipeline->getPipelineLayout(),
+                                     0, {cameraSet, cubeSamplerSet}, nullptr);
+
+    PrimitiveDrawer::drawCube(commandBuffer);
 
     offscreenRenderPass->end();
 }
