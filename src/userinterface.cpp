@@ -244,8 +244,12 @@ void UserInterface::renderMenuBar()
 
     if (ImGui::BeginPopup("instruction_popup"))
     {
-        ImGui::Text("lorem ipsum");
-        ImGui::BulletText("todo");
+        ImGui::Text("Instructions:");
+        ImGui::BulletText("Mouse 1: Rotate Camera");
+        ImGui::BulletText("Mouse 2: Translate Camera");
+        ImGui::BulletText("Scroll Wheel: Zoom Camera");
+        ImGui::BulletText("Mouse 4: Increase FOV");
+        ImGui::BulletText("Mouse 5: Decrease FOV");
         ImGui::EndPopup();
     }
     ImGui::End();

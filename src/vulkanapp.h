@@ -22,6 +22,7 @@
 #include "vulkan/texture/envmap.h"
 #include "vulkan/attachments/gbuffer.h"
 #include <atomic>
+#include <mutex>
 
 class VulkanApp
 {
@@ -39,9 +40,7 @@ private:
 
     RenderPassBuilder renderPassBuilder;
     uPtr<RenderPass> displayRenderPass;
-    uPtr<RenderPass> envRenderPass;
     uPtr<RenderPass> offscreenRenderPass;
-
     PipelineBuilder pipelineFactory;
 
     uPtr<Pipeline> gBufferPipeline, lightingPipeline, postProcessPipeline, cubeMapPipeline;

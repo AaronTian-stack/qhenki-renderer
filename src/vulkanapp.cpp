@@ -36,7 +36,6 @@ VulkanApp::~VulkanApp()
 
     offscreenRenderPass->destroy();
     displayRenderPass->destroy();
-    envRenderPass->destroy();
     renderPassBuilder.destroy();
 
     gBuffer->destroy();
@@ -140,14 +139,12 @@ void VulkanApp::create(Window &window)
     renderPassBuilder.addSubPass({0, 1, 2, 3, 4},
                                  {vk::ImageLayout::eShaderReadOnlyOptimal},
                                  {5}, {});
+    renderPassBuilder.addSubPass({},
+                                 {vk::ImageLayout::eShaderReadOnlyOptimal},
+                                 {5}, {}, 4);
     renderPassBuilder.addColorDependency(0, 1);
+    renderPassBuilder.addColorDependency(1, 2);
     offscreenRenderPass = renderPassBuilder.buildRenderPass();
-
-    renderPassBuilder.reset();
-    renderPassBuilder.addColorAttachment(vk::Format::eR16G16B16A16Sfloat, vk::AttachmentLoadOp::eLoad);
-    renderPassBuilder.addDepthAttachment(depthBuffer->format, vk::AttachmentLoadOp::eLoad);
-    renderPassBuilder.addSubPass({}, {}, {0}, {}, 1);
-    envRenderPass = renderPassBuilder.buildRenderPass();
 
     gBufferShader = mkU<Shader>(device, "gbuffer_vert.spv", "gbuffer_frag.spv");
     pipelineFactory.reset();
@@ -171,9 +168,10 @@ void VulkanApp::create(Window &window)
     pipelineFactory.reset();
     pipelineFactory.addVertexInputBinding({0, sizeof(glm::vec3), vk::VertexInputRate::eVertex}); // position
     pipelineFactory.parseShader("cubemap_vert.spv", "cubemap_frag.spv", layoutCache, false);
-    pipelineFactory.getDepthStencil().depthWriteEnable = VK_TRUE;
+    pipelineFactory.getDepthStencil().depthWriteEnable = VK_FALSE;
+    pipelineFactory.getDepthStencil().depthCompareOp = vk::CompareOp::eLessOrEqual; // NEEDS TO BE EXPLICITLY SET
     pipelineFactory.getColorBlending().attachmentCount = 1;
-    cubeMapPipeline = pipelineFactory.buildPipeline(envRenderPass.get(), 0, cubeMapShader.get());
+    cubeMapPipeline = pipelineFactory.buildPipeline(offscreenRenderPass.get(), 2, cubeMapShader.get());
 
     PrimitiveDrawer::create(bufferFactory, vulkanContext.device.logicalDevice, &pipelineFactory, offscreenRenderPass.get(), 2);
 
@@ -187,18 +185,6 @@ void VulkanApp::create(Window &window)
     vulkanContext.swapChain->createFramebuffers(displayRenderPass->getRenderPass());
 
     createGbuffer(vulkanContext.swapChain->getExtent(), offscreenRenderPass->getRenderPass());
-
-    vk::ImageView views[2] = {gBuffer->getAttachment(GBufferAttachmentType::OUTPUT)->getDescriptorInfo().imageView, depthBuffer->imageView};
-    vk::FramebufferCreateInfo createInfo(
-            vk::FramebufferCreateFlags(),
-            envRenderPass->getRenderPass(),
-            2,
-            views,
-            extent.width,
-            extent.height,
-            1);
-    auto outputFrameBuffer = device.createFramebuffer(createInfo);
-    gBuffer->setIndividualFramebuffer(GBufferAttachmentType::OUTPUT, outputFrameBuffer);
 
     syncer.create(device);
     for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
@@ -305,12 +291,8 @@ void VulkanApp::recordOffscreenBuffer(vk::CommandBuffer commandBuffer, Descripto
 
     commandBuffer.draw(3, 1, 0, 0);
 
-    offscreenRenderPass->end(); // cube map pass
+    offscreenRenderPass->nextSubpass(); // cube map pass
 
-    envRenderPass->setFramebuffer(gBuffer->getIndividualFramebuffer(GBufferAttachmentType::OUTPUT));
-    envRenderPass->setRenderAreaExtent(vulkanContext.swapChain->getExtent());
-    envRenderPass->clear(0.f, 0.f, 0.f, 0.0f);
-    envRenderPass->begin(commandBuffer);
     vk::DescriptorSet cubeSamplerSet;
     commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, cubeMapPipeline->getGraphicsPipeline());
     DescriptorBuilder::beginSet(&layoutCache, &allocator)
@@ -323,7 +305,7 @@ void VulkanApp::recordOffscreenBuffer(vk::CommandBuffer commandBuffer, Descripto
 
     PrimitiveDrawer::drawCube(commandBuffer);
 
-    envRenderPass->end();
+    offscreenRenderPass->end();
 }
 
 void VulkanApp::recordCommandBuffer(vk::Framebuffer framebuffer)
