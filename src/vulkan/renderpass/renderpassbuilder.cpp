@@ -23,7 +23,7 @@ void RenderPassBuilder::addDepthAttachment(vk::Format format, vk::AttachmentLoad
     depthAttachment.format = format;
     depthAttachment.samples = vk::SampleCountFlagBits::e1;
     depthAttachment.loadOp = loadOp;
-    depthAttachment.storeOp = vk::AttachmentStoreOp::eStore;
+    depthAttachment.storeOp = vk::AttachmentStoreOp::eDontCare;
     depthAttachment.stencilLoadOp = vk::AttachmentLoadOp::eDontCare;
     depthAttachment.stencilStoreOp = vk::AttachmentStoreOp::eDontCare;
     depthAttachment.initialLayout = vk::ImageLayout::eUndefined;
