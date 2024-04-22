@@ -59,6 +59,8 @@ void Camera::lerp(float delta)
     smooth.targetDistance = glm::mix(smooth.targetDistance, regular.targetDistance, a);
 
     smooth.position = sphericalToCartesian(smooth.theta, smooth.phi, smooth.targetDistance) + smooth.target;
+
+    smooth.fov = glm::mix(smooth.fov, regular.fov, a);
 }
 
 glm::vec3 Camera::getPosition() const
@@ -94,6 +96,17 @@ void Camera::simpleReset()
 glm::vec4 Camera::getForwardVector() const
 {
     return {smooth.target - smooth.position, 1.0f};
+}
+
+void Camera::adjustFOV(float offset)
+{
+    regular.fov += offset;
+    regular.fov = glm::clamp(regular.fov, 1.0f, 179.0f);
+}
+
+float Camera::getFOV() const
+{
+    return smooth.fov;
 }
 
 glm::vec3 sphericalToCartesian(float theta, float phi, float radius)

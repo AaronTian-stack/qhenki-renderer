@@ -3,12 +3,12 @@
 void RenderPassBuilder::destroy()
 {}
 
-void RenderPassBuilder::addColorAttachment(vk::Format format)
+void RenderPassBuilder::addColorAttachment(vk::Format format, vk::AttachmentLoadOp loadOp)
 {
     vk::AttachmentDescription colorAttachment{};
     colorAttachment.format = format;
     colorAttachment.samples = vk::SampleCountFlagBits::e1;
-    colorAttachment.loadOp = vk::AttachmentLoadOp::eClear;
+    colorAttachment.loadOp = loadOp;
     colorAttachment.storeOp = vk::AttachmentStoreOp::eStore;
     colorAttachment.stencilLoadOp = vk::AttachmentLoadOp::eDontCare;
     colorAttachment.stencilStoreOp = vk::AttachmentStoreOp::eDontCare;
@@ -17,13 +17,13 @@ void RenderPassBuilder::addColorAttachment(vk::Format format)
     addAttachment(&colorAttachment, vk::ImageLayout::eColorAttachmentOptimal);
 }
 
-void RenderPassBuilder::addDepthAttachment(vk::Format format)
+void RenderPassBuilder::addDepthAttachment(vk::Format format, vk::AttachmentLoadOp loadOp)
 {
     vk::AttachmentDescription depthAttachment{};
     depthAttachment.format = format;
     depthAttachment.samples = vk::SampleCountFlagBits::e1;
-    depthAttachment.loadOp = vk::AttachmentLoadOp::eClear;
-    depthAttachment.storeOp = vk::AttachmentStoreOp::eDontCare;
+    depthAttachment.loadOp = loadOp;
+    depthAttachment.storeOp = vk::AttachmentStoreOp::eStore;
     depthAttachment.stencilLoadOp = vk::AttachmentLoadOp::eDontCare;
     depthAttachment.stencilStoreOp = vk::AttachmentStoreOp::eDontCare;
     depthAttachment.initialLayout = vk::ImageLayout::eUndefined;

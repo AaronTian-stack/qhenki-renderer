@@ -20,6 +20,7 @@
 #include "inputprocesser.h"
 #include "vulkan/renderpass/renderpassbuilder.h"
 #include "vulkan/texture/envmap.h"
+#include "vulkan/attachments/gbuffer.h"
 #include <atomic>
 
 class VulkanApp
@@ -28,7 +29,7 @@ private:
     EnvironmentMap envMap;
     std::vector<uPtr<Model>> models;
 
-    uPtr<FrameBuffer> gBuffer;
+    uPtr<GBuffer> gBuffer;
     sPtr<FrameBufferAttachment> depthBuffer;
 
     GLTFLoader gltfLoad;
@@ -38,6 +39,7 @@ private:
 
     RenderPassBuilder renderPassBuilder;
     uPtr<RenderPass> displayRenderPass;
+    uPtr<RenderPass> envRenderPass;
     uPtr<RenderPass> offscreenRenderPass;
 
     PipelineBuilder pipelineFactory;

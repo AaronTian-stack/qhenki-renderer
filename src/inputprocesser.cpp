@@ -17,7 +17,7 @@ void InputProcesser::mouse_button_callback(GLFWwindow *window, int button, int a
         if (cam)
         {
             if (action == GLFW_PRESS)
-                cam->options.fov += adjust;
+                cam->adjustFOV(adjust);
         }
     }
     mouseButtons[button] = action;
@@ -43,9 +43,9 @@ void InputProcesser::mouse_callback(GLFWwindow *window, double xposIn, double yp
 
 void InputProcesser::scroll_callback(GLFWwindow *window, double xoffset, double yoffset)
 {
-    auto* obj = static_cast<Camera*>(glfwGetWindowUserPointer(window));
-    if (obj)
-        obj->zoom(yoffset);
+    auto* cam = static_cast<Camera*>(glfwGetWindowUserPointer(window));
+    if (cam)
+        cam->zoom(yoffset);
 }
 
 void InputProcesser::setCallbacks(Window &window)
