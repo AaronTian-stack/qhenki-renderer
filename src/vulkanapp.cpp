@@ -154,7 +154,7 @@ void VulkanApp::create(Window &window)
     pipelineFactory.addVertexInputBinding({3, sizeof(glm::vec2), vk::VertexInputRate::eVertex}); // uv
     pipelineFactory.parseShader("gbuffer_vert.spv", "gbuffer_frag.spv", layoutCache, false);
     pipelineFactory.getColorBlending().attachmentCount = 4; // blending is disabled for now. pipeline factory does not set color blendings correctly
-//    pipelineFactory.getRasterizer().cullMode = vk::CullModeFlagBits::eBack;
+    pipelineFactory.getRasterizer().cullMode = vk::CullModeFlagBits::eBack;
     gBufferPipeline = pipelineFactory.buildPipeline(offscreenRenderPass.get(), 0, gBufferShader.get());
 
     lightingShader = mkU<Shader>(device, "lighting_vert.spv", "lighting_frag.spv");
@@ -239,6 +239,8 @@ void VulkanApp::recordOffscreenBuffer(vk::CommandBuffer commandBuffer, Descripto
     DescriptorBuilder::beginSet(&layoutCache, &allocator)
             .bindBuffer(0, &bufferInfo, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eVertex)
             .build(cameraSet, layout);
+    commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, gBufferPipeline->getPipelineLayout(),
+                                      0, {cameraSet}, nullptr);
 
     std::unique_lock lock(modelMutex);
     if (!models.empty())
@@ -257,14 +259,14 @@ void VulkanApp::recordOffscreenBuffer(vk::CommandBuffer commandBuffer, Descripto
                     .build(samplerSet, layout);
 
             commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, gBufferPipeline->getPipelineLayout(),
-                                             0, {cameraSet, samplerSet}, nullptr);
+                                             1, {samplerSet}, nullptr);
         }
 
         Node::draw(model->root, commandBuffer, *gBufferPipeline);
     }
     lock.unlock();
 
-    offscreenRenderPass->nextSubpass(); // composition pass`
+    offscreenRenderPass->nextSubpass(); // composition pass
 
     commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, lightingPipeline->getGraphicsPipeline());
 
@@ -286,8 +288,19 @@ void VulkanApp::recordOffscreenBuffer(vk::CommandBuffer commandBuffer, Descripto
     }
     builder.build(inputSet, layout);
 
+    vk::DescriptorSet iblSamplerSet;
+    std::vector<vk::DescriptorImageInfo> cubeMapInfos = {
+            envMap.cubeMap.texture->getDescriptorInfo(),
+            envMap.irradianceMap.texture->getDescriptorInfo(),
+            envMap.radianceMap.texture->getDescriptorInfo()
+    };
+    DescriptorBuilder::beginSet(&layoutCache, &allocator)
+            .bindImage(0, cubeMapInfos,
+                       3, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eFragment)
+            .build(iblSamplerSet, layout);
+
     commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, lightingPipeline->getPipelineLayout(),
-                                     0, {cameraSet, inputSet}, nullptr);
+                                     0, {cameraSet, inputSet, iblSamplerSet}, nullptr);
 
     commandBuffer.draw(3, 1, 0, 0);
 
@@ -296,7 +309,7 @@ void VulkanApp::recordOffscreenBuffer(vk::CommandBuffer commandBuffer, Descripto
     vk::DescriptorSet cubeSamplerSet;
     commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, cubeMapPipeline->getGraphicsPipeline());
     DescriptorBuilder::beginSet(&layoutCache, &allocator)
-            .bindImage(0, {envMap.cubeMap->getDescriptorInfo()}, // env map sampler
+            .bindImage(0, {envMap.cubeMap.texture->getDescriptorInfo()}, // env map sampler
                        1, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eFragment)
             .build(cubeSamplerSet, layout);
 

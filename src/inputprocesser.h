@@ -29,4 +29,5 @@ public:
     inline static float SENSITIVITY_ROTATE = 0.05f;
     inline static float SENSITIVITY_TRANSLATE = 0.01f;
     inline static float SENSITIVITY_ZOOM = 0.1f;
+    inline static float SENSITIVITY_FOV = 5.0f;
 };

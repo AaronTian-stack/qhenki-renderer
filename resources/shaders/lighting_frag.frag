@@ -6,6 +6,10 @@ layout (input_attachment_index = 2, set = 1, binding = 2) uniform subpassInput i
 layout (input_attachment_index = 3, set = 1, binding = 3) uniform subpassInput inputEmissive;
 layout (input_attachment_index = 4, set = 1, binding = 4) uniform subpassInput depthBuffer;
 
+// 0 is regular, 1 is irradiance, 2 is radiance
+// radiance is the one with mip levels
+layout(set = 2, binding = 0) uniform samplerCube cubeMaps[3];
+
 layout(location = 0) in vec2 fragUV;
 layout(location = 1) in vec4 cameraPos;
 layout(location = 2) in vec4 cameraForward;
@@ -62,14 +66,13 @@ float GeometrySmith(vec3 N, vec3 V, vec3 L, float roughness)
 
     return ggx1 * ggx2;
 }
-vec3 fresnelSchlick(float cosTheta, vec3 F0)
+vec3 fresnelSchlickRoughness(float cosTheta, vec3 F0, float roughness)
 {
-    return F0 + (1.0 - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
+    return F0 + (max(vec3(1.0 - roughness), F0) - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
 }
-
 vec4 reconstructPosition(float depth)
 {
-    // depth is 0 to 1 because vulkan
+    // vulkan depth is 0 to 1
     vec4 ndc = vec4(fragUV * 2.0 - 1.0, depth, 1.0);
     vec4 pos = inverse(cameraViewProj) * ndc;
     pos /= pos.w;
@@ -81,6 +84,7 @@ struct Material
     vec3 albedo;
     float metallic;
     float roughness;
+    float ao;
 };
 
 void calculateForLight(inout vec3 Lo, Light light, vec3 N, vec3 V, Material material, vec3 fragPos)
@@ -98,7 +102,7 @@ void calculateForLight(inout vec3 Lo, Light light, vec3 N, vec3 V, Material mate
     // cook-torrance brdf
     float NDF = DistributionGGX(N, H, material.roughness);
     float G   = GeometrySmith(N, V, L, material.roughness);
-    vec3 F    = fresnelSchlick(max(dot(H, V), 0.0), F0);
+    vec3 F    = fresnelSchlickRoughness(max(dot(H, V), 0.0), F0, material.roughness);
 
     vec3 kS = F;
     vec3 kD = vec3(1.0) - kS;
@@ -122,6 +126,16 @@ vec3 closestPointSphere(SphereLight light, vec3 R, vec3 fragPos)
     return closestPoint;
 }
 
+vec3 calculateIBL(vec3 N, vec3 V, vec3 F0, Material material)
+{
+    vec3 kS = fresnelSchlickRoughness(max(dot(N, V), 0.0), F0, material.roughness);
+    vec3 kD = 1.0 - kS;
+    vec3 irradiance = texture(cubeMaps[1], N).rgb;
+    vec3 diffuse    = irradiance * material.albedo;
+    vec3 ambient    = (kD * diffuse) * material.ao;
+    return ambient;
+}
+
 const float[16] dither =
 {
 1.0 / 17.0,  9.0 / 17.0,  3.0 / 17.0, 11.0 / 17.0,
@@ -142,7 +156,6 @@ void main()
 
     if (depth == 1.0)
     {
-        outColor = albedo;
         return;
     }
 
@@ -156,7 +169,7 @@ void main()
 
     vec3 F0 = mix(vec3(0.04), albedo.rgb, metallic);
 
-    Material material = Material(albedo.rgb, metallic, roughness);
+    Material material = Material(albedo.rgb, metallic, roughness, ao);
 
     vec3 Lo = vec3(0.0);
     for(int i = 0; i < 1; ++i)
@@ -171,15 +184,11 @@ void main()
 //        calculateForLight(Lo, light, N, V, material, position.xyz);
 //    }
 
-    vec3 ambient = vec3(0.03) * albedo.rgb * ao;
+//    vec3 ambient = vec3(0.03) * albedo.rgb * ao;
+    vec3 ambient = calculateIBL(N, V, F0, material);
     vec3 color = ambient + Lo + emissive.rgb;
 
-    // TODO: use dithering to stop banding
-
-//    float d = dither[int(mod(gl_FragCoord.y, 4.0)) * 4 + int(mod(gl_FragCoord.x, 4.0))];
-//    color += vec3(d / 32.0 - (1.0 / 128.0));
-
-    // TODO: move tonemapping to post process shader. store this output in 16f
+    // TODO: move tonemapping to post process shader. this output is stored in 16f
     color = color / (color + vec3(1.0));
 
     outColor = vec4(color.xyz, 1.0);

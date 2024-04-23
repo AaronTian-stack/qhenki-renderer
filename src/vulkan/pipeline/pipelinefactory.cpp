@@ -63,8 +63,6 @@ void PipelineBuilder::reset()
     pipelineLayoutInfo.pPushConstantRanges = pushConstants.data();
     pipelineLayoutInfo.pushConstantRangeCount = pushConstants.size();
 
-//    bindingsMap.clear();
-//    bindingsMap.fill(std::nullopt);
     bindingsMap.fill(SetLayout{});
     descriptorSetLayouts.clear();
     pipelineLayoutInfo.setLayoutCount = 0;
@@ -212,7 +210,7 @@ void PipelineBuilder::parseVertexShader(const char *filePath, DescriptorLayoutCa
     {
         // the descriptors for the uniform buffers
         uint32_t bindingNum = glsl.get_decoration(uniformBuffer.id, spv::DecorationBinding);
-        uint32_t set = glsl.get_decoration(uniformBuffer.id, spv::DecorationDescriptorSet); // TODO: needs to keep track of all sets!
+        uint32_t set = glsl.get_decoration(uniformBuffer.id, spv::DecorationDescriptorSet);
 
         bindingsMap[set].bindings.emplace_back(bindingNum,
                                             vk::DescriptorType::eUniformBuffer,
@@ -235,7 +233,6 @@ void PipelineBuilder::parseFragmentShader(const char *filePath, DescriptorLayout
 
     processPushConstants(glsl, resources, vk::ShaderStageFlagBits::eFragment);
 
-    // TODO: samplers
     for (auto &sampledImage : resources.sampled_images)
     {
         std::cout << "Sampled Image: " << sampledImage.name << std::endl;

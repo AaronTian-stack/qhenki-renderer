@@ -7,7 +7,21 @@
 #define DDSKTX_IMPLEMENT
 #include <dds/dds-ktx.h>
 
-void EnvironmentMap::create(BufferFactory &bufferFactory, CommandPool &commandPool, QueueManager &queueManager, const char *path)
+void EnvironmentMap::create(BufferFactory &bufferFactory, CommandPool &commandPool, QueueManager &queueManager,
+                            const char *path)
+{
+    std::string sPath = std::string(path);
+    auto rawPath = sPath.substr(0, sPath.find_last_of('.'));
+
+    std::string irradiance = rawPath + std::string("_irradiance.dds");
+    std::string radiance = rawPath + std::string("_radiance.dds");
+
+    cubeMap = createCubeMap(bufferFactory, commandPool, queueManager, path);
+    irradianceMap = createCubeMap(bufferFactory, commandPool, queueManager, irradiance.c_str());
+    radianceMap = createCubeMap(bufferFactory, commandPool, queueManager, radiance.c_str());
+}
+
+CubeMap EnvironmentMap::createCubeMap(BufferFactory &bufferFactory, CommandPool &commandPool, QueueManager &queueManager, const char *path)
 {
     // read the file
     std::ifstream file(path, std::ios::binary);
@@ -36,7 +50,7 @@ void EnvironmentMap::create(BufferFactory &bufferFactory, CommandPool &commandPo
         }
     }
 
-    // cmft exports as BGR8... need to account for
+    // IMPORTANT: cmft exports as BGR8
     auto stagingBuffer = bufferFactory.createBuffer(size, vk::BufferUsageFlagBits::eTransferSrc,
                                                     VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
 
@@ -93,26 +107,10 @@ void EnvironmentMap::create(BufferFactory &bufferFactory, CommandPool &commandPo
 
     this->maxMipLevels = tc.num_mips;
 
-    cubeImage = mkU<Image>(bufferFactory.createAttachment(imageInfo, viewInfo, imageFormat));
+    auto cubeImage = mkU<Image>(bufferFactory.createAttachment(imageInfo, viewInfo, imageFormat));
 
     auto commandBuffer = commandPool.beginSingleCommand();
 
-    // copy the data from staging buffer into cubemap
-//    auto barrier = vk::ImageMemoryBarrier(
-//            vk::AccessFlags(),
-//            vk::AccessFlags(),
-//            vk::ImageLayout::eUndefined,
-//            vk::ImageLayout::eTransferDstOptimal,
-//            VK_QUEUE_FAMILY_IGNORED,
-//            VK_QUEUE_FAMILY_IGNORED,
-//            cubeMap->attachment->image,
-//            vk::ImageSubresourceRange(
-//                    vk::ImageAspectFlagBits::eColor,
-//                    0, tc.num_mips,
-//                    0, 6)
-//    );
-//
-//     commandBuffer.pipelineBarrier(sourceStage, destinationStage, vk::DependencyFlags(), nullptr, nullptr, barrier);
     Image::recordTransitionImageLayout(vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal,
                                        cubeImage->attachment->image, commandBuffer, tc.num_mips, 6);
 
@@ -150,35 +148,18 @@ void EnvironmentMap::create(BufferFactory &bufferFactory, CommandPool &commandPo
 
     commandPool.submitSingleTimeCommands(queueManager, {commandBuffer}, vkb::QueueType::graphics, true);
 
-    // make a sampler...
-//    vk::SamplerCreateInfo samplerInfo{
-//            vk::SamplerCreateFlags(),
-//            vk::Filter::eLinear,
-//            vk::Filter::eLinear,
-//            vk::SamplerMipmapMode::eLinear,
-//            vk::SamplerAddressMode::eClampToEdge,
-//            vk::SamplerAddressMode::eClampToEdge,
-//            vk::SamplerAddressMode::eClampToEdge,
-//            0.0f,
-//            VK_FALSE, // TODO: needs hardware support
-//            16,
-//            VK_FALSE,
-//            vk::CompareOp::eAlways,
-//            0.0f,
-//            0.0f,
-//            vk::BorderColor::eIntOpaqueBlack,
-//            VK_FALSE
-//    };
-//    cubeMap->attachment->sampler = bufferFactory.device.createSampler(samplerInfo);
-
-    cubeMap = mkU<Texture>(cubeImage.get());
+    auto cubeMap = mkU<Texture>(cubeImage.get());
     cubeMap->createSampler();
 
     // destroy the staging buffer
     stagingBuffer->destroy();
+
+    return {std::move(cubeImage), std::move(cubeMap)};
 }
 
 void EnvironmentMap::destroy()
 {
-    cubeMap->destroy();
+    cubeMap.texture->destroy();
+    irradianceMap.texture->destroy();
+    radianceMap.texture->destroy();
 }

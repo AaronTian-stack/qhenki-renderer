@@ -12,7 +12,7 @@ void InputProcesser::mouse_button_callback(GLFWwindow *window, int button, int a
     }
     if (button == GLFW_MOUSE_BUTTON_4 || button == GLFW_MOUSE_BUTTON_5)
     {
-        float adjust = button == GLFW_MOUSE_BUTTON_4 ? 5.0f : -5.0f;
+        float adjust = button == GLFW_MOUSE_BUTTON_4 ? SENSITIVITY_FOV : -SENSITIVITY_FOV;
         auto* cam = static_cast<Camera*>(glfwGetWindowUserPointer(window));
         if (cam)
         {

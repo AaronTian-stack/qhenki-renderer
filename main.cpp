@@ -6,13 +6,13 @@
 
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
 
-#include <iostream>
 #include "src/vulkanapp.h"
 
 Window window(1024, 768);
 
 int main()
 {
+    // if on macOS you will need to set MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS=1 in environment variables in run configuration
     VulkanApp app;
     app.create(window);
 

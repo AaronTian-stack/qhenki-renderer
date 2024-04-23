@@ -140,6 +140,7 @@ void UserInterface::render()
         ImGui::SliderFloat("Rotate Sensitivity", &InputProcesser::SENSITIVITY_ROTATE, 0.0f, 0.2f);
         ImGui::SliderFloat("Translate Sensitivity", &InputProcesser::SENSITIVITY_TRANSLATE, 0.0f, 0.2f);
         ImGui::SliderFloat("Zoom Sensitivity", &InputProcesser::SENSITIVITY_ZOOM, 0.0f, 0.2f);
+        ImGui::SliderFloat("FOV Sensitivity", &InputProcesser::SENSITIVITY_FOV, 0.0f, 20.0f);
         ImGui::End();
     }
 
