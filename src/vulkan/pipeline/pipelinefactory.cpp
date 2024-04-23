@@ -63,7 +63,9 @@ void PipelineBuilder::reset()
     pipelineLayoutInfo.pPushConstantRanges = pushConstants.data();
     pipelineLayoutInfo.pushConstantRangeCount = pushConstants.size();
 
-    bindingsMap.clear();
+//    bindingsMap.clear();
+//    bindingsMap.fill(std::nullopt);
+    bindingsMap.fill(SetLayout{});
     descriptorSetLayouts.clear();
     pipelineLayoutInfo.setLayoutCount = 0;
     pipelineLayoutInfo.pSetLayouts = nullptr;
@@ -153,10 +155,10 @@ void PipelineBuilder::updateDescriptorSetLayouts(DescriptorLayoutCache &layoutCa
     // loop over all sets and create the descriptor set layouts
     for (auto &set : bindingsMap)
     {
-        if (set.second.second) // already added to descriptor set layout
+        if (set.added || set.bindings.empty()) // already added to descriptor set layout
             continue;
-        set.second.second = true;
-        auto &list = set.second.first;
+        set.added = true;
+        auto &list = set.bindings;
         vk::DescriptorSetLayoutCreateInfo layoutInfo{};
         layoutInfo.bindingCount = list.size(); // bindings in descriptor set
         layoutInfo.pBindings = list.data();
@@ -212,7 +214,7 @@ void PipelineBuilder::parseVertexShader(const char *filePath, DescriptorLayoutCa
         uint32_t bindingNum = glsl.get_decoration(uniformBuffer.id, spv::DecorationBinding);
         uint32_t set = glsl.get_decoration(uniformBuffer.id, spv::DecorationDescriptorSet); // TODO: needs to keep track of all sets!
 
-        bindingsMap[set].first.emplace_back(bindingNum,
+        bindingsMap[set].bindings.emplace_back(bindingNum,
                                             vk::DescriptorType::eUniformBuffer,
                                             1, // number of values in array // TODO: get this via reflection
                                             vk::ShaderStageFlagBits::eVertex,
@@ -247,7 +249,7 @@ void PipelineBuilder::parseFragmentShader(const char *filePath, DescriptorLayout
             arrayLength = sizes[0];
         }
 
-        bindingsMap[set].first.emplace_back(bindingNum,
+        bindingsMap[set].bindings.emplace_back(bindingNum,
                                             vk::DescriptorType::eCombinedImageSampler,
                                             arrayLength, // number of values in array
                                             vk::ShaderStageFlagBits::eFragment,
@@ -269,7 +271,7 @@ void PipelineBuilder::parseFragmentShader(const char *filePath, DescriptorLayout
             arrayLength = sizes[0];
         }
 
-        bindingsMap[set].first.emplace_back(bindingNum,
+        bindingsMap[set].bindings.emplace_back(bindingNum,
                                             vk::DescriptorType::eInputAttachment,
                                             arrayLength, // number of values in array
                                             vk::ShaderStageFlagBits::eFragment,
@@ -350,6 +352,11 @@ vk::PipelineColorBlendStateCreateInfo &PipelineBuilder::getColorBlending()
     return colorBlending;
 }
 
+vk::PipelineDepthStencilStateCreateInfo &PipelineBuilder::getDepthStencil()
+{
+    return depthStencil;
+}
+
 void PipelineBuilder::addDefaultColorBlendAttachment(int count)
 {
     colorBlending.logicOpEnable = VK_FALSE;
@@ -377,4 +384,3 @@ void PipelineBuilder::addDefaultColorBlendAttachment(int count)
     colorBlending.attachmentCount = colorBlendAttachments.size();
     colorBlending.pAttachments = colorBlendAttachments.data();
 }
-

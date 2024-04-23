@@ -17,4 +17,5 @@ struct Material
     alignas(4) float occlusionStrength;
 
     alignas(4) int emissiveTexture;
+    alignas(16) glm::vec4 emissiveFactor;
 };

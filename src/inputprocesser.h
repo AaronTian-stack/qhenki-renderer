@@ -27,5 +27,6 @@ public:
     static void setUserPointer(void *ptr);
 
     inline static float SENSITIVITY_ROTATE = 0.05f;
-    inline static float SENSITIVITY_TRANSLATE = 0.0025f;
+    inline static float SENSITIVITY_TRANSLATE = 0.01f;
+    inline static float SENSITIVITY_ZOOM = 0.1f;
 };

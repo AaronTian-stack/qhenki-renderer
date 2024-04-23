@@ -6,11 +6,8 @@
 
 struct CameraOptions
 {
-    float fov = 45.0f;
     float nearClip = 0.1f;
     float farClip = 1000.0f;
-    float speed{};
-    float zoom{};
 };
 
 struct CameraFields
@@ -20,6 +17,7 @@ struct CameraFields
     float theta;
     float phi = 90.f;
     float targetDistance = 2.f;
+    float fov = 45.0f;
 };
 
 class Camera
@@ -35,8 +33,10 @@ public:
     Camera(CameraOptions options = CameraOptions());
     void update();
     void zoom(float yOffset);
+    void adjustFOV(float offset);
     void lerp(float delta);
 
+    float getFOV() const;
     glm::mat4 getViewMatrix() const;
     glm::vec3 getPosition() const;
     glm::vec4 getForwardVector() const;

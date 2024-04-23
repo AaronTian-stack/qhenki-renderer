@@ -15,7 +15,6 @@ void Mesh::destroy()
 void Mesh::draw(vk::CommandBuffer commandBuffer)
 {
     std::vector<Buffer*> buffers;
-    // TODO: need to bind in right order
 
     // sort vertex buffers by type
     std::sort(vertexBuffers.begin(), vertexBuffers.end(), [](const auto &a, const auto &b) {

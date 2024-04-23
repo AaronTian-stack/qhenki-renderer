@@ -30,3 +30,9 @@
 *.exe
 *.out
 *.app
+
+# compiled shaders
+*.spv
+
+# glb files I add
+*.glb

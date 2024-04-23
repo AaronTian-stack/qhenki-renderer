@@ -22,7 +22,7 @@ void Camera::update()
         auto offset = InputProcesser::deltaMouse * InputProcesser::SENSITIVITY_ROTATE;
         regular.theta += offset.x;
         regular.phi += offset.y;
-        regular.phi = glm::clamp(regular.phi, 0.f, 180.0f);
+        regular.phi = glm::clamp(regular.phi, 1.f, 179.0f);
     }
     if (InputProcesser::mouseButtons[GLFW_MOUSE_BUTTON_RIGHT])
     {
@@ -35,7 +35,7 @@ void Camera::update()
 
 void Camera::zoom(float yOffset)
 {
-    regular.targetDistance -= yOffset * 0.2f;
+    regular.targetDistance -= yOffset * InputProcesser::SENSITIVITY_ZOOM;
     regular.targetDistance = glm::clamp(regular.targetDistance, 1.0f, 100.0f);
     if (regular.targetDistance <= 1.0f)
     {
@@ -59,6 +59,8 @@ void Camera::lerp(float delta)
     smooth.targetDistance = glm::mix(smooth.targetDistance, regular.targetDistance, a);
 
     smooth.position = sphericalToCartesian(smooth.theta, smooth.phi, smooth.targetDistance) + smooth.target;
+
+    smooth.fov = glm::mix(smooth.fov, regular.fov, a);
 }
 
 glm::vec3 Camera::getPosition() const
@@ -94,6 +96,17 @@ void Camera::simpleReset()
 glm::vec4 Camera::getForwardVector() const
 {
     return {smooth.target - smooth.position, 1.0f};
+}
+
+void Camera::adjustFOV(float offset)
+{
+    regular.fov += offset;
+    regular.fov = glm::clamp(regular.fov, 1.0f, 179.0f);
+}
+
+float Camera::getFOV() const
+{
+    return smooth.fov;
 }
 
 glm::vec3 sphericalToCartesian(float theta, float phi, float radius)

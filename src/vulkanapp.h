@@ -19,14 +19,18 @@
 #include "camera.h"
 #include "inputprocesser.h"
 #include "vulkan/renderpass/renderpassbuilder.h"
+#include "vulkan/texture/envmap.h"
+#include "vulkan/attachments/gbuffer.h"
 #include <atomic>
+#include <mutex>
 
 class VulkanApp
 {
 private:
+    EnvironmentMap envMap;
     std::vector<uPtr<Model>> models;
 
-    uPtr<FrameBuffer> gBuffer;
+    uPtr<GBuffer> gBuffer;
     sPtr<FrameBufferAttachment> depthBuffer;
 
     GLTFLoader gltfLoad;
@@ -37,16 +41,15 @@ private:
     RenderPassBuilder renderPassBuilder;
     uPtr<RenderPass> displayRenderPass;
     uPtr<RenderPass> offscreenRenderPass;
-
     PipelineBuilder pipelineFactory;
 
-    uPtr<Pipeline> gBufferPipeline, lightingPipeline, postProcessPipeline;
+    uPtr<Pipeline> gBufferPipeline, lightingPipeline, postProcessPipeline, cubeMapPipeline;
 
-    uPtr<Shader> gBufferShader, lightingShader, postProcessShader;
+    uPtr<Shader> gBufferShader, lightingShader, postProcessShader, cubeMapShader;
 
-    std::atomic<bool> readyToRender;
-    CommandPool graphicsCommandPool; // one pool per thread
-    CommandPool transferCommandPool;
+    std::mutex modelMutex;
+    uPtr<CommandPool> graphicsCommandPool; // one pool per thread
+    uPtr<CommandPool> transferCommandPool;
     Syncer syncer;
 
     int currentFrame = 0;

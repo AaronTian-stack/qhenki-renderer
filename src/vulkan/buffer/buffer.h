@@ -23,6 +23,7 @@ public:
     Buffer(vk::Buffer buffer, vk::BufferCreateInfo info, VmaAllocation allocation, VmaAllocator allocator, bool persistent);
 
     void fill(const void *data);
+    void fill(const void *data, unsigned int offset, vk::DeviceSize size);
     void copyTo(Buffer &destination, QueueManager &queueManager, CommandPool &commandPool);
 
     void bind(vk::CommandBuffer commandBuffer, int binding = 0);

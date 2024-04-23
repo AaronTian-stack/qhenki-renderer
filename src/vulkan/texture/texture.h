@@ -9,7 +9,7 @@ class Texture : public Destroyable
     Image *image;
 
 public:
-    Texture(Image *image);
+    explicit Texture(Image *image);
     void createSampler();
     void createSampler(vk::SamplerCreateInfo samplerInfo);
     vk::DescriptorImageInfo getDescriptorInfo();

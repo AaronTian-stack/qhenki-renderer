@@ -18,7 +18,10 @@ public:
     FrameBufferAttachment(vk::Image image, vk::ImageView imageView, vk::Format format);
     FrameBufferAttachment(vk::Device device, VmaAllocator allocator, VmaAllocation allocation,
                           vk::Image image, vk::ImageView imageView, vk::Format format);
+    void createGenericSampler(vk::Filter filter, vk::SamplerMipmapMode mipmapMode);
     void createGenericSampler();
     vk::DescriptorImageInfo getDescriptorInfo();
     void destroy() override;
+
+    friend class Image;
 };

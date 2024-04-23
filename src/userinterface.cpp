@@ -7,6 +7,7 @@
 #include "inputprocesser.h"
 #include <iostream>
 #include "ImGuiFileDialog-0.6.7/ImGuiFileDialog.h"
+#include "models/gltfloader.h"
 
 UserInterface::UserInterface() {}
 
@@ -26,8 +27,11 @@ void UserInterface::create(ImGuiCreateParameters param, CommandPool commandPool)
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO();
-    if (std::filesystem::exists("Roboto-Medium.ttf"))
-        io.Fonts->AddFontFromFileTTF("Roboto-Medium.ttf", 16);
+    const char* path = "../resources/fonts/Roboto-Medium.ttf";
+    if (std::filesystem::exists(path))
+        io.Fonts->AddFontFromFileTTF(path, 16);
+    else
+        std::cerr << "Could not find font" << std::endl;
     io.ConfigWindowsMoveFromTitleBarOnly = true;
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
 
@@ -133,8 +137,9 @@ void UserInterface::render()
     if (cameraOptionsOpen)
     {
         ImGui::Begin("Camera Options", &cameraOptionsOpen, ImGuiWindowFlags_AlwaysAutoResize);
-        ImGui::SliderFloat("Rotate Sensitivity", &InputProcesser::SENSITIVITY_ROTATE, 0.0f, 0.5f);
-        ImGui::SliderFloat("Translate Sensitivity", &InputProcesser::SENSITIVITY_TRANSLATE, 0.0f, 0.5f);
+        ImGui::SliderFloat("Rotate Sensitivity", &InputProcesser::SENSITIVITY_ROTATE, 0.0f, 0.2f);
+        ImGui::SliderFloat("Translate Sensitivity", &InputProcesser::SENSITIVITY_TRANSLATE, 0.0f, 0.2f);
+        ImGui::SliderFloat("Zoom Sensitivity", &InputProcesser::SENSITIVITY_ZOOM, 0.0f, 0.2f);
         ImGui::End();
     }
 
@@ -143,7 +148,7 @@ void UserInterface::render()
     ImGui::SetNextWindowPos(ImVec2(ImGui::GetIO().DisplaySize.x, y), 0, ImVec2(1.0f, 0));
     ImGui::Begin("Visual Options", nullptr, flags);
     if (ImGui::Combo("Shader", &currentShaderIndex,
-                     "PBR\0"))
+                     "FXAA\0"))
     {
 
     }
@@ -180,13 +185,44 @@ void UserInterface::renderMenuBar()
 
         if (ImGui::MenuItem("Load Model"))
         {
-            IGFD::FileDialogConfig config;config.path = ".";
+            IGFD::FileDialogConfig config;config.path = "../resources/gltf/";
             ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose File", ".gltf,.glb", config);
         }
 
-        // hack to get the menu to the right
-        ImGui::SameLine(ImGui::GetWindowWidth() - 120);
-        ImGui::Text("Aaron Tian 2024");
+        auto status = GLTFLoader::getLoadStatus();
+
+        ImVec4 textColor;
+        std::string statusText = "Status: ";
+        switch(status)
+        {
+            case LoadStatus::READY:
+                statusText += "Ready";
+                textColor = ImVec4(0.0f, 1.0f, 0.0f, 1.0f);
+                break;
+            case LoadStatus::PARSING:
+                statusText += "Parsing File...";
+                textColor = ImVec4(1.0f, 1.0f, 0.0f, 1.0f);
+                break;
+            case LoadStatus::LOADING:
+                statusText += "Loading Nodes, Materials...";
+                textColor = ImVec4(1.0f, 1.0f, 0.0f, 1.0f);
+                break;
+            case LoadStatus::LOADED_MAT_TEX:
+                statusText += "Loading Nodes...";
+                textColor = ImVec4(1.0f, 0.0f, 1.0f, 1.0f);
+                break;
+            case LoadStatus::LOADED_NODE:
+                statusText += "Loading Materials and Textures...";
+                textColor = ImVec4(1.0f, 0.0f, 0.0f, 1.0f);
+                break;
+        }
+
+        auto cString = statusText.c_str();
+        ImGui::TextColored(textColor, cString);
+
+        const char* name = "Aaron Tian 2024";
+        ImGui::SameLine(ImGui::GetWindowWidth() - ImGui::CalcTextSize(name).x - 15);
+        ImGui::Text(name);
         ImGui::EndMainMenuBar();
     }
 
@@ -208,8 +244,12 @@ void UserInterface::renderMenuBar()
 
     if (ImGui::BeginPopup("instruction_popup"))
     {
-        ImGui::Text("lorem ipsum");
-        ImGui::BulletText("todo");
+        ImGui::Text("Instructions:");
+        ImGui::BulletText("Mouse 1: Rotate Camera");
+        ImGui::BulletText("Mouse 2: Translate Camera");
+        ImGui::BulletText("Scroll Wheel: Zoom Camera");
+        ImGui::BulletText("Mouse 4: Increase FOV");
+        ImGui::BulletText("Mouse 5: Decrease FOV");
         ImGui::EndPopup();
     }
     ImGui::End();

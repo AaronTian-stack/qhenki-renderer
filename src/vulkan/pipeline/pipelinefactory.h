@@ -11,6 +11,12 @@
 #include <iostream>
 #include "glm/glm.hpp"
 
+struct SetLayout
+{
+    std::vector<vk::DescriptorSetLayoutBinding> bindings;
+    bool added;
+};
+
 class PipelineBuilder : public Destroyable
 {
 private:
@@ -26,11 +32,11 @@ private:
     vk::PipelineViewportStateCreateInfo viewportState{};
     vk::PipelineRasterizationStateCreateInfo rasterizer{};
     vk::PipelineMultisampleStateCreateInfo multisampling{};
-    vk::PipelineDepthStencilStateCreateInfo depthStencil{}; // not used right now
+    vk::PipelineDepthStencilStateCreateInfo depthStencil{};
     std::vector<vk::PipelineColorBlendAttachmentState> colorBlendAttachments; // you would make one of these for each attachment (specified in render pass)
     vk::PipelineColorBlendStateCreateInfo colorBlending{};
 
-    std::unordered_map<uint32_t, std::pair<std::vector<vk::DescriptorSetLayoutBinding>, bool>> bindingsMap;
+    std::array<SetLayout, 4> bindingsMap;
     std::vector<vk::DescriptorSetLayout> descriptorSetLayouts;
 
     vk::PipelineLayoutCreateInfo pipelineLayoutInfo{}; // TODO: add way to change this
@@ -65,6 +71,7 @@ public:
 
     vk::PipelineRasterizationStateCreateInfo& getRasterizer();
     vk::PipelineColorBlendStateCreateInfo& getColorBlending();
+    vk::PipelineDepthStencilStateCreateInfo& getDepthStencil();
 
     void reset();
 

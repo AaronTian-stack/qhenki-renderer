@@ -8,25 +8,7 @@
 #include "gltfloader.h"
 #include "glm/vec3.hpp"
 #include <glm/gtx/matrix_decompose.hpp>
-
-void GLTFLoader::benchmarkTest(const char* filename)
-{
-    tinygltf::TinyGLTF loader;
-    tinygltf::Model gltfModel;
-    std::string err;
-    std::string warn;
-
-    bool ret = false;
-    // check extension of filename
-    std::string ext = filename;
-    ext = ext.substr(ext.find_last_of('.') + 1);
-    if (ext == "gltf")
-        ret = loader.LoadASCIIFromFile(&gltfModel, &err, &warn, filename);
-    else if (ext == "glb")
-        ret = loader.LoadBinaryFromFile(&gltfModel, &err, &warn, filename);
-    else
-        throw std::runtime_error("Invalid file extension");
-}
+#include <thread>
 
 uPtr<Model> GLTFLoader::create(CommandPool &commandPool, QueueManager &queueManager, BufferFactory &bufferFactory, const char* filename)
 {
@@ -35,6 +17,7 @@ uPtr<Model> GLTFLoader::create(CommandPool &commandPool, QueueManager &queueMana
     std::string err;
     std::string warn;
 
+    loadStatus.store(LoadStatus::PARSING);
     bool ret = false;
     // check extension of filename
     std::string ext = filename;
@@ -64,8 +47,33 @@ uPtr<Model> GLTFLoader::create(CommandPool &commandPool, QueueManager &queueMana
 
     int rootNodeIndex = gltfModel.scenes[gltfModel.defaultScene].nodes[0];
 
-    makeMaterialsAndTextures(commandPool, queueManager, bufferFactory, gltfModel, model.get());
-    processNode(bufferFactory, gltfModel, model.get(), nullptr, rootNodeIndex);
+    auto loadMaterials = [&]()
+    {
+        makeMaterialsAndTextures(commandPool, queueManager, bufferFactory, gltfModel, model.get());
+        loadStatus.store(LoadStatus::LOADED_MAT_TEX);
+    };
+
+    auto processNodes = [&]()
+    {
+        processNode(bufferFactory, gltfModel, model.get(), nullptr, rootNodeIndex);
+        loadStatus.store(LoadStatus::LOADED_NODE);
+    };
+
+    std::thread matThread(loadMaterials);
+    std::thread nodeThread(processNodes);
+
+    matThread.join();
+    nodeThread.join();
+
+    for (auto &mesh : model->meshes)
+    {
+        mesh->material = &model->materials[mesh->materialIndex];
+    }
+
+//    makeMaterialsAndTextures(commandPool, queueManager, bufferFactory, gltfModel, model.get());
+//    loadStatus.store(LoadStatus::LOADED_MAT_TEX);
+//    processNode(bufferFactory, gltfModel, model.get(), nullptr, rootNodeIndex);
+//    loadStatus.store(LoadStatus::LOADED_NODE);
 
     return model;
 }
@@ -153,14 +161,27 @@ void GLTFLoader::processNode(BufferFactory &bufferFactory, tinygltf::Model &gltf
                 auto vBuffer = getBuffer(bufferFactory, gltfModel, primitive.attributes.at(type.first), vk::BufferUsageFlagBits::eVertexBuffer, vertexSize);
                 mesh->vertexBuffers.emplace_back(std::move(vBuffer), type.second);
             }
+            if (primitive.attributes.count("TANGENT") == 0)
+            {
+                std::cerr << "[incorrect] Tangent vectors manually generated!" << std::endl;
+                // no tangent vectors, need to manually create them
+                // TODO: this is wrong!!
+                mesh->vertexBuffers.emplace_back(
+                        createTangentVectors(bufferFactory, gltfModel,
+                                             primitive.attributes.at("POSITION"),
+                                             primitive.attributes.at("TEXCOORD_0"),
+                                             vk::BufferUsageFlagBits::eVertexBuffer), VertexBufferType::TANGENT);
+            }
+
 
             // extract index data
             mesh->indexBuffer = getBuffer(bufferFactory, gltfModel, primitive.indices, vk::BufferUsageFlagBits::eIndexBuffer, 0);
 
             mesh->material = &model->materials[primitive.material];
+            mesh->materialIndex = primitive.material;
 
             model->meshes.push_back(std::move(mesh));
-            node->mesh = model->meshes.back().get();
+            node->meshes.push_back(model->meshes.back().get());
         }
     }
 
@@ -243,17 +264,25 @@ void GLTFLoader::makeMaterialsAndTextures(CommandPool &commandPool, QueueManager
         stagingBuffers.push_back(std::move(deferredImage.stagingBufferToDestroy));
         model->images.push_back(std::move(imageTexture));
     }
-    // submit as a async batch to make it smoother
-    commandPool.submitSingleTimeCommands(queueManager, commandBuffers, vkb::QueueType::transfer, true);
-
-    for (auto &buffer : stagingBuffers)
-        buffer->destroy();
 
     for (int i = 0; i < gltfModel.textures.size(); i++)
     {
         const tinygltf::Texture &texture = gltfModel.textures[i];
         // a texture is an image and a sampler
-        const tinygltf::Sampler &sampler = gltfModel.samplers[texture.sampler];
+        tinygltf::Sampler sampler;
+
+        if (texture.sampler != -1)
+        {
+            sampler = gltfModel.samplers[texture.sampler];
+        }
+        else
+        {
+            sampler.minFilter = TINYGLTF_TEXTURE_FILTER_LINEAR;
+            sampler.magFilter = TINYGLTF_TEXTURE_FILTER_LINEAR;
+            sampler.wrapS = TINYGLTF_TEXTURE_WRAP_REPEAT;
+            sampler.wrapT = TINYGLTF_TEXTURE_WRAP_REPEAT;
+        }
+
         vk::SamplerCreateInfo samplerInfo{};
         switch(sampler.magFilter)
         {
@@ -329,8 +358,77 @@ void GLTFLoader::makeMaterialsAndTextures(CommandPool &commandPool, QueueManager
         material.occlusionStrength = mat.occlusionTexture.strength;
 
         material.emissiveTexture = mat.emissiveTexture.index;
+        material.emissiveFactor = glm::vec4(mat.emissiveFactor[0], mat.emissiveFactor[1], mat.emissiveFactor[2], 1.0f);
 
         model->materials.push_back(material);
     }
 
+    // submit as an async batch to make it smoother
+    // note: cannot submit to same queue on different threads
+//    std::lock_guard lock(mutex);
+// TODO: if using two different queue families, it needs to be transferred. but validation is not complaining?
+    commandPool.submitSingleTimeCommands(queueManager, commandBuffers, commandPool.queueType, true);
+
+    for (auto &buffer : stagingBuffers)
+        buffer->destroy();
+}
+
+uPtr<Buffer> GLTFLoader::createTangentVectors(BufferFactory &bufferFactory, tinygltf::Model &gltfModel, int verticesType,
+                                              int uvType, vk::BufferUsageFlagBits flag)
+{
+    const tinygltf::Accessor &vAccessor = gltfModel.accessors[verticesType];
+    const tinygltf::BufferView &vBufferView = gltfModel.bufferViews[vAccessor.bufferView];
+    const tinygltf::Buffer &vBuffer = gltfModel.buffers[vBufferView.buffer];
+    const auto* positions = reinterpret_cast<const glm::vec3*>(&vBuffer.data[vBufferView.byteOffset + vAccessor.byteOffset]);
+
+    const tinygltf::Accessor &uvAccessor = gltfModel.accessors[uvType];
+    const tinygltf::BufferView &uvBufferView = gltfModel.bufferViews[uvAccessor.bufferView];
+    const tinygltf::Buffer &uvBuffer = gltfModel.buffers[uvBufferView.buffer];
+    const auto* uvs = reinterpret_cast<const glm::vec2*>(&uvBuffer.data[uvBufferView.byteOffset + uvAccessor.byteOffset]);
+
+    size_t count = vAccessor.count;
+    if (vAccessor.count != uvAccessor.count)
+    {
+        std::cerr << "Vertex count " << vAccessor.count << " does not match UV count " << uvAccessor.count << std::endl;
+    }
+
+    auto buffer = bufferFactory.createBuffer(count * sizeof(glm::vec3), flag,
+                                              VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
+    std::vector<glm::vec3> tangents(count);
+    for (size_t i = 0; i < count; ++i)
+    {
+        // TODO: this is wrong!
+
+        glm::vec3 v0 = positions[i+0];
+        glm::vec3 v1 = positions[i+1];
+        glm::vec3 v2 = positions[i+2];
+
+        glm::vec2 uv0 = glm::clamp(uvs[i+0], glm::vec2(0.0f), glm::vec2(1.0f));
+        glm::vec2 uv1 = glm::clamp(uvs[i+1], glm::vec2(0.0f), glm::vec2(1.0f));
+        glm::vec2 uv2 = glm::clamp(uvs[i+2], glm::vec2(0.0f), glm::vec2(1.0f));
+
+        glm::vec3 deltaPos1 = v1 - v0;
+        glm::vec3 deltaPos2 = v2 - v0;
+
+        // UV delta
+        glm::vec2 deltaUV1 = uv1 - uv0;
+        glm::vec2 deltaUV2 = uv2 - uv0;
+
+        float r = 1.0f / (deltaUV1.x * deltaUV2.y - deltaUV1.y * deltaUV2.x);
+        glm::vec3 tangent = (deltaPos1 * deltaUV2.y   - deltaPos2 * deltaUV1.y)*r;
+        tangents[i] = tangent;
+    }
+
+    buffer->fill(tangents.data());
+    return buffer;
+}
+
+LoadStatus GLTFLoader::getLoadStatus()
+{
+    return loadStatus.load();
+}
+
+void GLTFLoader::setLoadStatus(LoadStatus status)
+{
+    loadStatus.store(status);
 }

@@ -17,8 +17,8 @@ private:
 
 public:
 
-    void addColorAttachment(vk::Format format);
-    void addDepthAttachment(vk::Format format);
+    void addColorAttachment(vk::Format format, vk::AttachmentLoadOp loadOp = vk::AttachmentLoadOp::eClear);
+    void addDepthAttachment(vk::Format format, vk::AttachmentLoadOp loadOp = vk::AttachmentLoadOp::eClear);
 
     void addSubPass(const std::vector<uint32_t> &inputIndices,
                     const std::vector<vk::ImageLayout> &inputLayouts,
@@ -26,6 +26,7 @@ public:
                     const std::vector<vk::ImageLayout> &outputLayouts,
                     int depthIndex = -1);
     void addColorDependency(int srcSubpass, int dstSubpass);
+    void addDepthDependency(int srcSubpass, int dstSubpass);
 
     uPtr<RenderPass> buildRenderPass();
     void reset();
