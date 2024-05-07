@@ -31,7 +31,7 @@ private:
     std::vector<uPtr<Model>> models;
 
     uPtr<GBuffer> gBuffer;
-    sPtr<FrameBufferAttachment> depthBuffer;
+    sPtr<Attachment> depthBuffer;
 
     GLTFLoader gltfLoad;
     BufferFactory bufferFactory;

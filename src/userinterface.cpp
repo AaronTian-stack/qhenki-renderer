@@ -83,8 +83,7 @@ void UserInterface::create(ImGuiCreateParameters param, CommandPool commandPool)
     auto commandBuffer = commandPool.beginSingleCommand();
     ImGui_ImplVulkan_CreateFontsTexture(commandBuffer);
     commandBuffer.end();
-    commandPool.submitSingleTimeCommands(param.context->queueManager, {commandBuffer},
-                                         vkb::QueueType::graphics, true);
+    commandPool.submitSingleTimeCommands(param.context->queueManager, {commandBuffer}, true);
 }
 
 void UserInterface::destroy()

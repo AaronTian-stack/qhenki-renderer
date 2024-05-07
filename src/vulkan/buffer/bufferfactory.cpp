@@ -75,7 +75,7 @@ vk::ImageViewCreateInfo BufferFactory::imageViewInfo(vk::Image image, vk::Format
     return info;
 }
 
-sPtr<FrameBufferAttachment> BufferFactory::createAttachment(vk::ImageCreateInfo imageCreateInfo, vk::ImageViewCreateInfo imageViewCreateInfo, vk::Format format)
+sPtr<Attachment> BufferFactory::createAttachment(vk::ImageCreateInfo imageCreateInfo, vk::ImageViewCreateInfo imageViewCreateInfo, vk::Format format)
 {
     vk::Image image;
     VmaAllocationCreateInfo allocationCreateInfo{};
@@ -89,10 +89,10 @@ sPtr<FrameBufferAttachment> BufferFactory::createAttachment(vk::ImageCreateInfo 
     if (result != vk::Result::eSuccess)
         throw std::runtime_error("failed to create image view");
 
-    return mkS<FrameBufferAttachment>(device, allocator, allocation, image, imageView, format);
+    return mkS<Attachment>(device, allocator, allocation, image, imageView, format);
 }
 
-sPtr<FrameBufferAttachment> BufferFactory::createAttachment(
+sPtr<Attachment> BufferFactory::createAttachment(
     vk::Format format, vk::Extent3D extent,
     vk::ImageUsageFlags imageUsage, vk::ImageAspectFlags aspectFlags)
 {
@@ -114,7 +114,7 @@ sPtr<FrameBufferAttachment> BufferFactory::createAttachment(
     if (result != vk::Result::eSuccess)
         throw std::runtime_error("failed to create image view");
 
-    return mkS<FrameBufferAttachment>(device, allocator, allocation, image, imageView, format);
+    return mkS<Attachment>(device, allocator, allocation, image, imageView, format);
 }
 
 DeferredImage BufferFactory::createTextureImageDeferred(
@@ -174,7 +174,7 @@ uPtr<Image> BufferFactory::createTextureImage(CommandPool &commandPool, QueueMan
     auto commandBuffer = deferredImage.cmd;
     auto stagingBuffer = std::move(deferredImage.stagingBufferToDestroy);
 
-    commandPool.submitSingleTimeCommands(queueManager, {commandBuffer}, vkb::QueueType::graphics, true);
+    commandPool.submitSingleTimeCommands(queueManager, {commandBuffer}, true);
 
     stagingBuffer->destroy();
 

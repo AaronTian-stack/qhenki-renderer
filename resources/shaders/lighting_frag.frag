@@ -6,9 +6,11 @@ layout (input_attachment_index = 2, set = 1, binding = 2) uniform subpassInput i
 layout (input_attachment_index = 3, set = 1, binding = 3) uniform subpassInput inputEmissive;
 layout (input_attachment_index = 4, set = 1, binding = 4) uniform subpassInput depthBuffer;
 
-// 0 is regular, 1 is irradiance, 2 is radiance
 // radiance is the one with mip levels
-layout(set = 2, binding = 0) uniform samplerCube cubeMaps[3];
+layout(set = 2, binding = 0) uniform samplerCube cubeMaps;
+layout(set = 2, binding = 1) uniform samplerCube irradianceMap;
+layout(set = 2, binding = 2) uniform samplerCube radianceMap;
+layout(set = 2, binding = 3) uniform sampler2D   brdfLUT;
 
 layout(location = 0) in vec2 fragUV;
 layout(location = 1) in vec4 cameraPos;
@@ -126,13 +128,31 @@ vec3 closestPointSphere(SphereLight light, vec3 R, vec3 fragPos)
     return closestPoint;
 }
 
-vec3 calculateIBL(vec3 N, vec3 V, vec3 F0, Material material)
+vec3 calculateIBL(vec3 N, vec3 V, vec3 R, vec3 F0, Material material)
 {
-    vec3 kS = fresnelSchlickRoughness(max(dot(N, V), 0.0), F0, material.roughness);
-    vec3 kD = 1.0 - kS;
-    vec3 irradiance = texture(cubeMaps[1], N).rgb;
+//    float nvDOT = max(dot(N, V), 0.0);
+//    vec3 kS = fresnelSchlickRoughness(nvDOT, F0, material.roughness);
+//    vec3 kD = 1.0 - kS;
+//    vec3 irradiance = texture(irradianceMap, N).rgb;
+//    vec3 diffuse    = irradiance * material.albedo;
+//
+//    vec3 ambient    = (kD * diffuse) * material.ao;
+//    return ambient;
+    float nvDOT = max(dot(N, V), 0.0);
+    vec3 F = fresnelSchlickRoughness(nvDOT, F0, material.roughness);
+
+    vec3 kD = 1.0 - F;
+    kD *= 1.0 - material.metallic;
+
+    vec3 irradiance = texture(irradianceMap, N).rgb;
     vec3 diffuse    = irradiance * material.albedo;
-    vec3 ambient    = (kD * diffuse) * material.ao;
+
+    float MAX_REFLECTION_LOD = textureQueryLevels(radianceMap);
+    vec3 prefilteredColor = textureLod(radianceMap, R,  material.roughness * MAX_REFLECTION_LOD).rgb;
+    vec2 envBRDF  = texture(brdfLUT, vec2(nvDOT, material.roughness)).rg;
+    vec3 specular = prefilteredColor * (F * envBRDF.x + envBRDF.y);
+
+    vec3 ambient = (kD * diffuse + specular) * material.ao;
     return ambient;
 }
 
@@ -166,18 +186,18 @@ void main()
     vec3 normal = normalTexture * 2.0 - 1.0; // transform from [0, 1] to [-1, 1]
     vec3 N = normalize(normal);
     vec3 V = normalize(cameraPos.xyz - position.xyz);
+    vec3 R = reflect(-V, N); // reflection vector
 
     vec3 F0 = mix(vec3(0.04), albedo.rgb, metallic);
 
     Material material = Material(albedo.rgb, metallic, roughness, ao);
 
     vec3 Lo = vec3(0.0);
-    for(int i = 0; i < 1; ++i)
-    {
-        vec3 R = reflect(-V, N);
-        Light light = Light(closestPointSphere(sphereLights[i], R, position.xyz), sphereLights[i].color.rgb, sphereLights[i].color.a);
-        calculateForLight(Lo, light, N, V, material, position.xyz);
-    }
+//    for(int i = 0; i < 1; ++i)
+//    {
+//        Light light = Light(closestPointSphere(sphereLights[i], R, position.xyz), sphereLights[i].color.rgb, sphereLights[i].color.a);
+//        calculateForLight(Lo, light, N, V, material, position.xyz);
+//    }
 //    for(int i = 0; i < 1; ++i)
 //    {
 //        Light light = Light(pointLights[i].position.xyz, pointLights[i].color.rgb, pointLights[i].color.a);
@@ -185,7 +205,7 @@ void main()
 //    }
 
 //    vec3 ambient = vec3(0.03) * albedo.rgb * ao;
-    vec3 ambient = calculateIBL(N, V, F0, material);
+    vec3 ambient = calculateIBL(N, V, R, F0, material);
     vec3 color = ambient + Lo + emissive.rgb;
 
     // TODO: move tonemapping to post process shader. this output is stored in 16f

@@ -1,4 +1,5 @@
 #include "envmap.h"
+#include "gltf/stb_image.h"
 
 #include <fstream>
 #include <vector>
@@ -16,12 +17,39 @@ void EnvironmentMap::create(BufferFactory &bufferFactory, CommandPool &commandPo
     std::string irradiance = rawPath + std::string("_irradiance.dds");
     std::string radiance = rawPath + std::string("_radiance.dds");
 
-    cubeMap = createCubeMap(bufferFactory, commandPool, queueManager, path);
-    irradianceMap = createCubeMap(bufferFactory, commandPool, queueManager, irradiance.c_str());
-    radianceMap = createCubeMap(bufferFactory, commandPool, queueManager, radiance.c_str());
+    std::vector<vk::CommandBuffer> commandBuffers(3);
+    cubeMap = createCubeMap(&commandBuffers[0], bufferFactory, commandPool, queueManager, path);
+    irradianceMap = createCubeMap(&commandBuffers[1], bufferFactory, commandPool, queueManager, irradiance.c_str());
+    radianceMap = createCubeMap(&commandBuffers[2], bufferFactory, commandPool, queueManager, radiance.c_str());
+
+    // BRDF LUT
+    int width, height, channels;
+    stbi_uc *data = stbi_load("../resources/envmaps/brdf_lut.png", &width, &height, &channels, STBI_rgb_alpha);
+    auto defer = bufferFactory.createTextureImageDeferred(
+            commandPool, vk::Format::eR8G8B8A8Unorm,
+      {static_cast<uint32_t>(width),static_cast<uint32_t>(height), 1},
+      vk::ImageUsageFlagBits::eTransferDst |
+            vk::ImageUsageFlagBits::eSampled,
+            vk::ImageAspectFlagBits::eColor,
+            data);
+    brdfLUT.image = std::move(defer.image);
+    brdfLUT.texture = mkU<Texture>(brdfLUT.image.get());
+    brdfLUT.texture->createSampler();
+
+    commandBuffers.push_back(defer.cmd);
+
+    commandPool.submitSingleTimeCommands(queueManager, commandBuffers, true);
+
+    for (auto &stagingBuffer : stagingBuffers)
+    {
+        stagingBuffer->destroy();
+    }
+    defer.stagingBufferToDestroy->destroy();
+
+    stagingBuffers.clear();
 }
 
-CubeMap EnvironmentMap::createCubeMap(BufferFactory &bufferFactory, CommandPool &commandPool, QueueManager &queueManager, const char *path)
+ImageTexture EnvironmentMap::createCubeMap(vk::CommandBuffer *commandBuffer, BufferFactory &bufferFactory, CommandPool &commandPool, QueueManager &queueManager, const char *path)
 {
     // read the file
     std::ifstream file(path, std::ios::binary);
@@ -72,10 +100,10 @@ CubeMap EnvironmentMap::createCubeMap(BufferFactory &bufferFactory, CommandPool 
     case DDSKTX_FORMAT_RGBA16F: // should be radiance map
         imageFormat = vk::Format::eR16G16B16A16Sfloat;
         break;
-    case DDSKTX_FORMAT_RGBA8: // should be irradiance map
+    case DDSKTX_FORMAT_RGBA8:
         imageFormat = vk::Format::eR8G8B8A8Unorm;
         break;
-    case DDSKTX_FORMAT_BGRA8: // should be irradiance map
+    case DDSKTX_FORMAT_BGRA8:
         imageFormat = vk::Format::eB8G8R8A8Unorm;
         break;
     default:
@@ -109,10 +137,10 @@ CubeMap EnvironmentMap::createCubeMap(BufferFactory &bufferFactory, CommandPool 
 
     auto cubeImage = mkU<Image>(bufferFactory.createAttachment(imageInfo, viewInfo, imageFormat));
 
-    auto commandBuffer = commandPool.beginSingleCommand();
+    *commandBuffer = commandPool.beginSingleCommand();
 
     Image::recordTransitionImageLayout(vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal,
-                                       cubeImage->attachment->image, commandBuffer, tc.num_mips, 6);
+                                       cubeImage->attachment->image, *commandBuffer, tc.num_mips, 6);
 
     std::vector<vk::BufferImageCopy> regions;
 
@@ -138,21 +166,18 @@ CubeMap EnvironmentMap::createCubeMap(BufferFactory &bufferFactory, CommandPool 
         }
     }
 
-    commandBuffer.copyBufferToImage(stagingBuffer->buffer, cubeImage->attachment->image,
+    commandBuffer->copyBufferToImage(stagingBuffer->buffer, cubeImage->attachment->image,
                                     vk::ImageLayout::eTransferDstOptimal, regions.size(), regions.data());
 
     Image::recordTransitionImageLayout(vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::eShaderReadOnlyOptimal,
-                                       cubeImage->attachment->image, commandBuffer, tc.num_mips, 6);
+                                       cubeImage->attachment->image, *commandBuffer, tc.num_mips, 6);
 
-    commandBuffer.end();
-
-    commandPool.submitSingleTimeCommands(queueManager, {commandBuffer}, vkb::QueueType::graphics, true);
+    commandBuffer->end();
 
     auto cubeMap = mkU<Texture>(cubeImage.get());
     cubeMap->createSampler();
 
-    // destroy the staging buffer
-    stagingBuffer->destroy();
+    stagingBuffers.push_back(std::move(stagingBuffer));
 
     return {std::move(cubeImage), std::move(cubeMap)};
 }
@@ -162,4 +187,5 @@ void EnvironmentMap::destroy()
     cubeMap.texture->destroy();
     irradianceMap.texture->destroy();
     radianceMap.texture->destroy();
+    brdfLUT.texture->destroy();
 }

@@ -2,7 +2,7 @@
 
 #include "../buffer/bufferfactory.h"
 
-struct CubeMap
+struct ImageTexture
 {
     uPtr<Image> image;
     uPtr<Texture> texture;
@@ -11,13 +11,15 @@ struct CubeMap
 class EnvironmentMap : public Destroyable
 {
 private:
+    std::vector<uPtr<Buffer>> stagingBuffers;
     unsigned int maxMipLevels;
-    CubeMap createCubeMap(BufferFactory &bufferFactory, CommandPool &commandPool, QueueManager &queueManager, const char *path);
+    ImageTexture createCubeMap(vk::CommandBuffer *commandBuffer, BufferFactory &bufferFactory, CommandPool &commandPool, QueueManager &queueManager, const char *path);;
 
 public:
-    CubeMap cubeMap;
-    CubeMap radianceMap;
-    CubeMap irradianceMap;
+    ImageTexture cubeMap;
+    ImageTexture radianceMap;
+    ImageTexture irradianceMap;
+    ImageTexture brdfLUT;
 
     void create(BufferFactory &bufferFactory, CommandPool &commandPool, QueueManager &queueManager, const char *path);
     void destroy() override;

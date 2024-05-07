@@ -7,11 +7,11 @@
 class Image : public Destroyable
 {
 private:
-    sPtr<FrameBufferAttachment> attachment;
+    sPtr<Attachment> attachment;
     bool destroyed;
 
 public:
-    explicit Image(const sPtr<FrameBufferAttachment> &attachment);
+    explicit Image(const sPtr<Attachment> &attachment);
 
     static void recordTransitionImageLayout(vk::ImageLayout oldLayout, vk::ImageLayout newLayout,
                                             vk::Image image, vk::CommandBuffer commandBuffer, int mipCount, int layerCount);

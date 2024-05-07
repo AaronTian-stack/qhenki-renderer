@@ -1,6 +1,6 @@
 #include "framebuffer.h"
 
-FrameBuffer::FrameBuffer(vk::Device device, vk::Framebuffer framebuffer, const std::vector<sPtr<FrameBufferAttachment>>& attachments)
+FrameBuffer::FrameBuffer(vk::Device device, vk::Framebuffer framebuffer, const std::vector<sPtr<Attachment>>& attachments)
         : Destroyable(device), framebuffer(framebuffer), attachments(attachments)
 {
     for (auto &attachment : attachments)

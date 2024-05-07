@@ -198,7 +198,7 @@ void VulkanApp::create(Window &window)
         allocators.emplace_back(vulkanContext.device.logicalDevice);
     }
 
-    envMap.create(bufferFactory, *graphicsCommandPool, vulkanContext.queueManager, "../resources/envmaps/small_room.dds");
+    envMap.create(bufferFactory, *graphicsCommandPool, vulkanContext.queueManager, "../resources/envmaps/metro_noord/metro_noord.dds");
 }
 
 void VulkanApp::setUpCallbacks() {
@@ -289,15 +289,19 @@ void VulkanApp::recordOffscreenBuffer(vk::CommandBuffer commandBuffer, Descripto
     builder.build(inputSet, layout);
 
     vk::DescriptorSet iblSamplerSet;
-    std::vector<vk::DescriptorImageInfo> cubeMapInfos = {
-            envMap.cubeMap.texture->getDescriptorInfo(),
-            envMap.irradianceMap.texture->getDescriptorInfo(),
-            envMap.radianceMap.texture->getDescriptorInfo()
+    std::vector<std::vector<vk::DescriptorImageInfo>> cubeMapInfos = {
+            {envMap.cubeMap.texture->getDescriptorInfo()},
+            {envMap.irradianceMap.texture->getDescriptorInfo()},
+            {envMap.radianceMap.texture->getDescriptorInfo()},
+            {envMap.brdfLUT.texture->getDescriptorInfo()}
     };
-    DescriptorBuilder::beginSet(&layoutCache, &allocator)
-            .bindImage(0, cubeMapInfos,
-                       3, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eFragment)
-            .build(iblSamplerSet, layout);
+    auto cubeBuilder = DescriptorBuilder::beginSet(&layoutCache, &allocator);
+    for (int i = 0; i <= 3; i++)
+    {
+        cubeBuilder.bindImage(i, cubeMapInfos[i],
+                              1, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eFragment);
+    }
+    cubeBuilder.build(iblSamplerSet, layout);
 
     commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, lightingPipeline->getPipelineLayout(),
                                      0, {cameraSet, inputSet, iblSamplerSet}, nullptr);

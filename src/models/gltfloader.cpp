@@ -284,6 +284,8 @@ void GLTFLoader::makeMaterialsAndTextures(CommandPool &commandPool, QueueManager
         }
 
         vk::SamplerCreateInfo samplerInfo{};
+        samplerInfo.anisotropyEnable = VK_TRUE;
+        samplerInfo.maxAnisotropy = 16;
         switch(sampler.magFilter)
         {
             case TINYGLTF_TEXTURE_FILTER_NEAREST:
@@ -365,9 +367,8 @@ void GLTFLoader::makeMaterialsAndTextures(CommandPool &commandPool, QueueManager
 
     // submit as an async batch to make it smoother
     // note: cannot submit to same queue on different threads
-//    std::lock_guard lock(mutex);
 // TODO: if using two different queue families, it needs to be transferred. but validation is not complaining?
-    commandPool.submitSingleTimeCommands(queueManager, commandBuffers, commandPool.queueType, true);
+    commandPool.submitSingleTimeCommands(queueManager, commandBuffers, true);
 
     for (auto &buffer : stagingBuffers)
         buffer->destroy();

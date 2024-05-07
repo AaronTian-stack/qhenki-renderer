@@ -84,11 +84,15 @@ bool VulkanContext::create(Window &window)
     features.descriptorBindingSampledImageUpdateAfterBind = VK_TRUE;
     features.descriptorBindingUniformBufferUpdateAfterBind = VK_TRUE;
 
+    VkPhysicalDeviceFeatures requiredFeatures{};
+    requiredFeatures.samplerAnisotropy = VK_TRUE;
+
     vkb::PhysicalDeviceSelector selector{ vkbInstance };
     auto phys_ret = selector.set_surface(surface)
             .set_minimum_version (1, 2)
             .add_required_extensions(deviceExtensions)
             .add_required_extension_features(features)
+            .set_required_features(requiredFeatures)
             .prefer_gpu_device_type(vkb::PreferredDeviceType::discrete)
             .select();
 
