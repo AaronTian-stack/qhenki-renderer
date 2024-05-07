@@ -65,7 +65,7 @@ void VulkanApp::createGbuffer(vk::Extent2D extent, vk::RenderPass renderPass)
                                                           vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eInputAttachment,
                                                           vk::ImageAspectFlagBits::eColor);
 
-    auto normalAttachment = bufferFactory.createAttachment(vk::Format::eR8G8B8A8Unorm,
+    auto normalAttachment = bufferFactory.createAttachment(vk::Format::eR16G16B16A16Sfloat,
                                                            {extent.width, extent.height, 1},
                                                            vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eInputAttachment,
                                                            vk::ImageAspectFlagBits::eColor);
@@ -130,7 +130,7 @@ void VulkanApp::create(Window &window)
 
     renderPassBuilder.reset();
     renderPassBuilder.addColorAttachment(vk::Format::eR8G8B8A8Unorm); // albedo 0
-    renderPassBuilder.addColorAttachment(vk::Format::eR8G8B8A8Unorm); // normal 1
+    renderPassBuilder.addColorAttachment(vk::Format::eR16G16B16A16Sfloat); // normal 1
     renderPassBuilder.addColorAttachment(vk::Format::eR8G8B8A8Unorm); // metal roughness ao 2
     renderPassBuilder.addColorAttachment(vk::Format::eR16G16B16A16Sfloat); // emissive 3
     renderPassBuilder.addDepthAttachment(depthBuffer->format); // depth 4
@@ -227,7 +227,7 @@ void VulkanApp::recordOffscreenBuffer(vk::CommandBuffer commandBuffer, Descripto
     auto extent = vulkanContext.swapChain->getExtent();
     offscreenRenderPass->setFramebuffer(gBuffer->framebuffer);
     offscreenRenderPass->setRenderAreaExtent(vulkanContext.swapChain->getExtent());
-    offscreenRenderPass->clear(ui->clearColor[0], ui->clearColor[1], ui->clearColor[2], 0.0f);
+    offscreenRenderPass->clear(0.f, 0.f, 0.f, 0.f);
     offscreenRenderPass->begin(commandBuffer);
     ScreenUtils::setViewport(commandBuffer, extent.width, extent.height);
     ScreenUtils::setScissor(commandBuffer, extent);
@@ -269,6 +269,7 @@ void VulkanApp::recordOffscreenBuffer(vk::CommandBuffer commandBuffer, Descripto
     offscreenRenderPass->nextSubpass(); // composition pass
 
     commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, lightingPipeline->getGraphicsPipeline());
+    lightingPipeline->setPushConstant(commandBuffer, &ui->clearColor, sizeof(glm::vec3), 0, vk::ShaderStageFlagBits::eFragment);
 
     std::vector<std::vector<vk::DescriptorImageInfo>> gBufferInfo =
     {
@@ -310,17 +311,20 @@ void VulkanApp::recordOffscreenBuffer(vk::CommandBuffer commandBuffer, Descripto
 
     offscreenRenderPass->nextSubpass(); // cube map pass
 
-    vk::DescriptorSet cubeSamplerSet;
-    commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, cubeMapPipeline->getGraphicsPipeline());
-    DescriptorBuilder::beginSet(&layoutCache, &allocator)
-            .bindImage(0, {envMap.cubeMap.texture->getDescriptorInfo()}, // env map sampler
-                       1, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eFragment)
-            .build(cubeSamplerSet, layout);
+    if (ui->drawBackground)
+    {
+        vk::DescriptorSet cubeSamplerSet;
+        commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, cubeMapPipeline->getGraphicsPipeline());
+        DescriptorBuilder::beginSet(&layoutCache, &allocator)
+                .bindImage(0, {envMap.cubeMap.texture->getDescriptorInfo()}, // env map sampler
+                           1, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eFragment)
+                .build(cubeSamplerSet, layout);
 
-    commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, cubeMapPipeline->getPipelineLayout(),
-                                     0, {cameraSet, cubeSamplerSet}, nullptr);
+        commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, cubeMapPipeline->getPipelineLayout(),
+                                         0, {cameraSet, cubeSamplerSet}, nullptr);
 
-    PrimitiveDrawer::drawCube(commandBuffer);
+        PrimitiveDrawer::drawCube(commandBuffer);
+    }
 
     offscreenRenderPass->end();
 }
@@ -347,7 +351,7 @@ void VulkanApp::recordCommandBuffer(vk::Framebuffer framebuffer)
 
     displayRenderPass->setFramebuffer(framebuffer);
     displayRenderPass->setRenderAreaExtent(swapChainExtent);
-    displayRenderPass->clear(ui->clearColor[0], ui->clearColor[1], ui->clearColor[2], 1.0f);
+    displayRenderPass->clear(0.f, 0.f, 0.f, 1.0f);
     displayRenderPass->begin(primaryCommandBuffer);
 
     primaryCommandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, postProcessPipeline->getGraphicsPipeline());

@@ -129,7 +129,10 @@ void UserInterface::render()
     if (optionsOpen)
     {
         ImGui::Begin("Options", &optionsOpen, ImGuiWindowFlags_AlwaysAutoResize);
+        ImGui::Checkbox("Draw Background", &drawBackground);
+        ImGui::BeginDisabled(drawBackground);
         ImGui::ColorEdit3("Clear Color", clearColor);
+        ImGui::EndDisabled();
         ImGui::End();
     }
 
