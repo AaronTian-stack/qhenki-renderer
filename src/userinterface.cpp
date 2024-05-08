@@ -106,7 +106,7 @@ void UserInterface::render()
 
     ImGui::Text("FPS: %f", ImGui::GetIO().Framerate);
 
-    ImGui::Text("Frame Time: %f ms", ImGui::GetIO().DeltaTime * .001f);
+    ImGui::Text("Frame Time: %f ms", ImGui::GetIO().DeltaTime * 1000.f);
 
     frameTimes.push_back(ImGui::GetIO().DeltaTime);
     if (frameTimes.size() > 100)
