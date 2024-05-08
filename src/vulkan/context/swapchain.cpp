@@ -44,7 +44,7 @@ void SwapChain::createFramebuffers(vk::RenderPass renderPass, vk::ImageView dept
                 extent.height,
                 1);
         auto framebuffer = device.createFramebuffer(createInfo);
-        auto attachment = mkS<FrameBufferAttachment>(images[i], imageViews[i], getFormat());
+        auto attachment = mkS<Attachment>(images[i], imageViews[i], getFormat());
         auto fb = FrameBuffer(device, framebuffer, {attachment});
         frameBuffers.push_back(fb);
     }

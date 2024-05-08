@@ -63,10 +63,15 @@ void setValues(out vec4 albedo, out vec3 normal, out vec4 metalRoughness, out fl
         normal = normalize(fragNormal);
     }
 
+    // roughness is g, metal is b
+    vec4 param = vec4(1.0, material.roughnessFactor, material.metallicFactor, 1.0);
     if (material.metallicRoughnessTexture != -1)
+    {
         metalRoughness = texture(texSampler[material.metallicRoughnessTexture], fragUV);
+        metalRoughness *= vec4(1.0, material.roughnessFactor, material.metallicFactor, 1.0);
+    }
     else
-        metalRoughness = vec4(material.metallicFactor, material.roughnessFactor, 1.0, 1.0);
+        metalRoughness = param;
 
     if (material.occlusionTexture != -1)
         AO = texture(texSampler[material.occlusionTexture], fragUV).r;
@@ -96,7 +101,6 @@ void main()
     if (albedo.a < thres) discard;
 
     outAlbedo = vec4(albedo.rgb, 1.0);
-    normal = normal * 0.5 + 0.5; // pack normal from -1 to 1 range to 0 to 1 range
     outNormal = vec4(normal, 1.0);
     outMetalRoughnessAO = vec4(metalRoughness.rgb, AO);
     outEmissive = vec4(emissive, 1.0);

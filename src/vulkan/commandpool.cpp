@@ -50,8 +50,7 @@ vk::CommandBuffer CommandPool::beginSingleCommand()
     return commandBuffer;
 }
 
-void CommandPool::submitSingleTimeCommands(QueueManager &queueManager, std::vector<vk::CommandBuffer> commandBuffers,
-                                           vkb::QueueType queueType, bool wait)
+void CommandPool::submitSingleTimeCommands(QueueManager &queueManager, std::vector<vk::CommandBuffer> commandBuffers, bool wait)
 {
     if (!wait) throw std::runtime_error("async not implemented yet");
 
@@ -60,7 +59,7 @@ void CommandPool::submitSingleTimeCommands(QueueManager &queueManager, std::vect
     submitInfo.pCommandBuffers = commandBuffers.data();
 
     vk::Queue queueToUse;
-    switch(queueType) {
+    switch(this->queueType) {
         case vkb::QueueType::graphics:
             queueToUse = queueManager.queuesIndices.graphics;
             break;

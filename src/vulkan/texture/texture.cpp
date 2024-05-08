@@ -14,12 +14,12 @@ void Texture::createSampler()
             vk::SamplerAddressMode::eRepeat,
             vk::SamplerAddressMode::eRepeat,
             0.0f,
-            VK_FALSE, // TODO: needs hardware support
+            VK_TRUE, // needs hardware support
             16,
             VK_FALSE,
             vk::CompareOp::eAlways,
             0.0f,
-            0.0f,
+            1000.0f,
             vk::BorderColor::eIntOpaqueBlack,
             VK_FALSE
     };

@@ -4,7 +4,7 @@ GBuffer::GBuffer(vk::Device device)
 : FrameBuffer(device, vk::Framebuffer(), {})
 {}
 
-FrameBufferAttachment *GBuffer::getAttachment(GBufferAttachmentType type)
+Attachment *GBuffer::getAttachment(GBufferAttachmentType type)
 {
     if (type >= GBufferAttachmentType::END)
         throw std::runtime_error("Invalid GBufferAttachmentType");
@@ -25,7 +25,7 @@ vk::Framebuffer GBuffer::getIndividualFramebuffer(GBufferAttachmentType type)
     return individualFrameBuffers[(unsigned int)type];
 }
 
-void GBuffer::setAttachment(GBufferAttachmentType type, const std::shared_ptr<FrameBufferAttachment> &attachment)
+void GBuffer::setAttachment(GBufferAttachmentType type, const std::shared_ptr<Attachment> &attachment)
 {
     if (type >= GBufferAttachmentType::END)
         throw std::runtime_error("Invalid GBufferAttachmentType");

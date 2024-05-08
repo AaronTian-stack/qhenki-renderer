@@ -83,8 +83,7 @@ void UserInterface::create(ImGuiCreateParameters param, CommandPool commandPool)
     auto commandBuffer = commandPool.beginSingleCommand();
     ImGui_ImplVulkan_CreateFontsTexture(commandBuffer);
     commandBuffer.end();
-    commandPool.submitSingleTimeCommands(param.context->queueManager, {commandBuffer},
-                                         vkb::QueueType::graphics, true);
+    commandPool.submitSingleTimeCommands(param.context->queueManager, {commandBuffer}, true);
 }
 
 void UserInterface::destroy()
@@ -107,7 +106,7 @@ void UserInterface::render()
 
     ImGui::Text("FPS: %f", ImGui::GetIO().Framerate);
 
-    ImGui::Text("Frame Time: %f ms", ImGui::GetIO().DeltaTime * .001f);
+    ImGui::Text("Frame Time: %f ms", ImGui::GetIO().DeltaTime * 1000.f);
 
     frameTimes.push_back(ImGui::GetIO().DeltaTime);
     if (frameTimes.size() > 100)
@@ -130,7 +129,10 @@ void UserInterface::render()
     if (optionsOpen)
     {
         ImGui::Begin("Options", &optionsOpen, ImGuiWindowFlags_AlwaysAutoResize);
+        ImGui::Checkbox("Draw Background", &drawBackground);
+        ImGui::BeginDisabled(drawBackground);
         ImGui::ColorEdit3("Clear Color", clearColor);
+        ImGui::EndDisabled();
         ImGui::End();
     }
 
@@ -140,6 +142,7 @@ void UserInterface::render()
         ImGui::SliderFloat("Rotate Sensitivity", &InputProcesser::SENSITIVITY_ROTATE, 0.0f, 0.2f);
         ImGui::SliderFloat("Translate Sensitivity", &InputProcesser::SENSITIVITY_TRANSLATE, 0.0f, 0.2f);
         ImGui::SliderFloat("Zoom Sensitivity", &InputProcesser::SENSITIVITY_ZOOM, 0.0f, 0.2f);
+        ImGui::SliderFloat("FOV Sensitivity", &InputProcesser::SENSITIVITY_FOV, 0.0f, 20.0f);
         ImGui::End();
     }
 

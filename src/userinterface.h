@@ -25,6 +25,7 @@ private:
     void renderMenuBar();
     bool optionsOpen = false;
     bool cameraOptionsOpen = false;
+    bool drawBackground = true;
 
     int currentShaderIndex = 0;
     float clearColor[3] = {0.25f, 0.25f, 0.25f };
