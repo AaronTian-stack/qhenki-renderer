@@ -1,21 +1,20 @@
 #pragma once
-
-#include "glm/vec4.hpp"
+#include "glm/glm.hpp"
 
 struct Material
 {
-    alignas(16) glm::vec4 baseColorFactor;
-    alignas(4) int baseColorTexture;
+    glm::vec4 baseColorFactor;
+    int baseColorTexture;
 
-    alignas(4) float metallicFactor;
-    alignas(4) float roughnessFactor;
-    alignas(4) int metallicRoughnessTexture;
+    float metallicFactor;
+    float roughnessFactor;
+    int metallicRoughnessTexture;
 
-    alignas(4) int normalTexture;
+    int normalTexture;
 
-    alignas(4) int occlusionTexture;
-    alignas(4) float occlusionStrength;
+    int occlusionTexture;
+    float occlusionStrength;
 
-    alignas(4) int emissiveTexture;
-    alignas(16) glm::vec4 emissiveFactor;
+    int emissiveTexture;
+    glm::vec3 emissiveFactor;
 };
