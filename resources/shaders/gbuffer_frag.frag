@@ -1,4 +1,5 @@
 #version 450
+#extension GL_EXT_scalar_block_layout : require
 
 layout(location = 0) in vec3 fragColor;
 layout(location = 1) in vec3 fragPos;
@@ -30,7 +31,7 @@ layout(push_constant) uniform mats {
     float occlusionStrength;
 
     int emissiveTexture;
-    vec4 emissiveFactor;
+    vec3 emissiveFactor;
 } material;
 
 const float[16] dither =
@@ -43,13 +44,13 @@ const float[16] dither =
 
 void setValues(out vec4 albedo, out vec3 normal, out vec4 metalRoughness, out float AO, out vec3 emissive)
 {
+    albedo = material.baseColorFactor;
     if (material.baseColorTexture != -1)
     {
-        albedo = texture(texSampler[material.baseColorTexture], fragUV);
-        albedo.rgb = pow(albedo.rgb, vec3(2.2));
+        vec4 tAlbedo = texture(texSampler[material.baseColorTexture], fragUV);
+        tAlbedo.rgb = pow(tAlbedo.rgb, vec3(2.2));
+        albedo *= tAlbedo;
     }
-    else
-        albedo = material.baseColorFactor;
 
     if (material.normalTexture != -1)
     {
@@ -64,25 +65,19 @@ void setValues(out vec4 albedo, out vec3 normal, out vec4 metalRoughness, out fl
     }
 
     // roughness is g, metal is b
-    vec4 param = vec4(1.0, material.roughnessFactor, material.metallicFactor, 1.0);
+    metalRoughness = vec4(1.0, material.roughnessFactor, material.metallicFactor, 1.0);
     if (material.metallicRoughnessTexture != -1)
-    {
-        metalRoughness = texture(texSampler[material.metallicRoughnessTexture], fragUV);
-        metalRoughness *= vec4(1.0, material.roughnessFactor, material.metallicFactor, 1.0);
-    }
-    else
-        metalRoughness = param;
+        metalRoughness *= texture(texSampler[material.metallicRoughnessTexture], fragUV);
 
+    AO = material.occlusionStrength;
     if (material.occlusionTexture != -1)
-        AO = texture(texSampler[material.occlusionTexture], fragUV).r;
-    else
-        AO = material.occlusionStrength;
+        AO *= texture(texSampler[material.occlusionTexture], fragUV).r;
 
     if (material.emissiveTexture != -1)
     {
         emissive = texture(texSampler[material.emissiveTexture], fragUV).rgb;
         emissive.rgb = pow(emissive.rgb, vec3(2.2));
-        emissive *= material.emissiveFactor.rgb;
+        emissive *= material.emissiveFactor;
     }
     else
         emissive = vec3(0.0);

@@ -76,13 +76,13 @@ bool VulkanContext::create(Window &window)
     deviceExtensions.push_back("VK_KHR_portability_subset");
 #endif
 
-    VkPhysicalDeviceDescriptorIndexingFeatures features{};
-    features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES;
-    features.runtimeDescriptorArray = VK_TRUE;
-    features.descriptorBindingPartiallyBound = VK_TRUE;
-    features.descriptorBindingVariableDescriptorCount = VK_TRUE;
-    features.descriptorBindingSampledImageUpdateAfterBind = VK_TRUE;
-    features.descriptorBindingUniformBufferUpdateAfterBind = VK_TRUE;
+    VkPhysicalDeviceDescriptorIndexingFeatures indexingFeatures{};
+    indexingFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES;
+    indexingFeatures.runtimeDescriptorArray = VK_TRUE;
+    indexingFeatures.descriptorBindingPartiallyBound = VK_TRUE;
+    indexingFeatures.descriptorBindingVariableDescriptorCount = VK_TRUE;
+    indexingFeatures.descriptorBindingSampledImageUpdateAfterBind = VK_TRUE;
+    indexingFeatures.descriptorBindingUniformBufferUpdateAfterBind = VK_TRUE;
 
     VkPhysicalDeviceFeatures requiredFeatures{};
     requiredFeatures.samplerAnisotropy = VK_TRUE;
@@ -91,7 +91,7 @@ bool VulkanContext::create(Window &window)
     auto phys_ret = selector.set_surface(surface)
             .set_minimum_version (1, 2)
             .add_required_extensions(deviceExtensions)
-            .add_required_extension_features(features)
+            .add_required_extension_features(indexingFeatures)
             .set_required_features(requiredFeatures)
             .prefer_gpu_device_type(vkb::PreferredDeviceType::discrete)
             .select();
@@ -102,9 +102,13 @@ bool VulkanContext::create(Window &window)
         return false;
     }
 
+    VkPhysicalDeviceScalarBlockLayoutFeatures scalarFeatures{};
+    scalarFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SCALAR_BLOCK_LAYOUT_FEATURES;
+    scalarFeatures.scalarBlockLayout = VK_TRUE;
     // by default, one queue from each family is enabled
     vkb::DeviceBuilder device_builder{ phys_ret.value() };
     auto dev_ret = device_builder
+            .add_pNext(&scalarFeatures)
             .build();
     if (!dev_ret) {
         std::cerr << "Failed to create Vulkan device. Error: " << dev_ret.error().message() << "\n";

@@ -93,9 +93,9 @@ void Camera::simpleReset()
     recalculateFields();
 }
 
-glm::vec4 Camera::getForwardVector() const
+glm::vec3 Camera::getForwardVector() const
 {
-    return {smooth.target - smooth.position, 1.0f};
+    return smooth.target - smooth.position;
 }
 
 void Camera::adjustFOV(float offset)

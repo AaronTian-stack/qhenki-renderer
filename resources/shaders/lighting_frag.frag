@@ -1,4 +1,5 @@
 #version 450
+#extension GL_EXT_scalar_block_layout : require
 
 layout (input_attachment_index = 0, set = 1, binding = 0) uniform subpassInput inputAlbedo;
 layout (input_attachment_index = 1, set = 1, binding = 1) uniform subpassInput inputNormal;
@@ -13,8 +14,8 @@ layout(set = 2, binding = 2) uniform samplerCube radianceMap;
 layout(set = 2, binding = 3) uniform sampler2D   brdfLUT;
 
 layout(location = 0) in vec2 fragUV;
-layout(location = 1) in vec4 cameraPos;
-layout(location = 2) in vec4 cameraForward;
+layout(location = 1) in vec3 cameraPos;
+layout(location = 2) in vec3 cameraForward;
 layout(location = 3) in mat4 cameraViewProj;
 
 layout(push_constant) uniform PushConstant {
@@ -194,11 +195,11 @@ void main()
     Material material = Material(albedo.rgb, metallic, roughness, ao);
 
     vec3 Lo = vec3(0.0);
-    for(int i = 0; i < 1; ++i)
-    {
-        Light light = Light(closestPointSphere(sphereLights[i], R, position.xyz), sphereLights[i].color.rgb, sphereLights[i].color.a);
-        calculateForLight(Lo, light, N, V, material, position.xyz);
-    }
+//    for(int i = 0; i < 1; ++i)
+//    {
+//        Light light = Light(closestPointSphere(sphereLights[i], R, position.xyz), sphereLights[i].color.rgb, sphereLights[i].color.a);
+//        calculateForLight(Lo, light, N, V, material, position.xyz);
+//    }
 //    for(int i = 0; i < 1; ++i)
 //    {
 //        Light light = Light(pointLights[i].position.xyz, pointLights[i].color.rgb, pointLights[i].color.a);

@@ -459,7 +459,7 @@ void VulkanApp::updateCameraBuffer()
     float aspect = extent.width / (float) extent.height;
     auto proj = glm::perspective(glm::radians(camera.getFOV()), aspect, options.nearClip, options.farClip);
     proj[1][1] *= -1;
-    cameraMatrices.position = glm::vec4(camera.getPosition(), 1.f);
+    cameraMatrices.position = camera.getPosition();
     cameraMatrices.forward = camera.getForwardVector();
     cameraMatrices.viewProj = proj * view;
     cameraMatrices.inverseViewProj = glm::inverse(cameraMatrices.viewProj);

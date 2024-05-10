@@ -1,8 +1,9 @@
 #version 450
+#extension GL_EXT_scalar_block_layout : require
 
-layout(std140, set = 0, binding = 0) uniform cameraInfo {
-    vec4 position;
-    vec4 forward;
+layout(scalar, set = 0, binding = 0) uniform cameraInfo {
+    vec3 position;
+    vec3 forward;
     mat4 viewProj;
     mat4 invViewProj;
     mat4 view;

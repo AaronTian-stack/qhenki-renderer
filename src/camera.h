@@ -39,7 +39,7 @@ public:
     float getFOV() const;
     glm::mat4 getViewMatrix() const;
     glm::vec3 getPosition() const;
-    glm::vec4 getForwardVector() const;
+    glm::vec3 getForwardVector() const;
 
     void setTarget(glm::vec3 position);
     void setThetaPhi(float theta, float phi);
