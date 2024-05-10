@@ -31,6 +31,7 @@ struct Light
     float intensity;
 };
 
+// TODO: change these since I have scalar
 struct PointLight
 {
     vec4 position;

@@ -148,15 +148,15 @@ void UserInterface::render()
 
     renderMenuBar();
 
-    ImGui::SetNextWindowPos(ImVec2(ImGui::GetIO().DisplaySize.x, y), 0, ImVec2(1.0f, 0));
-    ImGui::Begin("Visual Options", nullptr, flags);
-    if (ImGui::Combo("Shader", &currentShaderIndex,
-                     "FXAA\0"))
-    {
+//    ImGui::SetNextWindowPos(ImVec2(ImGui::GetIO().DisplaySize.x, y), 0, ImVec2(1.0f, 0));
+//    ImGui::Begin("Visual Options", nullptr, flags);
+//    if (ImGui::Combo("Shader", &currentShaderIndex,
+//                     "FXAA\0"))
+//    {
+//
+//    }
+//    ImGui::End();
 
-    }
-
-    ImGui::End();
 }
 
 void UserInterface::begin()
