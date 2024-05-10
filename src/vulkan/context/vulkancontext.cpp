@@ -87,6 +87,9 @@ bool VulkanContext::create(Window &window)
     VkPhysicalDeviceFeatures requiredFeatures{};
     requiredFeatures.samplerAnisotropy = VK_TRUE;
 
+    VkPhysicalDeviceFeatures requiredFeatures{};
+    requiredFeatures.samplerAnisotropy = VK_TRUE;
+
     vkb::PhysicalDeviceSelector selector{ vkbInstance };
     auto phys_ret = selector.set_surface(surface)
             .set_minimum_version (1, 2)
