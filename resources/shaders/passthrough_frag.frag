@@ -7,7 +7,7 @@ layout(location = 0) in vec2 fragUV;
 
 layout(location = 0) out vec4 outColor; // location is index of framebuffer / attachment
 
-layout(push_constant) uniform PushConstant {
+layout(scalar, push_constant) uniform PushConstant {
     vec2 viewport;
 } pc;
 

@@ -253,9 +253,10 @@ void VulkanApp::recordOffscreenBuffer(vk::CommandBuffer commandBuffer, Descripto
 
         if (!imageInfos.empty()) // pipeline still expects uv though
         {
+            if (imageInfos.size() > 128) throw std::runtime_error("Too many textures");
             DescriptorBuilder::beginSet(&layoutCache, &allocator)
                     .bindImage(0, imageInfos,
-                               80, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eFragment)
+                               128, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eFragment)
                     .build(samplerSet, layout);
 
             commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, gBufferPipeline->getPipelineLayout(),
