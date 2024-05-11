@@ -15,10 +15,11 @@ layout(location = 3) out vec4 outEmissive;
 
 // 80 is max number of samplers in any shader on macOS (with argument buffers turned on, validation still complains)
 // since partial binding is on, indexing into undefined sampler will not show errors!
-layout(set = 1, binding = 0) uniform sampler2D texSampler[80];
+layout(set = 1, binding = 0) uniform sampler2D texSampler[128];
 
-layout(push_constant) uniform mats {
-    layout(offset = 64) vec4 baseColorFactor;
+layout(scalar, push_constant) uniform mats {
+    layout(offset = 64)
+    vec4 baseColorFactor;
     int baseColorTexture;
 
     float metallicFactor;
@@ -70,8 +71,9 @@ void setValues(out vec4 albedo, out vec3 normal, out vec4 metalRoughness, out fl
         metalRoughness *= texture(texSampler[material.metallicRoughnessTexture], fragUV);
 
     AO = material.occlusionStrength;
-    if (material.occlusionTexture != -1)
-        AO *= texture(texSampler[material.occlusionTexture], fragUV).r;
+    if (material.occlusionTexture != -1) {
+        AO = material.occlusionStrength * texture(texSampler[material.occlusionTexture], fragUV).r;
+    }
 
     if (material.emissiveTexture != -1)
     {

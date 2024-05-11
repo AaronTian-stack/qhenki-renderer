@@ -24,13 +24,18 @@ file(GLOB_RECURSE SPIRV CONFIGURE_DEPENDS
         ${CMAKE_CURRENT_SOURCE_DIR}/dependencies/include/spirv_cross/*.hpp
 )
 
+file(GLOB_RECURSE MIKKTSPACE CONFIGURE_DEPENDS
+        ${CMAKE_CURRENT_SOURCE_DIR}/dependencies/include/mikkTspace/*.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/dependencies/include/mikkTspace/*.h
+)
+
 set(dir ${CMAKE_CURRENT_SOURCE_DIR})
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${dir}/build)
 
 #Include library files
 include_directories(dependencies/include)
 
-add_executable(${PROJECT_NAME} ${SOURCE_FILES} ${IMGUI} ${SPIRV} main.cpp)
+add_executable(${PROJECT_NAME} ${SOURCE_FILES} ${IMGUI} ${SPIRV} ${MIKKTSPACE} main.cpp)
 
 find_package(Vulkan REQUIRED)
 target_include_directories(${PROJECT_NAME} PUBLIC ${Vulkan_INCLUDE_DIRS})

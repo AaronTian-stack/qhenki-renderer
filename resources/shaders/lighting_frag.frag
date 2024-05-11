@@ -18,7 +18,7 @@ layout(location = 1) in vec3 cameraPos;
 layout(location = 2) in vec3 cameraForward;
 layout(location = 3) in mat4 cameraViewProj;
 
-layout(push_constant) uniform PushConstant {
+layout(scalar, push_constant) uniform PushConstant {
     vec3 clearColor;
 } pc;
 

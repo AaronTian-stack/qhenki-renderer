@@ -1,3 +1,5 @@
+#include "tangentcalc.h"
+
 // Define these only in *one* .cc file.
 #define TINYGLTF_IMPLEMENTATION
 #define STB_IMAGE_IMPLEMENTATION
@@ -151,6 +153,9 @@ void GLTFLoader::processNode(BufferFactory &bufferFactory, tinygltf::Model &gltf
 
             uPtr<Mesh> mesh = mkU<Mesh>();
 
+            if (primitive.attributes.count("TEXCOORD_1") == 1)
+                throw std::runtime_error("AO UVs not implemented");
+
             // extract vertex data
             for (auto &type : typeMap)
             {
@@ -161,18 +166,18 @@ void GLTFLoader::processNode(BufferFactory &bufferFactory, tinygltf::Model &gltf
                 auto vBuffer = getBuffer(bufferFactory, gltfModel, primitive.attributes.at(type.first), vk::BufferUsageFlagBits::eVertexBuffer, vertexSize);
                 mesh->vertexBuffers.emplace_back(std::move(vBuffer), type.second);
             }
-            if (primitive.attributes.count("TANGENT") == 0)
+            if (primitive.attributes.count(TANGENT_STRING) == 0)
             {
-                std::cerr << "[incorrect] Tangent vectors manually generated!" << std::endl;
+                std::cerr << "Tangent vectors manually generated using MikkTSpace!" << std::endl;
                 // no tangent vectors, need to manually create them
-                // TODO: this is wrong!!
                 mesh->vertexBuffers.emplace_back(
                         createTangentVectors(bufferFactory, gltfModel,
-                                             primitive.attributes.at("POSITION"),
-                                             primitive.attributes.at("TEXCOORD_0"), primitive.indices,
+                                             primitive.attributes.at(POSITION_STRING),
+                                             primitive.attributes.at(NORMAL_STRING),
+                                             primitive.attributes.at(TEXCOORD_STRING),
+                                             primitive.indices,
                                              vk::BufferUsageFlagBits::eVertexBuffer), VertexBufferType::TANGENT);
             }
-
 
             // extract index data
             mesh->indexBuffer = getBuffer(bufferFactory, gltfModel, primitive.indices, vk::BufferUsageFlagBits::eIndexBuffer, 0);
@@ -374,60 +379,46 @@ void GLTFLoader::makeMaterialsAndTextures(CommandPool &commandPool, QueueManager
         buffer->destroy();
 }
 
-uPtr<Buffer> GLTFLoader::createTangentVectors(BufferFactory &bufferFactory, tinygltf::Model &gltfModel, int verticesType,
-                                              int uvType, int indexType, vk::BufferUsageFlagBits flag)
+uPtr<Buffer> GLTFLoader::createTangentVectors(BufferFactory &bufferFactory, tinygltf::Model &gltfModel, int vertexType,
+                                              int normalType, int uvType, int indexType, vk::BufferUsageFlagBits flag)
 {
-    auto getReinterpretedPointer = [](tinygltf::Model &gltfModel, int type, size_t bufferViewOffset) -> const void* {
+    auto getReinterpretedPointer = [](tinygltf::Model &gltfModel, int type) -> const void* {
         const tinygltf::Accessor &accessor = gltfModel.accessors[type];
         const tinygltf::BufferView &bufferView = gltfModel.bufferViews[accessor.bufferView];
         const tinygltf::Buffer &buffer = gltfModel.buffers[bufferView.buffer];
-        return &buffer.data[bufferView.byteOffset + accessor.byteOffset + bufferViewOffset];
+        return &buffer.data[bufferView.byteOffset + accessor.byteOffset];
     };
 
-    const tinygltf::Accessor &vAccessor = gltfModel.accessors[verticesType];
+    const tinygltf::Accessor &vAccessor = gltfModel.accessors[vertexType];
 
     const tinygltf::Accessor &iAccessor = gltfModel.accessors[indexType];
 
-    const auto* positions = reinterpret_cast<const glm::vec3*>(getReinterpretedPointer(gltfModel, verticesType, 0));
-    const auto* uvs = reinterpret_cast<const glm::vec2*>(getReinterpretedPointer(gltfModel, uvType, 0));
-    const auto* indices16 = reinterpret_cast<const uint16_t*>(getReinterpretedPointer(gltfModel, indexType, 0));
-    const auto* indices32 = reinterpret_cast<const uint32_t*>(getReinterpretedPointer(gltfModel, indexType, 0));
+    const auto* positions = reinterpret_cast<const glm::vec3*>(getReinterpretedPointer(gltfModel, vertexType));
+    const auto* normals = reinterpret_cast<const glm::vec3*>(getReinterpretedPointer(gltfModel, normalType));
+    const auto* uvs = reinterpret_cast<const glm::vec2*>(getReinterpretedPointer(gltfModel, uvType));
+    const auto* indices16 = reinterpret_cast<const uint16_t*>(getReinterpretedPointer(gltfModel, indexType));
+    const auto* indices32 = reinterpret_cast<const uint32_t*>(getReinterpretedPointer(gltfModel, indexType));
 
     auto buffer = bufferFactory.createBuffer(vAccessor.count * sizeof(glm::vec3), flag,
                                               VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
-    std::vector<glm::vec3> tangents(vAccessor.count);
 
-    // TODO: this calculation is still wrong
-    int ti = 0;
-    for (size_t i = 0; i < vAccessor.count; i+=3)
-    {
-//        int index = iAccessor.componentType == TINYGLTF_PARAMETER_TYPE_UNSIGNED_SHORT ? indices16[i] : indices32[i];
-        unsigned int index = i;
+    glm::vec3 tangents[vAccessor.count];
 
-        glm::vec3 v0 = positions[index+0];
-        glm::vec3 v1 = positions[index+1];
-        glm::vec3 v2 = positions[index+2];
+    VertexCountIndex vertexCountIndex{};
+    vertexCountIndex.vertexCount = vAccessor.count;
+    vertexCountIndex.indexCount = iAccessor.count;
+    vertexCountIndex.isInd16 = iAccessor.componentType == TINYGLTF_PARAMETER_TYPE_UNSIGNED_SHORT;
+    vertexCountIndex.vertices = const_cast<glm::vec3*>(positions);
+    vertexCountIndex.normals = const_cast<glm::vec3*>(normals);
+    vertexCountIndex.uvs = const_cast<glm::vec2*>(uvs);
+    vertexCountIndex.ind16 = const_cast<uint16_t*>(indices16);
+    vertexCountIndex.ind32 = const_cast<uint32_t*>(indices32);
+    vertexCountIndex.tangents = tangents;
 
-        glm::vec2 uv0 = glm::clamp(uvs[index+0], glm::vec2(0.0f), glm::vec2(1.0f));
-        glm::vec2 uv1 = glm::clamp(uvs[index+1], glm::vec2(0.0f), glm::vec2(1.0f));
-        glm::vec2 uv2 = glm::clamp(uvs[index+2], glm::vec2(0.0f), glm::vec2(1.0f));
+    TangentCalc tangentCalc(&gltfModel, &vertexCountIndex);
+    tangentCalc.calculate();
 
-        glm::vec3 deltaPos1 = v1 - v0;
-        glm::vec3 deltaPos2 = v2 - v0;
-
-        // UV delta
-        glm::vec2 deltaUV1 = uv1 - uv0;
-        glm::vec2 deltaUV2 = uv2 - uv0;
-
-        float r = 1.0f / (deltaUV1.x * deltaUV2.y - deltaUV1.y * deltaUV2.x);
-        glm::vec3 tangent = (deltaPos1 * deltaUV2.y   - deltaPos2 * deltaUV1.y) * r; // tangent vector for this triangle
-        for (int j = ti; j < ti + 3; j++)
-        {
-            tangents[j] = tangent;
-        }
-    }
-
-    buffer->fill(tangents.data());
+    buffer->fill(vertexCountIndex.tangents);
     return buffer;
 }
 
