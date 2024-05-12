@@ -24,6 +24,8 @@ void CommandPool::destroy()
 
 vk::CommandBuffer CommandPool::createCommandBuffer(vk::CommandBufferLevel level)
 {
+    // allocating command buffers from same pool is not thread safe
+    std::lock_guard<std::mutex> lock(mutex);
     auto allocInfo = vk::CommandBufferAllocateInfo(commandPool,level,1);
     return device.allocateCommandBuffers(allocInfo)[0];
 }
@@ -99,7 +101,10 @@ void CommandPool::submitSingleTimeCommands(QueueManager &queueManager, std::vect
             throw std::runtime_error("failed to wait for fence!");
         }
 
+        std::lock_guard lock(mutex); // do I need this?
         device.freeCommandBuffers(commandPool, commandBuffers.size(), commandBuffers.data());
         device.resetFences(fence);
     }
+    else
+        throw std::runtime_error("async not implemented yet, command buffers wont be freed");
 }

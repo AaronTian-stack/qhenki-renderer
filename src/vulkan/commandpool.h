@@ -14,6 +14,7 @@ private:
     vk::CommandPool commandPool;
     std::unordered_map<const char*, vk::CommandBuffer> commandBuffers;
     vkb::QueueType queueType;
+    std::mutex mutex;
 
 public:
     CommandPool(Device &device, vkb::QueueType queueType, uint32_t queueFamilyIndex);

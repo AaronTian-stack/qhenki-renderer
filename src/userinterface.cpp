@@ -20,7 +20,7 @@ UserInterface::~UserInterface()
     ImGui::DestroyContext();
 }
 
-void UserInterface::create(ImGuiCreateParameters param, CommandPool commandPool)
+void UserInterface::create(ImGuiCreateParameters param, CommandPool &commandPool)
 {
     this->device = param.context->device.logicalDevice;
 

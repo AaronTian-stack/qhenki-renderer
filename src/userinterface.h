@@ -34,7 +34,7 @@ public:
     UserInterface();
     ~UserInterface();
 
-    void create(ImGuiCreateParameters param, CommandPool commandPool);
+    void create(ImGuiCreateParameters param, CommandPool &commandPool);
     void render();
     void destroy() override;
 
