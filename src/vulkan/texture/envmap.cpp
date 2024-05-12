@@ -22,19 +22,44 @@ void EnvironmentMap::create(BufferFactory &bufferFactory, CommandPool &commandPo
     irradianceMap = createCubeMap(&commandBuffers[1], bufferFactory, commandPool, queueManager, irradiance.c_str());
     radianceMap = createCubeMap(&commandBuffers[2], bufferFactory, commandPool, queueManager, radiance.c_str());
 
-    // BRDF LUT
-    int width, height, channels;
-    stbi_uc *data = stbi_load("../resources/envmaps/brdf_lut.png", &width, &height, &channels, STBI_rgb_alpha);
+    //// BRDF LUT
+    std::ifstream file("../resources/envmaps/brdf_lut.dds", std::ios::binary);
+    std::vector<char> fileData((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+    ddsktx_texture_info tc = {0};
+    ddsktx__parse_dds(&tc, fileData.data(), fileData.size(), NULL);
+    ddsktx_sub_data sub_data;
+    ddsktx_get_sub(&tc, &sub_data, fileData.data(), fileData.size(), 0, 0, 0);
+    if (tc.format != DDSKTX_FORMAT_RG16F)
+        throw std::runtime_error("brdf_lut format");
+
     auto defer = bufferFactory.createTextureImageDeferred(
-            commandPool, vk::Format::eR8G8B8A8Unorm,
-      {static_cast<uint32_t>(width),static_cast<uint32_t>(height), 1},
+            commandPool, vk::Format::eR16G16Sfloat,
+      {static_cast<uint32_t>(tc.width),static_cast<uint32_t>(tc.height), 1},
       vk::ImageUsageFlagBits::eTransferDst |
             vk::ImageUsageFlagBits::eSampled,
             vk::ImageAspectFlagBits::eColor,
-            data);
+            const_cast<void *>(sub_data.buff));
     brdfLUT.image = std::move(defer.image);
     brdfLUT.texture = mkU<Texture>(brdfLUT.image.get());
-    brdfLUT.texture->createSampler();
+    vk::SamplerCreateInfo samplerInfo{
+            vk::SamplerCreateFlags(),
+            vk::Filter::eLinear,
+            vk::Filter::eLinear,
+            vk::SamplerMipmapMode::eLinear,
+            vk::SamplerAddressMode::eClampToEdge,
+            vk::SamplerAddressMode::eClampToEdge,
+            vk::SamplerAddressMode::eClampToEdge,
+            0.0f,
+            VK_FALSE,
+            16,
+            VK_FALSE,
+            vk::CompareOp::eAlways,
+            0.0f,
+            1000.0f,
+            vk::BorderColor::eIntOpaqueBlack,
+            VK_FALSE
+    };
+    brdfLUT.texture->createSampler(samplerInfo);
 
     commandBuffers.push_back(defer.cmd);
 

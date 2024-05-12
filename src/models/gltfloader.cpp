@@ -402,7 +402,7 @@ uPtr<Buffer> GLTFLoader::createTangentVectors(BufferFactory &bufferFactory, tiny
     auto buffer = bufferFactory.createBuffer(vAccessor.count * sizeof(glm::vec3), flag,
                                               VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
 
-    glm::vec3 tangents[vAccessor.count];
+    auto *tangents = (glm::vec3*) malloc(vAccessor.count * sizeof(glm::vec3));
 
     VertexCountIndex vertexCountIndex{};
     vertexCountIndex.vertexCount = vAccessor.count;
@@ -419,6 +419,8 @@ uPtr<Buffer> GLTFLoader::createTangentVectors(BufferFactory &bufferFactory, tiny
     tangentCalc.calculate();
 
     buffer->fill(vertexCountIndex.tangents);
+
+    free(tangents);
     return buffer;
 }
 
