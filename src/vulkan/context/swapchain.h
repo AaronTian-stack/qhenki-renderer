@@ -12,7 +12,7 @@ private:
     vkb::Swapchain vkbSwapchain;
     vk::SwapchainKHR swapChain;
     uint32_t imageIndex;
-    std::vector<FrameBuffer> frameBuffers;
+    std::vector<uPtr<FrameBuffer>> frameBuffers;
 
 public:
     SwapChain(vkb::Swapchain vkbSwapchain);

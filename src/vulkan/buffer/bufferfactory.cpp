@@ -75,7 +75,7 @@ vk::ImageViewCreateInfo BufferFactory::imageViewInfo(vk::Image image, vk::Format
     return info;
 }
 
-sPtr<Attachment> BufferFactory::createAttachment(vk::ImageCreateInfo imageCreateInfo, vk::ImageViewCreateInfo imageViewCreateInfo, vk::Format format)
+uPtr<Attachment> BufferFactory::createAttachment(vk::ImageCreateInfo imageCreateInfo, vk::ImageViewCreateInfo imageViewCreateInfo, vk::Format format)
 {
     vk::Image image;
     VmaAllocationCreateInfo allocationCreateInfo{};
@@ -89,10 +89,10 @@ sPtr<Attachment> BufferFactory::createAttachment(vk::ImageCreateInfo imageCreate
     if (result != vk::Result::eSuccess)
         throw std::runtime_error("failed to create image view");
 
-    return mkS<Attachment>(device, allocator, allocation, image, imageView, format);
+    return mkU<Attachment>(device, allocator, allocation, image, imageView, format);
 }
 
-sPtr<Attachment> BufferFactory::createAttachment(
+uPtr<Attachment> BufferFactory::createAttachment(
     vk::Format format, vk::Extent3D extent,
     vk::ImageUsageFlags imageUsage, vk::ImageAspectFlags aspectFlags)
 {
@@ -114,7 +114,7 @@ sPtr<Attachment> BufferFactory::createAttachment(
     if (result != vk::Result::eSuccess)
         throw std::runtime_error("failed to create image view");
 
-    return mkS<Attachment>(device, allocator, allocation, image, imageView, format);
+    return mkU<Attachment>(device, allocator, allocation, image, imageView, format);
 }
 
 DeferredImage BufferFactory::createTextureImageDeferred(

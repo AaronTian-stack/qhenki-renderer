@@ -21,6 +21,7 @@
 #include "vulkan/renderpass/renderpassbuilder.h"
 #include "vulkan/texture/envmap.h"
 #include "vulkan/attachments/gbuffer.h"
+#include "vfx/postprocessmanager.h"
 #include <atomic>
 #include <mutex>
 
@@ -31,7 +32,7 @@ private:
     std::vector<uPtr<Model>> models;
 
     uPtr<GBuffer> gBuffer;
-    sPtr<Attachment> depthBuffer;
+    uPtr<Attachment> depthBuffer;
 
     GLTFLoader gltfLoad;
     BufferFactory bufferFactory;
@@ -51,6 +52,8 @@ private:
     uPtr<CommandPool> graphicsCommandPool; // one pool per thread
     uPtr<CommandPool> transferCommandPool;
     Syncer syncer;
+
+    PostProcessManager postProcessManager;
 
     int currentFrame = 0;
     const int MAX_FRAMES_IN_FLIGHT = 2;

@@ -99,7 +99,7 @@ void EnvironmentMap::create(BufferFactory &bufferFactory, CommandPool &commandPo
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(time2 - time1).count();
 
     // ~0.5s faster multithreaded with metro_noord envmap
-    std::cout << "Environment map creation took " << duration << "ms" << std::endl;
+    std::cout << "Environment map creation time: " << duration << "ms" << std::endl;
 
     commandPool.submitSingleTimeCommands(queueManager, commandBuffers, true);
 

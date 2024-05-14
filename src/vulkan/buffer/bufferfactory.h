@@ -34,8 +34,8 @@ public:
     void create(VulkanContext &context);
 
     uPtr<Buffer> createBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage, VmaAllocationCreateFlagBits flags = static_cast<VmaAllocationCreateFlagBits>(0));
-    sPtr<Attachment> createAttachment(vk::ImageCreateInfo imageCreateInfo, vk::ImageViewCreateInfo imageViewCreateInfo, vk::Format format);
-    sPtr<Attachment> createAttachment(vk::Format format, vk::Extent3D extent,
+    uPtr<Attachment> createAttachment(vk::ImageCreateInfo imageCreateInfo, vk::ImageViewCreateInfo imageViewCreateInfo, vk::Format format);
+    uPtr<Attachment> createAttachment(vk::Format format, vk::Extent3D extent,
                                       vk::ImageUsageFlags imageUsage, vk::ImageAspectFlags aspectFlags);
 
     void destroy();

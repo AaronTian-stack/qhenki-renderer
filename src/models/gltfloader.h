@@ -11,19 +11,10 @@
 #define TEXCOORD_STRING_1 "TEXCOORD_1"
 #define TANGENT_STRING "TANGENT"
 
-enum LoadStatus
-{
-    READY,
-    PARSING,
-    LOADING,
-    LOADED_MAT_TEX,
-    LOADED_NODE
-};
-
 class GLTFLoader
 {
 private:
-    static inline std::atomic<LoadStatus> loadStatus = LoadStatus::READY;
+    static inline std::atomic<float> loadPercent = 1.f;
 
     static const inline std::array<std::pair<const char*, VertexBufferType>, 5> typeMap =
     {
@@ -44,6 +35,6 @@ private:
 
 public:
     static uPtr<Model> create(CommandPool &commandPool, QueueManager &queueManager, BufferFactory &bufferFactory, const char* filename);
-    static LoadStatus getLoadStatus();
-    static void setLoadStatus(LoadStatus status);
+    static float getLoadPercent();
+    static void setLoadPercent(float percent);
 };

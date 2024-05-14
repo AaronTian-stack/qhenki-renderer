@@ -23,11 +23,12 @@ private:
     Window *window;
     VkDescriptorPool imguiPool;
     void renderMenuBar();
+    void renderPostProcessStack();
     bool optionsOpen = false;
     bool cameraOptionsOpen = false;
     bool drawBackground = true;
+    bool postProcessOpen = false;
 
-    int currentShaderIndex = 0;
     float clearColor[3] = {0.25f, 0.25f, 0.25f };
 
 public:

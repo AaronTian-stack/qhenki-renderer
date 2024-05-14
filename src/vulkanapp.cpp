@@ -39,6 +39,7 @@ VulkanApp::~VulkanApp()
     renderPassBuilder.destroy();
 
     gBuffer->destroy();
+    depthBuffer->destroy();
 
     envMap.destroy();
 
@@ -90,12 +91,12 @@ void VulkanApp::createGbuffer(vk::Extent2D extent, vk::RenderPass renderPass)
 
     gBuffer = mkU<GBuffer>(vulkanContext.device.logicalDevice);
 
-    gBuffer->setAttachment(GBufferAttachmentType::ALBEDO, colorAttachment);
-    gBuffer->setAttachment(GBufferAttachmentType::NORMAL, normalAttachment);
-    gBuffer->setAttachment(GBufferAttachmentType::METAL_ROUGHNESS_AO, metalRoughnessAOAttachment);
-    gBuffer->setAttachment(GBufferAttachmentType::EMISSIVE, emissiveAttachment);
-    gBuffer->setAttachment(GBufferAttachmentType::DEPTH, depthBuffer);
-    gBuffer->setAttachment(GBufferAttachmentType::OUTPUT, outputAttachment); // this must be last for some reason
+    gBuffer->setAttachment(GBufferAttachmentType::ALBEDO, colorAttachment, true);
+    gBuffer->setAttachment(GBufferAttachmentType::NORMAL, normalAttachment, true);
+    gBuffer->setAttachment(GBufferAttachmentType::METAL_ROUGHNESS_AO, metalRoughnessAOAttachment, true);
+    gBuffer->setAttachment(GBufferAttachmentType::EMISSIVE, emissiveAttachment, true);
+    gBuffer->setAttachment(GBufferAttachmentType::DEPTH, depthBuffer, false);
+    gBuffer->setAttachment(GBufferAttachmentType::OUTPUT, outputAttachment, true); // this must be last for some reason
 
     gBuffer->createFrameBuffer(renderPass, extent);
 }
@@ -175,7 +176,7 @@ void VulkanApp::create(Window &window)
     pipelineFactory.getColorBlending().attachmentCount = 1;
     cubeMapPipeline = pipelineFactory.buildPipeline(offscreenRenderPass.get(), 2, cubeMapShader.get());
 
-    PrimitiveDrawer::create(bufferFactory, vulkanContext.device.logicalDevice, &pipelineFactory, offscreenRenderPass.get(), 2);
+    PrimitiveDrawer::create(bufferFactory, vulkanContext.device.logicalDevice, pipelineFactory, offscreenRenderPass.get(), 2);
 
     postProcessShader = mkU<Shader>(device, "passthrough_vert.spv", "passthrough_frag.spv");
     pipelineFactory.reset();
@@ -219,7 +220,7 @@ void VulkanApp::setModel(const std::string& filePath)
                                            bufferFactory, filePath.c_str());
         std::lock_guard lock(modelMutex);
         models.push_back(std::move(newModel));
-        GLTFLoader::setLoadStatus(LoadStatus::READY);
+        GLTFLoader::setLoadPercent(1.f);
     });
     t.detach();
 }

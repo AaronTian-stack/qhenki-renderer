@@ -8,8 +8,9 @@ class FrameBuffer : public Destroyable
 {
 public:
     vk::Framebuffer framebuffer;
-    std::vector<sPtr<Attachment>> attachments;
-    FrameBuffer(vk::Device device, vk::Framebuffer framebuffer, const std::vector<sPtr<Attachment>> &attachments);
+    std::vector<uPtr<Attachment>> attachments;
+    FrameBuffer(vk::Device device, vk::Framebuffer framebuffer);
+    FrameBuffer(vk::Device device, vk::Framebuffer framebuffer, std::vector<uPtr<Attachment>> &attachments);
     std::vector<vk::DescriptorImageInfo> getDescriptorInfo();
     void destroy() override;
 };

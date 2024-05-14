@@ -1,7 +1,7 @@
 #include "gbuffer.h"
 
 GBuffer::GBuffer(vk::Device device)
-: FrameBuffer(device, vk::Framebuffer(), {})
+: FrameBuffer(device, vk::Framebuffer())
 {}
 
 Attachment *GBuffer::getAttachment(GBufferAttachmentType type)
@@ -11,28 +11,14 @@ Attachment *GBuffer::getAttachment(GBufferAttachmentType type)
     return attachmentMap[(unsigned int)type];
 }
 
-void GBuffer::setIndividualFramebuffer(GBufferAttachmentType type, vk::Framebuffer framebuffer)
-{
-    if (type >= GBufferAttachmentType::END)
-        throw std::runtime_error("Invalid GBufferAttachmentType");
-    individualFrameBuffers[(unsigned int)type] = framebuffer;
-}
-
-vk::Framebuffer GBuffer::getIndividualFramebuffer(GBufferAttachmentType type)
-{
-    if (type >= GBufferAttachmentType::END)
-        throw std::runtime_error("Invalid GBufferAttachmentType");
-    return individualFrameBuffers[(unsigned int)type];
-}
-
-void GBuffer::setAttachment(GBufferAttachmentType type, const std::shared_ptr<Attachment> &attachment)
+void GBuffer::setAttachment(GBufferAttachmentType type, uPtr<Attachment> &attachment, bool own)
 {
     if (type >= GBufferAttachmentType::END)
         throw std::runtime_error("Invalid GBufferAttachmentType");
     attachmentMap[(unsigned int)type] = attachment.get();
     attachmentIndexMap[attachment.get()] = type;
-    attachment->create(device);
-    attachments.push_back(attachment);
+    if (own)
+        attachments.push_back(std::move(attachment));
 }
 
 void GBuffer::createFrameBuffer(vk::RenderPass renderPass, vk::Extent2D extent)

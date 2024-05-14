@@ -8,6 +8,7 @@
 #include <iostream>
 #include "ImGuiFileDialog-0.6.7/ImGuiFileDialog.h"
 #include "models/gltfloader.h"
+#include <cstdlib>
 
 UserInterface::UserInterface() {}
 
@@ -97,8 +98,11 @@ void UserInterface::destroy()
 
 void UserInterface::render()
 {
+    ImGuiStyle& style = ImGui::GetStyle();
+    style.FrameRounding = 5.0f;
+
     const int y = 21;
-    //ImGui::ShowDemoWindow();
+//    ImGui::ShowDemoWindow();
     ImGui::SetNextWindowPos(ImVec2(0, y));
     auto flags = ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove;
 
@@ -133,7 +137,15 @@ void UserInterface::render()
         ImGui::BeginDisabled(drawBackground);
         ImGui::ColorEdit3("Clear Color", clearColor);
         ImGui::EndDisabled();
+        ImGui::Separator();
+        if (ImGui::Button("Post-Processing Stack"))
+            postProcessOpen = true;
         ImGui::End();
+    }
+
+    if (postProcessOpen)
+    {
+        renderPostProcessStack();
     }
 
     if (cameraOptionsOpen)
@@ -197,36 +209,21 @@ void UserInterface::renderMenuBar()
             ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose File", ".gltf,.glb", config);
         }
 
-        auto status = GLTFLoader::getLoadStatus();
+        float status = GLTFLoader::getLoadPercent();
+        static float smoothPercent = 1.f;
+        smoothPercent = glm::mix(smoothPercent, status, 0.2f);
 
-        ImVec4 textColor;
-        std::string statusText = "Status: ";
-        switch(status)
+        if (smoothPercent < 0.99f)
         {
-            case LoadStatus::READY:
-                statusText += "Ready";
-                textColor = ImVec4(0.0f, 1.0f, 0.0f, 1.0f);
-                break;
-            case LoadStatus::PARSING:
-                statusText += "Parsing File...";
-                textColor = ImVec4(1.0f, 1.0f, 0.0f, 1.0f);
-                break;
-            case LoadStatus::LOADING:
-                statusText += "Loading Nodes, Materials...";
-                textColor = ImVec4(1.0f, 1.0f, 0.0f, 1.0f);
-                break;
-            case LoadStatus::LOADED_MAT_TEX:
-                statusText += "Loading Nodes...";
-                textColor = ImVec4(1.0f, 0.0f, 1.0f, 1.0f);
-                break;
-            case LoadStatus::LOADED_NODE:
-                statusText += "Loading Materials and Textures...";
-                textColor = ImVec4(1.0f, 0.0f, 0.0f, 1.0f);
-                break;
+            char ps[10];
+            snprintf(ps, sizeof(ps), "%d", (int)(smoothPercent * 100));
+            ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "Status: ");
+            ImGui::ProgressBar(smoothPercent, ImVec2(100, 0), ps);
         }
-
-        auto cString = statusText.c_str();
-        ImGui::TextColored(textColor, cString);
+        else
+        {
+            ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "Status: Ready");
+        }
 
         const char* name = "Aaron Tian 2024";
         ImGui::SameLine(ImGui::GetWindowWidth() - ImGui::CalcTextSize(name).x - 15);
@@ -260,5 +257,72 @@ void UserInterface::renderMenuBar()
         ImGui::BulletText("Mouse 5: Decrease FOV");
         ImGui::EndPopup();
     }
+    ImGui::End();
+}
+
+void UserInterface::renderPostProcessStack()
+{
+    ImGui::Begin("Post-Processing Stack", &postProcessOpen, ImGuiWindowFlags_AlwaysAutoResize);
+
+    if (ImGui::BeginTable("table1", 2))
+    {
+        float columnWidth = 120.f;
+        ImGui::TableSetupColumn("Available Effects", ImGuiTableColumnFlags_WidthFixed, columnWidth);
+        ImGui::TableSetupColumn("Active Effects", ImGuiTableColumnFlags_WidthFixed, columnWidth);
+
+        ImGui::TableHeadersRow();
+        ImGui::TableNextRow();
+        ImGui::TableSetColumnIndex(0);
+        // list box
+        static const char* items[] = { "FXAA", "Sharpen", "Chrom. Abbr.", "Vignette"};
+        static int item_current_idx = 0;
+        float listboxHeight = ImGui::GetTextLineHeightWithSpacing() * 10;
+        if (ImGui::BeginListBox("##listbox 1", ImVec2(-FLT_MIN, listboxHeight)))
+        {
+            for (int n = 0; n < IM_ARRAYSIZE(items); n++)
+            {
+//                const bool is_selected = (item_current_idx == n);
+//                if (ImGui::Selectable(items[n], is_selected))
+//                    item_current_idx = n;
+//
+//                // Set the initial focus when opening the combo (scrolling + keyboard navigation focus)
+//                if (is_selected)
+//                    ImGui::SetItemDefaultFocus();
+                ImGui::PushID(n);
+                ImGui::Selectable(items[n]);
+
+                if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_None))
+                {
+                    ImGui::SetDragDropPayload("DND_DEMO_CELL", &n, sizeof(int));
+
+                    ImGui::Text("%s", items[n]);
+                    ImGui::EndDragDropSource();
+                }
+
+                ImGui::PopID();
+            }
+            ImGui::EndListBox();
+        }
+        ImGui::TableNextColumn();
+        if (ImGui::BeginListBox("##listbox 2", ImVec2(-FLT_MIN, listboxHeight)))
+        {
+            ImGui::Text("Reinhard");
+            // selectable, if selected then open menu for parameters, which also has button to remove
+            ImGui::EndListBox();
+        }
+        if (ImGui::BeginDragDropTarget())
+        {
+            if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("DND_DEMO_CELL"))
+            {
+                IM_ASSERT(payload->DataSize == sizeof(int));
+                int payload_n = *(const int*)payload->Data;
+                std::cout << "Dropped " << items[payload_n] << std::endl;
+            }
+            ImGui::EndDragDropTarget();
+        }
+
+        ImGui::EndTable();
+    }
+
     ImGui::End();
 }
