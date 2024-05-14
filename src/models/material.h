@@ -3,18 +3,19 @@
 
 struct Material
 {
-    glm::vec4 baseColorFactor = glm::vec4(1.0f);
-    int baseColorTexture = -1;
+    glm::vec4 baseColorFactor;
+    int baseColorTexture;
 
-    float metallicFactor = -1;
-    float roughnessFactor = -1;
-    int metallicRoughnessTexture = -1;
+    float metallicFactor;
+    float roughnessFactor;
+    int metallicRoughnessTexture;
 
-    int normalTexture = -1;
+    int normalTexture;
 
-    int occlusionTexture = -1;
-    float occlusionStrength = 1.0f;
+    int occlusionTexture;
+    float occlusionStrength;
+    int occlusionUVSet;
 
-    int emissiveTexture = -1;
-    glm::vec3 emissiveFactor = glm::vec3(0.0f);
+    int emissiveTexture;
+    glm::vec3 emissiveFactor;
 };

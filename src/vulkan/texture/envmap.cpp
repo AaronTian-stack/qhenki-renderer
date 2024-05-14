@@ -23,13 +23,13 @@ void EnvironmentMap::create(BufferFactory &bufferFactory, CommandPool &commandPo
 
     std::vector<vk::CommandBuffer> commandBuffers(4);
     auto cubeMapL = [&](vk::CommandBuffer *commandBuffer) {
-        cubeMap = createCubeMap(commandBuffer, bufferFactory, commandPool, queueManager, path);
+        cubeMap = createCubeMap(commandBuffer, bufferFactory, commandPool, path);
     };
     auto irradianceMapL = [&](vk::CommandBuffer *commandBuffer) {
-        irradianceMap = createCubeMap(commandBuffer, bufferFactory, commandPool, queueManager, irradiance.c_str());
+        irradianceMap = createCubeMap(commandBuffer, bufferFactory, commandPool, irradiance.c_str());
     };
     auto radianceMapL = [&](vk::CommandBuffer *commandBuffer) {
-        radianceMap = createCubeMap(commandBuffer, bufferFactory, commandPool, queueManager, radiance.c_str());
+        radianceMap = createCubeMap(commandBuffer, bufferFactory, commandPool, radiance.c_str());
     };
 
     uPtr<Buffer> deferStagingBuffer;
@@ -98,7 +98,7 @@ void EnvironmentMap::create(BufferFactory &bufferFactory, CommandPool &commandPo
     auto time2 = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(time2 - time1).count();
 
-    // around ~0.5s faster multithreaded with metro_noord envmap
+    // ~0.5s faster multithreaded with metro_noord envmap
     std::cout << "Environment map creation took " << duration << "ms" << std::endl;
 
     commandPool.submitSingleTimeCommands(queueManager, commandBuffers, true);
@@ -112,7 +112,9 @@ void EnvironmentMap::create(BufferFactory &bufferFactory, CommandPool &commandPo
     stagingBuffers.clear();
 }
 
-ImageTexture EnvironmentMap::createCubeMap(vk::CommandBuffer *commandBuffer, BufferFactory &bufferFactory, CommandPool &commandPool, QueueManager &queueManager, const char *path)
+ImageTexture
+EnvironmentMap::createCubeMap(vk::CommandBuffer *commandBuffer, BufferFactory &bufferFactory, CommandPool &commandPool,
+                              const char *path)
 {
     // read the file
     std::ifstream file(path, std::ios::binary);

@@ -3,17 +3,18 @@
 
 layout(location = 0) in vec3 fragColor;
 layout(location = 1) in vec3 fragPos;
-layout(location = 2) in vec2 fragUV;
-layout(location = 3) in vec3 fragNormal;
-layout(location = 4) in vec3 fragTangent;
-layout(location = 5) in vec3 fragBiTangent;
+layout(location = 2) in vec2 fragUV_0;
+layout(location = 3) in vec2 fragUV_1;
+layout(location = 4) in vec3 fragNormal;
+layout(location = 5) in vec3 fragTangent;
+layout(location = 6) in vec3 fragBiTangent;
 
 layout(location = 0) out vec4 outAlbedo; // location is index of framebuffer / attachment
 layout(location = 1) out vec4 outNormal;
 layout(location = 2) out vec4 outMetalRoughnessAO;
 layout(location = 3) out vec4 outEmissive;
 
-// 80 is max number of samplers in any shader on macOS (with argument buffers turned on, validation still complains)
+// max out number of samplers in any shader on macOS (with argument buffers turned on, validation still complains)
 // since partial binding is on, indexing into undefined sampler will not show errors!
 layout(set = 1, binding = 0) uniform sampler2D texSampler[128];
 
@@ -30,6 +31,7 @@ layout(scalar, push_constant) uniform mats {
 
     int occlusionTexture;
     float occlusionStrength;
+    int occlusionUVSet;
 
     int emissiveTexture;
     vec3 emissiveFactor;
@@ -48,7 +50,7 @@ void setValues(out vec4 albedo, out vec3 normal, out vec4 metalRoughness, out fl
     albedo = material.baseColorFactor;
     if (material.baseColorTexture != -1)
     {
-        vec4 tAlbedo = texture(texSampler[material.baseColorTexture], fragUV);
+        vec4 tAlbedo = texture(texSampler[material.baseColorTexture], fragUV_0);
         tAlbedo.rgb = pow(tAlbedo.rgb, vec3(2.2));
         albedo *= tAlbedo;
     }
@@ -56,7 +58,7 @@ void setValues(out vec4 albedo, out vec3 normal, out vec4 metalRoughness, out fl
     if (material.normalTexture != -1)
     {
         mat3 TBN = mat3(normalize(fragTangent), normalize(fragBiTangent), normalize(fragNormal));
-        vec3 nt = texture(texSampler[material.normalTexture], fragUV).rgb;
+        vec3 nt = texture(texSampler[material.normalTexture], fragUV_0).rgb;
         normal = nt * 2.0 - 1.0; // convert normal from 0 to 1 range to -1 to 1 range
         normal = normalize(TBN * normal);
     }
@@ -68,21 +70,22 @@ void setValues(out vec4 albedo, out vec3 normal, out vec4 metalRoughness, out fl
     // roughness is g, metal is b
     metalRoughness = vec4(1.0, material.roughnessFactor, material.metallicFactor, 1.0);
     if (material.metallicRoughnessTexture != -1)
-        metalRoughness *= texture(texSampler[material.metallicRoughnessTexture], fragUV);
+        metalRoughness *= texture(texSampler[material.metallicRoughnessTexture], fragUV_0);
 
     AO = material.occlusionStrength;
     if (material.occlusionTexture != -1) {
-        AO = material.occlusionStrength * texture(texSampler[material.occlusionTexture], fragUV).r;
+        float occlusion = material.occlusionUVSet == 0 ? texture(texSampler[material.occlusionTexture], fragUV_0).r
+                                            : texture(texSampler[material.occlusionTexture], fragUV_1).r;
+        AO *= occlusion;
     }
 
+    emissive = material.emissiveFactor;
     if (material.emissiveTexture != -1)
     {
-        emissive = texture(texSampler[material.emissiveTexture], fragUV).rgb;
-        emissive.rgb = pow(emissive.rgb, vec3(2.2));
-        emissive *= material.emissiveFactor;
+        vec4 emissiveT = texture(texSampler[material.emissiveTexture], fragUV_0);
+        emissiveT.rgb = pow(emissiveT.rgb, vec3(2.2));
+        emissive *= emissiveT.rgb;
     }
-    else
-        emissive = vec3(0.0);
 }
 
 void main()

@@ -7,7 +7,8 @@
 
 #define POSITION_STRING "POSITION"
 #define NORMAL_STRING "NORMAL"
-#define TEXCOORD_STRING "TEXCOORD_0"
+#define TEXCOORD_STRING_0 "TEXCOORD_0"
+#define TEXCOORD_STRING_1 "TEXCOORD_1"
 #define TANGENT_STRING "TANGENT"
 
 enum LoadStatus
@@ -24,11 +25,12 @@ class GLTFLoader
 private:
     static inline std::atomic<LoadStatus> loadStatus = LoadStatus::READY;
 
-    static const inline std::array<std::pair<const char*, VertexBufferType>, 4> typeMap =
+    static const inline std::array<std::pair<const char*, VertexBufferType>, 5> typeMap =
     {
         std::make_pair(POSITION_STRING, VertexBufferType::POSITION),
         std::make_pair(NORMAL_STRING, VertexBufferType::NORMAL),
-        std::make_pair(TEXCOORD_STRING, VertexBufferType::UV),
+        std::make_pair(TEXCOORD_STRING_0, VertexBufferType::UV_0),
+        std::make_pair(TEXCOORD_STRING_1, VertexBufferType::UV_1),
         std::make_pair(TANGENT_STRING, VertexBufferType::TANGENT),
     };
 

@@ -139,10 +139,15 @@ void UserInterface::render()
     if (cameraOptionsOpen)
     {
         ImGui::Begin("Camera Options", &cameraOptionsOpen, ImGuiWindowFlags_AlwaysAutoResize);
+        ImGui::Text("Sensitivity");
+        ImGui::Separator();
         ImGui::SliderFloat("Rotate Sensitivity", &InputProcesser::SENSITIVITY_ROTATE, 0.0f, 0.2f);
         ImGui::SliderFloat("Translate Sensitivity", &InputProcesser::SENSITIVITY_TRANSLATE, 0.0f, 0.2f);
         ImGui::SliderFloat("Zoom Sensitivity", &InputProcesser::SENSITIVITY_ZOOM, 0.0f, 0.2f);
         ImGui::SliderFloat("FOV Sensitivity", &InputProcesser::SENSITIVITY_FOV, 0.0f, 20.0f);
+        // TODO: change FOV
+//        ImGui::Text("Viewing");
+//        ImGui::Separator();
         ImGui::End();
     }
 

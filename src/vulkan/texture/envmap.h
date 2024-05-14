@@ -13,7 +13,8 @@ class EnvironmentMap : public Destroyable
 private:
     std::vector<uPtr<Buffer>> stagingBuffers;
     unsigned int maxMipLevels;
-    ImageTexture createCubeMap(vk::CommandBuffer *commandBuffer, BufferFactory &bufferFactory, CommandPool &commandPool, QueueManager &queueManager, const char *path);;
+    ImageTexture createCubeMap(vk::CommandBuffer *commandBuffer, BufferFactory &bufferFactory, CommandPool &commandPool,
+                               const char *path);;
 
 public:
     ImageTexture cubeMap;

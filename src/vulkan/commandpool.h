@@ -5,6 +5,7 @@
 #include "destroyable.h"
 #include "queuemanager.h"
 #include "context/vulkancontext.h"
+#include <mutex>
 
 class CommandPool : public Destroyable
 {
