@@ -8,17 +8,19 @@ class Model;
 
 enum VertexBufferType
 {
-    POSITION = 1 << 0,
-    NORMAL = 1 << 1,
-    TANGENT = 1 << 2,
-    UV = 1 << 3,
+    POSITION,
+    NORMAL,
+    TANGENT,
+    UV_0,
+    UV_1,
 };
 
 class Mesh
 {
 private:;
-    int materialIndex; // used in loading only
-    std::vector<std::pair<uPtr<Buffer>, VertexBufferType>> vertexBuffers;
+    int materialIndex; // used in loading only TODO: get rid of this
+    std::array<uPtr<Buffer>, 5> vertexBuffers;
+
     uPtr<Buffer> indexBuffer;
 
 public:

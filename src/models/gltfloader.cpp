@@ -72,11 +72,6 @@ uPtr<Model> GLTFLoader::create(CommandPool &commandPool, QueueManager &queueMana
         mesh->material = &model->materials[mesh->materialIndex];
     }
 
-//    makeMaterialsAndTextures(commandPool, queueManager, bufferFactory, gltfModel, model.get());
-//    loadStatus.store(LoadStatus::LOADED_MAT_TEX);
-//    processNode(bufferFactory, gltfModel, model.get(), nullptr, rootNodeIndex);
-//    loadStatus.store(LoadStatus::LOADED_NODE);
-
     return model;
 }
 
@@ -153,30 +148,28 @@ void GLTFLoader::processNode(BufferFactory &bufferFactory, tinygltf::Model &gltf
 
             uPtr<Mesh> mesh = mkU<Mesh>();
 
-            if (primitive.attributes.count("TEXCOORD_1") == 1)
-                throw std::runtime_error("AO UVs not implemented");
-
             // extract vertex data
             for (auto &type : typeMap)
             {
                 if (primitive.attributes.count(type.first) == 0)
                     continue;
 
-                size_t vertexSize = type.second == VertexBufferType::UV ? sizeof(glm::vec2) : sizeof(glm::vec3);
+                size_t vertexSize = (type.second == VertexBufferType::UV_0 || type.second == VertexBufferType::UV_1)
+                        ? sizeof(glm::vec2) : sizeof(glm::vec3);
                 auto vBuffer = getBuffer(bufferFactory, gltfModel, primitive.attributes.at(type.first), vk::BufferUsageFlagBits::eVertexBuffer, vertexSize);
-                mesh->vertexBuffers.emplace_back(std::move(vBuffer), type.second);
+                mesh->vertexBuffers[type.second] = std::move(vBuffer);
             }
             if (primitive.attributes.count(TANGENT_STRING) == 0)
             {
                 std::cerr << "Tangent vectors manually generated using MikkTSpace!" << std::endl;
                 // no tangent vectors, need to manually create them
-                mesh->vertexBuffers.emplace_back(
+                mesh->vertexBuffers[VertexBufferType::TANGENT] =
                         createTangentVectors(bufferFactory, gltfModel,
                                              primitive.attributes.at(POSITION_STRING),
                                              primitive.attributes.at(NORMAL_STRING),
-                                             primitive.attributes.at(TEXCOORD_STRING),
+                                             primitive.attributes.at(TEXCOORD_STRING_0),
                                              primitive.indices,
-                                             vk::BufferUsageFlagBits::eVertexBuffer), VertexBufferType::TANGENT);
+                                             vk::BufferUsageFlagBits::eVertexBuffer);
             }
 
             // extract index data
@@ -245,6 +238,7 @@ uPtr<Buffer> GLTFLoader::getBuffer(BufferFactory &bufferFactory, tinygltf::Model
 
 void GLTFLoader::makeMaterialsAndTextures(CommandPool &commandPool, QueueManager &queueManager, BufferFactory &bufferFactory, tinygltf::Model &gltfModel, Model *model)
 {
+    auto time1 = std::chrono::high_resolution_clock::now();
     std::vector<vk::CommandBuffer> commandBuffers;
     std::vector<uPtr<Buffer>> stagingBuffers;
     // make every single image in order
@@ -354,15 +348,16 @@ void GLTFLoader::makeMaterialsAndTextures(CommandPool &commandPool, QueueManager
                                              mat.pbrMetallicRoughness.baseColorFactor[1],
                                              mat.pbrMetallicRoughness.baseColorFactor[2],
                                              mat.pbrMetallicRoughness.baseColorFactor[3]);
-        material.metallicFactor = mat.pbrMetallicRoughness.metallicFactor;
-        material.roughnessFactor = mat.pbrMetallicRoughness.roughnessFactor;
+        material.metallicFactor = (float)mat.pbrMetallicRoughness.metallicFactor;
+        material.roughnessFactor = (float)mat.pbrMetallicRoughness.roughnessFactor;
 
         material.baseColorTexture = mat.pbrMetallicRoughness.baseColorTexture.index;
         material.metallicRoughnessTexture = mat.pbrMetallicRoughness.metallicRoughnessTexture.index;
         material.normalTexture = mat.normalTexture.index;
 
         material.occlusionTexture = mat.occlusionTexture.index;
-        material.occlusionStrength = mat.occlusionTexture.strength;
+        material.occlusionStrength = (float)mat.occlusionTexture.strength;
+        material.occlusionUVSet = mat.occlusionTexture.texCoord;
 
         material.emissiveTexture = mat.emissiveTexture.index;
         material.emissiveFactor = glm::vec3(mat.emissiveFactor[0], mat.emissiveFactor[1], mat.emissiveFactor[2]);
@@ -377,6 +372,10 @@ void GLTFLoader::makeMaterialsAndTextures(CommandPool &commandPool, QueueManager
 
     for (auto &buffer : stagingBuffers)
         buffer->destroy();
+
+    auto time2 = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(time2 - time1).count();
+    std::cout << "Material and texture creation took " << duration << "ms" << std::endl;
 }
 
 uPtr<Buffer> GLTFLoader::createTangentVectors(BufferFactory &bufferFactory, tinygltf::Model &gltfModel, int vertexType,

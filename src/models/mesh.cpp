@@ -7,26 +7,33 @@ void Mesh::destroy()
 {
     for (auto &vb : vertexBuffers)
     {
-        vb.first->destroy();
+        if (vb) vb->destroy();
     }
     indexBuffer->destroy();
 }
 
 void Mesh::draw(vk::CommandBuffer commandBuffer)
 {
+    // TODO: perhaps mesh can select shader to use based on buffer inputs
     std::vector<Buffer*> buffers;
-
-    // sort vertex buffers by type
-    std::sort(vertexBuffers.begin(), vertexBuffers.end(), [](const auto &a, const auto &b) {
-        return a.second < b.second;
-    });
 
     buffers.reserve(vertexBuffers.size());
     for (auto &vb : vertexBuffers)
     {
-        buffers.push_back(vb.first.get());
+        if (vb) buffers.push_back(vb.get());
     }
-    bind(commandBuffer, buffers);
+
+    for (int i = 0; i < vertexBuffers.size(); i++)
+    {
+        if (vertexBuffers[i])
+        {
+            vertexBuffers[i]->bind(commandBuffer, i);
+        }
+        else if (i == VertexBufferType::UV_1)
+        {
+            vertexBuffers[VertexBufferType::UV_0]->bind(commandBuffer, i);
+        }
+    }
 
     indexBuffer->bind(commandBuffer);
     size_t size = indexBuffer->getIndexType() == vk::IndexType::eUint16 ? sizeof(uint16_t) : sizeof(uint32_t);
