@@ -217,7 +217,7 @@ void UserInterface::renderMenuBar()
         {
             char ps[10];
             snprintf(ps, sizeof(ps), "%d", (int)(smoothPercent * 100));
-            ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "Status: ");
+            ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "Status:");
             ImGui::ProgressBar(smoothPercent, ImVec2(100, 0), ps);
         }
         else
@@ -263,6 +263,7 @@ void UserInterface::renderMenuBar()
 void UserInterface::renderPostProcessStack()
 {
     ImGui::Begin("Post-Processing Stack", &postProcessOpen, ImGuiWindowFlags_AlwaysAutoResize);
+    ImGui::Text("Drag and drop effects to apply.");
 
     if (ImGui::BeginTable("table1", 2))
     {
@@ -281,13 +282,6 @@ void UserInterface::renderPostProcessStack()
         {
             for (int n = 0; n < IM_ARRAYSIZE(items); n++)
             {
-//                const bool is_selected = (item_current_idx == n);
-//                if (ImGui::Selectable(items[n], is_selected))
-//                    item_current_idx = n;
-//
-//                // Set the initial focus when opening the combo (scrolling + keyboard navigation focus)
-//                if (is_selected)
-//                    ImGui::SetItemDefaultFocus();
                 ImGui::PushID(n);
                 ImGui::Selectable(items[n]);
 
@@ -306,7 +300,17 @@ void UserInterface::renderPostProcessStack()
         ImGui::TableNextColumn();
         if (ImGui::BeginListBox("##listbox 2", ImVec2(-FLT_MIN, listboxHeight)))
         {
-            ImGui::Text("Reinhard");
+            static char* current_item = NULL;
+            ImGui::SetNextItemWidth(columnWidth * 0.95f);
+            if (ImGui::BeginCombo("##combo", current_item))
+            {
+                for (int n = 0; n < IM_ARRAYSIZE(items); n++)
+                {
+                    bool is_selected = (current_item == items[n]);
+                    ImGui::Selectable(items[n], is_selected);
+                }
+                ImGui::EndCombo();
+            }
             // selectable, if selected then open menu for parameters, which also has button to remove
             ImGui::EndListBox();
         }

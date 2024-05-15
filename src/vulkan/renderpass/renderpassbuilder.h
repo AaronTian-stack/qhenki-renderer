@@ -1,3 +1,5 @@
+#pragma once
+
 #include "../destroyable.h"
 #include "renderpass.h"
 #include "../../smartpointer.h"
