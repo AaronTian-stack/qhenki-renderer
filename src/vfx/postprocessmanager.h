@@ -9,7 +9,7 @@
 struct AttachmentFrameBuffer
 {
     uPtr<Attachment> attachment; // read from
-    vk::Framebuffer framebuffer; // output to
+    vk::Framebuffer framebuffer; // framebuffer to write to attachment
 };
 
 class PostProcessManager : public Destroyable

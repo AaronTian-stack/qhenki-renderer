@@ -10,5 +10,6 @@ layout(location = 0) out vec4 outColor; // location is index of framebuffer / at
 void main()
 {
     vec3 color = texture(texSampler, fragUV).rgb;
+    color = color / (color + vec3(1.0));
     outColor = vec4(color, 1.0);
 }

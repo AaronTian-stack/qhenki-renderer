@@ -9,13 +9,16 @@ layout(location = 0) out vec4 outColor; // location is index of framebuffer / at
 
 layout(scalar, push_constant) uniform PushConstant {
     vec2 viewport;
+    float fxaaReduceMul;
+    float fxaaReduceMin;
+    float fxaaSpanMax;
 } pc;
 
 vec3 fxaa(vec2 texCoords, vec2 viewportInv)
 {
-    float u_fxaaReduceMul = 1.0 / 128.0;
-    float u_fxaaReduceMin = 1.0 / 8.0;
-    float u_fxaaSpanMax = 8.0;
+    float u_fxaaReduceMul = 1.0 / pc.fxaaReduceMul;
+    float u_fxaaReduceMin = 1.0 / pc.fxaaReduceMin;
+    float u_fxaaSpanMax = pc.fxaaSpanMax;
 
     vec3 rgbNW = texture(texSampler, texCoords.xy + (vec2(-1.0, -1.0) * viewportInv)).xyz;
     vec3 rgbNE = texture(texSampler, texCoords.xy + (vec2(+1.0, -1.0) * viewportInv)).xyz;
@@ -77,6 +80,7 @@ vec3 fxaa(vec2 texCoords, vec2 viewportInv)
 void main()
 {
     vec2 viewportInv = vec2(1.0) / pc.viewport;
-    vec3 color = fxaa(fragUV, viewportInv);
-    outColor = vec4(color, 1.0);
+//    vec3 color = fxaa(fragUV, viewportInv);
+    vec3 color = texture(texSampler, fragUV).rgb;
+    outColor = vec4(mix(vec3(1.0, 0.0, 0.0), color, 0.5), 1.0);
 }

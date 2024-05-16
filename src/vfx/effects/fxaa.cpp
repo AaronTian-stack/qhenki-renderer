@@ -6,7 +6,7 @@ void FXAA::bindData(vk::CommandBuffer commandBuffer)
 }
 
 FXAA::FXAA(vk::Device device, const char *shaderPath, PipelineBuilder &pipelineFactory,
-           DescriptorLayoutCache &layoutCache, RenderPass *renderPass) : PostProcess(device, shaderPath,
+           DescriptorLayoutCache &layoutCache, RenderPass *renderPass) : PostProcess("FXAA", device, shaderPath,
                                                                                      pipelineFactory, layoutCache,
                                                                                      renderPass)
 {}

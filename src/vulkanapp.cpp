@@ -6,6 +6,7 @@
 #include "imgui/imgui.h"
 #include "models/primitives/primitivedrawer.h"
 #include "vfx/effects/fxaa.h"
+#include "vfx/effects/reinhard.h"
 #include <thread>
 
 VulkanApp::VulkanApp() {}
@@ -209,8 +210,11 @@ void VulkanApp::create(Window &window)
     postProcessManager = mkU<PostProcessManager>(vulkanContext.device.logicalDevice, extent, bufferFactory, renderPassBuilder);
     auto fxaa = mkS<FXAA>(vulkanContext.device.logicalDevice, "fxaa_frag.spv",
                           pipelineFactory, layoutCache, &postProcessManager->getPingPongRenderPass());
-//    postProcessManager->addPostProcess(fxaa);
-    postProcessManager->addToneMapper(fxaa);
+    postProcessManager->addPostProcess(fxaa);
+    postProcessManager->addPostProcess(fxaa);
+    auto reinhard = mkS<Reinhard>(vulkanContext.device.logicalDevice, "reinhard_frag.spv",
+                                  pipelineFactory, layoutCache, &postProcessManager->getPingPongRenderPass());
+    postProcessManager->addToneMapper(reinhard);
 }
 
 void VulkanApp::setUpCallbacks() {
@@ -360,7 +364,7 @@ void VulkanApp::recordCommandBuffer(vk::Framebuffer framebuffer)
 
     auto &outputAttachment = gBuffer->attachments.back();
     Image::recordTransitionImageLayout(vk::ImageLayout::eUndefined, vk::ImageLayout::eShaderReadOnlyOptimal,
-                                       outputAttachment->image,primaryCommandBuffer, 1, 1);
+                                       outputAttachment->image, primaryCommandBuffer, 1, 1);
 
     displayRenderPass->setFramebuffer(framebuffer);
     displayRenderPass->setRenderAreaExtent(swapChainExtent);
@@ -380,7 +384,7 @@ void VulkanApp::recordCommandBuffer(vk::Framebuffer framebuffer)
     // get window resolution
     auto extent = vulkanContext.swapChain->getExtent();
     auto resolution = glm::vec2(extent.width, extent.height);
-    postProcessPipeline->setPushConstant(primaryCommandBuffer, &resolution, sizeof(glm::vec2), 0, vk::ShaderStageFlagBits::eFragment);
+//    postProcessPipeline->setPushConstant(primaryCommandBuffer, &resolution, sizeof(glm::vec2), 0, vk::ShaderStageFlagBits::eFragment);
     primaryCommandBuffer.draw(3, 1, 0, 0);
 
     ui->end(primaryCommandBuffer);
@@ -389,6 +393,8 @@ void VulkanApp::recordCommandBuffer(vk::Framebuffer framebuffer)
     auto outputAttachmentInfo = outputAttachment->getDescriptorInfo();
     auto builder = DescriptorBuilder::beginSet(&layoutCache, &allocator);
     postProcessManager->tonemap(primaryCommandBuffer, builder, &outputAttachmentInfo);
+    builder = DescriptorBuilder::beginSet(&layoutCache, &allocator);
+    postProcessManager->render(primaryCommandBuffer, builder);
 
     //// END RECORDING COMMAND BUFFER
     frame.end(); // ends the frames command buffer

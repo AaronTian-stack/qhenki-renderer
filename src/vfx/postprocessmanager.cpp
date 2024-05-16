@@ -9,12 +9,6 @@ PostProcessManager::PostProcessManager(vk::Device device, vk::Extent2D extent, B
     renderPassBuilder.addSubPass({}, {}, {0}, {});
     pingPongRenderPass = renderPassBuilder.buildRenderPass();
 
-//    renderPassBuilder.reset();
-//    renderPassBuilder.addColorAttachment(vk::Format::eR16G16B16A16Sfloat);
-//    renderPassBuilder.addSubPass({}, {}, {0}, {});
-//    toneMapRenderPass = renderPassBuilder.buildRenderPass();
-
-    vk::Framebuffer fbs[2];
     for (int i = 0; i < 2; i++)
     {
         afb[i].attachment = bufferFactory.createAttachment(
@@ -30,15 +24,13 @@ PostProcessManager::PostProcessManager(vk::Device device, vk::Extent2D extent, B
                 extent.width,
                 extent.height,
                 1);
-        fbs[i] = device.createFramebuffer(createInfo);
-    }
-    for (int i = 0; i < 2; i++)
-    {
-        afb[i].framebuffer = fbs[1 - i];
+        afb[i].framebuffer = device.createFramebuffer(createInfo);
+        afb[i].attachment->createGenericSampler(vk::Filter::eNearest, vk::SamplerMipmapMode::eLinear);
     }
 }
 
-void PostProcessManager::tonemap(vk::CommandBuffer commandBuffer, DescriptorBuilder &builder, vk::DescriptorImageInfo *imageInfo)
+void PostProcessManager::tonemap(vk::CommandBuffer commandBuffer, DescriptorBuilder &builder,
+                                 vk::DescriptorImageInfo *imageInfo)
 {
     // tonemap into attachment 0
     pingPongRenderPass->setFramebuffer(afb[0].framebuffer);
@@ -70,7 +62,10 @@ void PostProcessManager::render(vk::CommandBuffer commandBuffer, DescriptorBuild
     vk::DescriptorSetLayout layout;
     for (auto &postProcess : postProcesses)
     {
-        pingPongRenderPass->setFramebuffer(afb[ping].framebuffer);
+        Image::recordTransitionImageLayout(vk::ImageLayout::eUndefined, vk::ImageLayout::eShaderReadOnlyOptimal,
+                                           afb[ping].attachment->image, commandBuffer, 1, 1);
+
+        pingPongRenderPass->setFramebuffer(afb[1 - ping].framebuffer);
         auto extent = afb[ping].attachment->extent;
         pingPongRenderPass->setRenderAreaExtent({extent.width, extent.height});
         pingPongRenderPass->clear(0.f, 0.f, 0.f, 1.0f);
@@ -101,13 +96,20 @@ void PostProcessManager::destroy()
         attachment.attachment->destroy();
         device.destroyFramebuffer(attachment.framebuffer);
     }
+    std::vector<PostProcess*> deleted;
     for (auto &postProcess : postProcesses)
     {
+        if (std::find(deleted.begin(), deleted.end(), postProcess.get()) != deleted.end())
+            continue;
         postProcess->destroy();
+        deleted.push_back(postProcess.get());
     }
     for (auto &toneMapper : toneMappers)
     {
+        if (std::find(deleted.begin(), deleted.end(), toneMapper.get()) != deleted.end())
+            continue;
         toneMapper->destroy();
+        deleted.push_back(toneMapper.get());
     }
     pingPongRenderPass->destroy();
 }

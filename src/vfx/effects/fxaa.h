@@ -5,7 +5,9 @@
 struct FXAAData
 {
     glm::vec2 resolution;
-    // TODO: add more data here
+    float fxaaReduceMul = 128.f;
+    float fxaaReduceMin = 8.f;
+    float fxaaSpanMax = 8.f;
 };
 
 class FXAA : public PostProcess

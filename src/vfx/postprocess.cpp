@@ -1,8 +1,8 @@
 #include "postprocess.h"
 
-PostProcess::PostProcess(vk::Device device, const char *shaderPath, PipelineBuilder &pipelineFactory,
+PostProcess::PostProcess(const char *name, vk::Device device, const char *shaderPath, PipelineBuilder &pipelineFactory,
                          DescriptorLayoutCache &layoutCache, RenderPass *renderPass)
-: Destroyable(device)
+: Destroyable(device), name(name)
 {
     shader = mkU<Shader>(device, "passthrough_vert.spv", shaderPath);
     pipelineFactory.reset();
