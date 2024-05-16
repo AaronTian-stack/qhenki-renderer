@@ -7,6 +7,7 @@
 #include "models/primitives/primitivedrawer.h"
 #include "vfx/effects/fxaa.h"
 #include "vfx/effects/reinhard.h"
+#include "vfx/effects/vignette.h"
 #include <thread>
 
 VulkanApp::VulkanApp() {}
@@ -210,8 +211,11 @@ void VulkanApp::create(Window &window)
     postProcessManager = mkU<PostProcessManager>(vulkanContext.device.logicalDevice, extent, bufferFactory, renderPassBuilder);
     auto fxaa = mkS<FXAA>(vulkanContext.device.logicalDevice, "fxaa_frag.spv",
                           pipelineFactory, layoutCache, &postProcessManager->getPingPongRenderPass());
+    auto vignette = mkS<Vignette>(vulkanContext.device.logicalDevice, "vignette_frag.spv",
+                          pipelineFactory, layoutCache, &postProcessManager->getPingPongRenderPass());
     postProcessManager->addPostProcess(fxaa);
     postProcessManager->addPostProcess(fxaa);
+    postProcessManager->addPostProcess(vignette);
     auto reinhard = mkS<Reinhard>(vulkanContext.device.logicalDevice, "reinhard_frag.spv",
                                   pipelineFactory, layoutCache, &postProcessManager->getPingPongRenderPass());
     postProcessManager->addToneMapper(reinhard);

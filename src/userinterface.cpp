@@ -287,7 +287,7 @@ void UserInterface::renderPostProcessStack()
 
                 if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_None))
                 {
-                    ImGui::SetDragDropPayload("DND_DEMO_CELL", &n, sizeof(int));
+                    ImGui::SetDragDropPayload("DND", &n, sizeof(int));
 
                     ImGui::Text("%s", items[n]);
                     ImGui::EndDragDropSource();
@@ -316,7 +316,7 @@ void UserInterface::renderPostProcessStack()
         }
         if (ImGui::BeginDragDropTarget())
         {
-            if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("DND_DEMO_CELL"))
+            if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("DND"))
             {
                 IM_ASSERT(payload->DataSize == sizeof(int));
                 int payload_n = *(const int*)payload->Data;

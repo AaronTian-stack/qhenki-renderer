@@ -7,6 +7,7 @@
 #include "vulkan/commandpool.h"
 #include "vulkan/context/vulkancontext.h"
 #include "camera.h"
+#include "vfx/postprocessmanager.h"
 #include <functional>
 
 struct ImGuiCreateParameters
