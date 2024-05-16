@@ -89,7 +89,7 @@ uPtr<Attachment> BufferFactory::createAttachment(vk::ImageCreateInfo imageCreate
     if (result != vk::Result::eSuccess)
         throw std::runtime_error("failed to create image view");
 
-    return mkU<Attachment>(device, allocator, allocation, image, imageView, format);
+    return mkU<Attachment>(device, allocator, allocation, image, imageView, format, imageCreateInfo.extent);
 }
 
 uPtr<Attachment> BufferFactory::createAttachment(
@@ -114,7 +114,7 @@ uPtr<Attachment> BufferFactory::createAttachment(
     if (result != vk::Result::eSuccess)
         throw std::runtime_error("failed to create image view");
 
-    return mkU<Attachment>(device, allocator, allocation, image, imageView, format);
+    return mkU<Attachment>(device, allocator, allocation, image, imageView, format, imageCreateInfo.extent);
 }
 
 DeferredImage BufferFactory::createTextureImageDeferred(

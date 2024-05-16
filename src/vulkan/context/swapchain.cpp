@@ -44,7 +44,8 @@ void SwapChain::createFramebuffers(vk::RenderPass renderPass, vk::ImageView dept
                 extent.height,
                 1);
         auto framebuffer = device.createFramebuffer(createInfo);
-        auto attachment = mkU<Attachment>(images[i], imageViews[i], getFormat());
+        vk::Extent3D ex = {extent.width, extent.height, 1};
+        auto attachment = mkU<Attachment>(images[i], imageViews[i], getFormat(), ex);
         std::vector<uPtr<Attachment>> attachments;
         attachments.push_back(std::move(attachment));
         frameBuffers.push_back(mkU<FrameBuffer>(device, framebuffer, attachments));

@@ -12,7 +12,10 @@ protected:
     uPtr<Pipeline> pipeline;
 
 public:
-    PostProcess(const char* shaderPath, PipelineBuilder &pipelineFactory, RenderPass *renderPass);
+    PostProcess(vk::Device device, const char* shaderPath, PipelineBuilder &pipelineFactory,
+                DescriptorLayoutCache &layoutCache, RenderPass *renderPass);
     virtual void bindData(vk::CommandBuffer commandBuffer) = 0;
     void destroy() override;
+
+    friend class PostProcessManager;
 };

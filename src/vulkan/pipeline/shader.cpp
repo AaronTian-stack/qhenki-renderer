@@ -5,6 +5,8 @@
 
 std::vector<char> Shader::readFile(const std::string &filename)
 {
+    // the working directory may be different if running from command line
+//    system("pwd");
     std::ifstream file;
     file.exceptions(std::ifstream::failbit | std::ifstream::badbit);
     try

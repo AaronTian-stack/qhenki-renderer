@@ -14,7 +14,9 @@ private:
     FXAAData fxaaData;
 
 public:
-    FXAA(const char* shaderPath, PipelineBuilder &pipelineFactory, RenderPass *renderPass);
+    FXAA(vk::Device device, const char* shaderPath, PipelineBuilder &pipelineFactory,
+        DescriptorLayoutCache &layoutCache, RenderPass *renderPass);
     void bindData(vk::CommandBuffer commandBuffer) override;
+
 };
 

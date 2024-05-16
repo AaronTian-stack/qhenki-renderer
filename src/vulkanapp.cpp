@@ -5,6 +5,7 @@
 #include "inputprocesser.h"
 #include "imgui/imgui.h"
 #include "models/primitives/primitivedrawer.h"
+#include "vfx/effects/fxaa.h"
 #include <thread>
 
 VulkanApp::VulkanApp() {}
@@ -37,6 +38,8 @@ VulkanApp::~VulkanApp()
     offscreenRenderPass->destroy();
     displayRenderPass->destroy();
     renderPassBuilder.destroy();
+
+    postProcessManager->destroy();
 
     gBuffer->destroy();
     depthBuffer->destroy();
@@ -202,6 +205,12 @@ void VulkanApp::create(Window &window)
     }
 
     envMap.create(bufferFactory, *graphicsCommandPool, vulkanContext.queueManager, "../resources/envmaps/artist_workshop/artist_workshop.dds");
+
+    postProcessManager = mkU<PostProcessManager>(vulkanContext.device.logicalDevice, extent, bufferFactory, renderPassBuilder);
+    auto fxaa = mkS<FXAA>(vulkanContext.device.logicalDevice, "fxaa_frag.spv",
+                          pipelineFactory, layoutCache, &postProcessManager->getPingPongRenderPass());
+//    postProcessManager->addPostProcess(fxaa);
+    postProcessManager->addToneMapper(fxaa);
 }
 
 void VulkanApp::setUpCallbacks() {
@@ -227,13 +236,10 @@ void VulkanApp::setModel(const std::string& filePath)
 
 void VulkanApp::recordOffscreenBuffer(vk::CommandBuffer commandBuffer, DescriptorAllocator &allocator)
 {
-    auto extent = vulkanContext.swapChain->getExtent();
     offscreenRenderPass->setFramebuffer(gBuffer->framebuffer);
     offscreenRenderPass->setRenderAreaExtent(vulkanContext.swapChain->getExtent());
     offscreenRenderPass->clear(0.f, 0.f, 0.f, 0.f);
     offscreenRenderPass->begin(commandBuffer);
-    ScreenUtils::setViewport(commandBuffer, extent.width, extent.height);
-    ScreenUtils::setScissor(commandBuffer, extent);
 
     vk::DescriptorSetLayout layout;
     vk::DescriptorSet cameraSet;
@@ -348,6 +354,8 @@ void VulkanApp::recordCommandBuffer(vk::Framebuffer framebuffer)
 
     auto &allocator = allocators[currentFrame];
     allocator.resetPools();
+    ScreenUtils::setViewport(primaryCommandBuffer, swapChainExtent.width, swapChainExtent.height);
+    ScreenUtils::setScissor(primaryCommandBuffer, swapChainExtent);
     recordOffscreenBuffer(primaryCommandBuffer, allocator);
 
     auto &outputAttachment = gBuffer->attachments.back();
@@ -360,8 +368,6 @@ void VulkanApp::recordCommandBuffer(vk::Framebuffer framebuffer)
     displayRenderPass->begin(primaryCommandBuffer);
 
     primaryCommandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, postProcessPipeline->getGraphicsPipeline());
-    ScreenUtils::setViewport(primaryCommandBuffer, swapChainExtent.width, swapChainExtent.height);
-    ScreenUtils::setScissor(primaryCommandBuffer, swapChainExtent);
     vk::DescriptorSet samplerSet;
     vk::DescriptorSetLayout layout;
     DescriptorBuilder::beginSet(&layoutCache, &allocator)
@@ -370,6 +376,7 @@ void VulkanApp::recordCommandBuffer(vk::Framebuffer framebuffer)
             .build(samplerSet, layout);
     primaryCommandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, postProcessPipeline->getPipelineLayout(),
                                             0, {samplerSet}, nullptr);
+
     // get window resolution
     auto extent = vulkanContext.swapChain->getExtent();
     auto resolution = glm::vec2(extent.width, extent.height);
@@ -378,6 +385,10 @@ void VulkanApp::recordCommandBuffer(vk::Framebuffer framebuffer)
 
     ui->end(primaryCommandBuffer);
     displayRenderPass->end();
+
+    auto outputAttachmentInfo = outputAttachment->getDescriptorInfo();
+    auto builder = DescriptorBuilder::beginSet(&layoutCache, &allocator);
+    postProcessManager->tonemap(primaryCommandBuffer, builder, &outputAttachmentInfo);
 
     //// END RECORDING COMMAND BUFFER
     frame.end(); // ends the frames command buffer
