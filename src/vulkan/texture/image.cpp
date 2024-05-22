@@ -87,3 +87,27 @@ void Image::destroy()
 {
     attachment->destroy();
 }
+
+void Image::blit(vk::Image srcImage, vk::Image dstImage, vk::CommandBuffer commandBuffer, vk::ImageLayout srcLayout,
+                 vk::ImageLayout dstLayout, vk::Extent3D extent)
+{
+    // TODO: replace with vk::ImageBlit2 for blitting multiple specific sub regions
+    vk::ImageBlit blit(
+            vk::ImageSubresourceLayers(vk::ImageAspectFlagBits::eColor, 0, 0, 1),
+            {vk::Offset3D(0, 0, 0), vk::Offset3D(extent.width, extent.height, extent.depth)},
+            vk::ImageSubresourceLayers(vk::ImageAspectFlagBits::eColor, 0, 0, 1),
+            {vk::Offset3D(0, 0, 0), vk::Offset3D(extent.width, extent.height, extent.depth)}
+    );
+    commandBuffer.blitImage(
+            srcImage, srcLayout,
+            dstImage, dstLayout,
+            1, &blit,
+            vk::Filter::eLinear);
+
+}
+
+void Image::blit(Image &dstImage, vk::CommandBuffer commandBuffer)
+{
+    blit(attachment->image, dstImage.attachment->image, commandBuffer,
+         vk::ImageLayout::eTransferSrcOptimal, vk::ImageLayout::eTransferDstOptimal, attachment->extent);
+}

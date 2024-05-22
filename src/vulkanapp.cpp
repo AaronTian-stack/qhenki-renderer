@@ -32,8 +32,8 @@ VulkanApp::~VulkanApp()
     cubeMapPipeline->destroy();
     cubeMapShader->destroy();
 
-    postProcessPipeline->destroy();
-    postProcessShader->destroy();
+    passthroughPipeline->destroy();
+    passthroughShader->destroy();
 
     pipelineFactory.destroy();
 
@@ -183,12 +183,12 @@ void VulkanApp::create(Window &window)
 
     PrimitiveDrawer::create(bufferFactory, vulkanContext.device.logicalDevice, pipelineFactory, offscreenRenderPass.get(), 2);
 
-    postProcessShader = mkU<Shader>(device, "passthrough_vert.spv", "passthrough_frag.spv");
+    passthroughShader = mkU<Shader>(device, "passthrough_vert.spv", "passthrough_frag.spv");
     pipelineFactory.reset();
     pipelineFactory.parseShader("passthrough_vert.spv", "passthrough_frag.spv", layoutCache, false);
     pipelineFactory.getDepthStencil().depthWriteEnable = VK_FALSE;
     pipelineFactory.getColorBlending().attachmentCount = 1;
-    postProcessPipeline = pipelineFactory.buildPipeline(displayRenderPass.get(), 0, postProcessShader.get());
+    passthroughPipeline = pipelineFactory.buildPipeline(displayRenderPass.get(), 0, passthroughShader.get());
 
     vulkanContext.swapChain->createFramebuffers(displayRenderPass->getRenderPass());
 
@@ -375,20 +375,20 @@ void VulkanApp::recordCommandBuffer(vk::Framebuffer framebuffer)
     displayRenderPass->clear(0.f, 0.f, 0.f, 1.0f);
     displayRenderPass->begin(primaryCommandBuffer);
 
-    primaryCommandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, postProcessPipeline->getGraphicsPipeline());
+    primaryCommandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, passthroughPipeline->getGraphicsPipeline());
     vk::DescriptorSet samplerSet;
     vk::DescriptorSetLayout layout;
     DescriptorBuilder::beginSet(&layoutCache, &allocator)
             .bindImage(0, {outputAttachment->getDescriptorInfo()}, // output attachment sampler
                        1, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eFragment)
             .build(samplerSet, layout);
-    primaryCommandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, postProcessPipeline->getPipelineLayout(),
+    primaryCommandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, passthroughPipeline->getPipelineLayout(),
                                             0, {samplerSet}, nullptr);
 
     // get window resolution
     auto extent = vulkanContext.swapChain->getExtent();
     auto resolution = glm::vec2(extent.width, extent.height);
-//    postProcessPipeline->setPushConstant(primaryCommandBuffer, &resolution, sizeof(glm::vec2), 0, vk::ShaderStageFlagBits::eFragment);
+//    passthroughPipeline->setPushConstant(primaryCommandBuffer, &resolution, sizeof(glm::vec2), 0, vk::ShaderStageFlagBits::eFragment);
     primaryCommandBuffer.draw(3, 1, 0, 0);
 
     ui->end(primaryCommandBuffer);

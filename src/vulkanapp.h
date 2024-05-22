@@ -44,9 +44,9 @@ private:
     uPtr<RenderPass> offscreenRenderPass;
     PipelineBuilder pipelineFactory;
 
-    uPtr<Pipeline> gBufferPipeline, lightingPipeline, postProcessPipeline, cubeMapPipeline;
+    uPtr<Pipeline> gBufferPipeline, lightingPipeline, passthroughPipeline, cubeMapPipeline;
 
-    uPtr<Shader> gBufferShader, lightingShader, postProcessShader, cubeMapShader;
+    uPtr<Shader> gBufferShader, lightingShader, passthroughShader, cubeMapShader;
 
     std::mutex modelMutex;
     uPtr<CommandPool> graphicsCommandPool; // one pool per thread
@@ -77,7 +77,7 @@ public:
     void handleInput();
     void updateCameraBuffer();
     void recordOffscreenBuffer(vk::CommandBuffer buffer, DescriptorAllocator &allocator);
-    void recordCommandBuffer(vk::Framebuffer framebuffer); // TODO: NEED TO DELETE THIS LATER
+    void recordCommandBuffer(vk::Framebuffer framebuffer);
 
     UserInterface *ui;
     ImGuiCreateParameters getImGuiCreateParameters();

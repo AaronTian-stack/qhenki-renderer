@@ -255,6 +255,7 @@ void UserInterface::renderMenuBar()
         ImGui::BulletText("Scroll Wheel: Zoom Camera");
         ImGui::BulletText("Mouse 4: Increase FOV");
         ImGui::BulletText("Mouse 5: Decrease FOV");
+        ImGui::BulletText("ESC: Quit");
         ImGui::EndPopup();
     }
     ImGui::End();
@@ -263,7 +264,13 @@ void UserInterface::renderMenuBar()
 void UserInterface::renderPostProcessStack()
 {
     ImGui::Begin("Post-Processing Stack", &postProcessOpen, ImGuiWindowFlags_AlwaysAutoResize);
-    ImGui::Text("Drag and drop effects to apply.");
+
+    ImGui::TextDisabled("(?)");
+    if (ImGui::BeginItemTooltip())
+    {
+        ImGui::Text("Drag and drop effects to apply.");
+        ImGui::EndTooltip();
+    }
 
     if (ImGui::BeginTable("table1", 2))
     {

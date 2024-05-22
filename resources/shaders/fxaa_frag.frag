@@ -80,7 +80,6 @@ vec3 fxaa(vec2 texCoords, vec2 viewportInv)
 void main()
 {
     vec2 viewportInv = vec2(1.0) / pc.viewport;
-//    vec3 color = fxaa(fragUV, viewportInv);
-    vec3 color = texture(texSampler, fragUV).rgb;
-    outColor = vec4(mix(vec3(1.0, 0.0, 0.0), color, 0.5), 1.0);
+    vec3 color = fxaa(fragUV, viewportInv);
+    outColor = vec4(color, 1.0);
 }

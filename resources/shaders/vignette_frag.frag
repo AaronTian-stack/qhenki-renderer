@@ -16,5 +16,5 @@ void main()
     vec2 uv = fragUV * (1.0 - fragUV.yx);
     float vig = uv.x * uv.y * 15.0;
     vig = pow(vig, pc.intensity);
-    outColor = vec4(vig);
+    outColor = vec4(vig) * texture(texSampler, fragUV);
 }
