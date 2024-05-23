@@ -26,11 +26,13 @@ private:
 public:
     PostProcessManager(vk::Device device, vk::Extent2D extent,
                        BufferFactory &bufferFactory, RenderPassBuilder &renderPassBuilder);
-    void tonemap(vk::CommandBuffer commandBuffer, DescriptorBuilder &builder, vk::DescriptorImageInfo *imageInfo);
-    void render(vk::CommandBuffer commandBuffer, DescriptorBuilder &builder);
+    void tonemap(vk::CommandBuffer commandBuffer,
+                 DescriptorLayoutCache &layoutCache, DescriptorAllocator &allocator,
+                 vk::DescriptorImageInfo *imageInfo);
+    void render(vk::CommandBuffer commandBuffer, DescriptorLayoutCache &layoutCache, DescriptorAllocator &allocator);
     RenderPass& getPingPongRenderPass();
-//    RenderPass& getToneMapRenderPass();
     void addToneMapper(const sPtr<PostProcess> &toneMapper);
     void addPostProcess(const sPtr<PostProcess> &postProcess);
+    Attachment* getCurrentAttachment();
     void destroy() override;
 };

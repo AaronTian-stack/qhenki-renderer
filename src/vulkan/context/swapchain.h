@@ -19,7 +19,7 @@ public:
     void createFramebuffers(vk::RenderPass renderPass, vk::ImageView depthImageView = nullptr);
     vk::Format getFormat() const;
     vk::Extent2D getExtent() const;
-    vk::Framebuffer nextImage(vk::Semaphore imageAvailable);
+    FrameBuffer* nextImage(vk::Semaphore imageAvailable);
     void destroy();
 
     friend class VulkanContext;

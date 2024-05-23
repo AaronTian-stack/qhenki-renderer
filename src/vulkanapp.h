@@ -22,6 +22,7 @@
 #include "vulkan/texture/envmap.h"
 #include "vulkan/attachments/gbuffer.h"
 #include "vfx/postprocessmanager.h"
+#include "vfx/effects/fxaa.h"
 #include <atomic>
 #include <mutex>
 
@@ -54,6 +55,7 @@ private:
     Syncer syncer;
 
     uPtr<PostProcessManager> postProcessManager;
+    sPtr<FXAA> fxaa;
 
     int currentFrame = 0;
     const int MAX_FRAMES_IN_FLIGHT = 2;
@@ -77,7 +79,7 @@ public:
     void handleInput();
     void updateCameraBuffer();
     void recordOffscreenBuffer(vk::CommandBuffer buffer, DescriptorAllocator &allocator);
-    void recordCommandBuffer(vk::Framebuffer framebuffer);
+    void recordCommandBuffer(FrameBuffer *framebuffer);
 
     UserInterface *ui;
     ImGuiCreateParameters getImGuiCreateParameters();

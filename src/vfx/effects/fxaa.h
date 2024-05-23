@@ -19,6 +19,6 @@ public:
     FXAA(vk::Device device, const char* shaderPath, PipelineBuilder &pipelineFactory,
         DescriptorLayoutCache &layoutCache, RenderPass *renderPass);
     void bindData(vk::CommandBuffer commandBuffer) override;
-
+    void setResolution(glm::vec2 resolution) { fxaaData.resolution = resolution; }
 };
 

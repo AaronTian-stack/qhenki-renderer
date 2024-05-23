@@ -14,7 +14,8 @@ PostProcessManager::PostProcessManager(vk::Device device, vk::Extent2D extent, B
         afb[i].attachment = bufferFactory.createAttachment(
                 vk::Format::eR8G8B8A8Unorm,
                 {extent.width, extent.height, 1},
-                vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eInputAttachment | vk::ImageUsageFlagBits::eSampled,
+                vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eInputAttachment
+                | vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eTransferSrc,
                 vk::ImageAspectFlagBits::eColor);
         vk::FramebufferCreateInfo createInfo(
                 vk::FramebufferCreateFlags(),
@@ -29,7 +30,8 @@ PostProcessManager::PostProcessManager(vk::Device device, vk::Extent2D extent, B
     }
 }
 
-void PostProcessManager::tonemap(vk::CommandBuffer commandBuffer, DescriptorBuilder &builder,
+void PostProcessManager::tonemap(vk::CommandBuffer commandBuffer,
+                                 DescriptorLayoutCache &layoutCache, DescriptorAllocator &allocator,
                                  vk::DescriptorImageInfo *imageInfo)
 {
     // tonemap into attachment 0
@@ -44,7 +46,7 @@ void PostProcessManager::tonemap(vk::CommandBuffer commandBuffer, DescriptorBuil
 
     vk::DescriptorSetLayout layout;
     vk::DescriptorSet inputSet;
-    builder.bindImage(0, {*imageInfo},
+    DescriptorBuilder::beginSet(&layoutCache, &allocator).bindImage(0, {*imageInfo},
                       1, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eFragment)
             .build(inputSet, layout);
 
@@ -56,7 +58,7 @@ void PostProcessManager::tonemap(vk::CommandBuffer commandBuffer, DescriptorBuil
     pingPongRenderPass->end();
 }
 
-void PostProcessManager::render(vk::CommandBuffer commandBuffer, DescriptorBuilder &builder)
+void PostProcessManager::render(vk::CommandBuffer commandBuffer, DescriptorLayoutCache &layoutCache, DescriptorAllocator &allocator)
 {
     int ping = 0; // start by reading from 0 and outputting to 1
     vk::DescriptorSetLayout layout;
@@ -75,7 +77,7 @@ void PostProcessManager::render(vk::CommandBuffer commandBuffer, DescriptorBuild
 
         vk::DescriptorSet inputSet;
         auto descriptorInfo = afb[ping].attachment->getDescriptorInfo();
-        builder.bindImage(0, {descriptorInfo},
+        DescriptorBuilder::beginSet(&layoutCache, &allocator).bindImage(0, {descriptorInfo},
                            1, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eFragment)
                 .build(inputSet, layout);
         commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, postProcess->pipeline->getPipelineLayout(),
@@ -129,7 +131,7 @@ RenderPass &PostProcessManager::getPingPongRenderPass()
     return *pingPongRenderPass;
 }
 
-//RenderPass &PostProcessManager::getToneMapRenderPass()
-//{
-//    return *toneMapRenderPass;
-//}
+Attachment* PostProcessManager::getCurrentAttachment()
+{
+    return afb[currentAttachmentIndex].attachment.get();
+}

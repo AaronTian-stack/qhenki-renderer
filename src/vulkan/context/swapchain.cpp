@@ -15,13 +15,13 @@ vk::Extent2D SwapChain::getExtent() const
     return {vkbSwapchain.extent.width, vkbSwapchain.extent.height};
 }
 
-vk::Framebuffer SwapChain::nextImage(vk::Semaphore imageAvailable)
+FrameBuffer* SwapChain::nextImage(vk::Semaphore imageAvailable)
 {
     auto device = vk::Device(this->vkbSwapchain.device);
     auto result = device.acquireNextImageKHR(swapChain, UINT64_MAX,
                                              imageAvailable, VK_NULL_HANDLE);
     imageIndex = result.value;
-    return frameBuffers[imageIndex]->framebuffer;
+    return frameBuffers[imageIndex].get();
 }
 
 void SwapChain::createFramebuffers(vk::RenderPass renderPass, vk::ImageView depthImageView)

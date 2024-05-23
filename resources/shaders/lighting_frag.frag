@@ -211,9 +211,6 @@ void main()
     vec3 ambient = calculateIBL(N, V, R, F0, material);
     vec3 color = ambient + Lo + emissive.rgb;
 
-    // TODO: move tonemapping to post process shader. this output is stored in 16f
-    color = color / (color + vec3(1.0));
-
     outColor = vec4(color.xyz, 1.0);
 
     // basic blinn phong as debug for normals

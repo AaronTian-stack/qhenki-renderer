@@ -46,8 +46,7 @@ bool VulkanContext::create(Window &window)
     vkb::InstanceBuilder builder;
     auto severity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT
             | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT
-            | VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT
-            | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
+            | VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT;
 
     auto inst_ret = builder.set_app_name("Vulkan PBR").request_validation_layers()
             .set_debug_messenger_severity(severity)
@@ -144,6 +143,7 @@ bool VulkanContext::create(Window &window)
     auto swap_ret = swapchain_builder
             .set_desired_format(format)
             .set_desired_present_mode(VK_PRESENT_MODE_MAILBOX_KHR)
+            .add_image_usage_flags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT)
             .build();
     if (!swap_ret){
         std::cerr << "Failed to create swap chain. Error: " << swap_ret.error().message() << "\n";

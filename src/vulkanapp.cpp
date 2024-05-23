@@ -209,11 +209,10 @@ void VulkanApp::create(Window &window)
     envMap.create(bufferFactory, *graphicsCommandPool, vulkanContext.queueManager, "../resources/envmaps/artist_workshop/artist_workshop.dds");
 
     postProcessManager = mkU<PostProcessManager>(vulkanContext.device.logicalDevice, extent, bufferFactory, renderPassBuilder);
-    auto fxaa = mkS<FXAA>(vulkanContext.device.logicalDevice, "fxaa_frag.spv",
+    fxaa = mkS<FXAA>(vulkanContext.device.logicalDevice, "fxaa_frag.spv",
                           pipelineFactory, layoutCache, &postProcessManager->getPingPongRenderPass());
     auto vignette = mkS<Vignette>(vulkanContext.device.logicalDevice, "vignette_frag.spv",
                           pipelineFactory, layoutCache, &postProcessManager->getPingPongRenderPass());
-    postProcessManager->addPostProcess(fxaa);
     postProcessManager->addPostProcess(fxaa);
     postProcessManager->addPostProcess(vignette);
     auto reinhard = mkS<Reinhard>(vulkanContext.device.logicalDevice, "reinhard_frag.spv",
@@ -270,7 +269,7 @@ void VulkanApp::recordOffscreenBuffer(vk::CommandBuffer commandBuffer, Descripto
 
         if (!imageInfos.empty()) // pipeline still expects uv though
         {
-            int textureCount = 128;
+            const int textureCount = 80;
             if (imageInfos.size() > textureCount) throw std::runtime_error("Too many textures");
             DescriptorBuilder::beginSet(&layoutCache, &allocator)
                     .bindImage(0, imageInfos,
@@ -348,7 +347,7 @@ void VulkanApp::recordOffscreenBuffer(vk::CommandBuffer commandBuffer, Descripto
     offscreenRenderPass->end();
 }
 
-void VulkanApp::recordCommandBuffer(vk::Framebuffer framebuffer)
+void VulkanApp::recordCommandBuffer(FrameBuffer *framebuffer)
 {
     // TODO: multi thread secondary command buffer recording
     auto &frame = frames[currentFrame];
@@ -370,7 +369,27 @@ void VulkanApp::recordCommandBuffer(vk::Framebuffer framebuffer)
     Image::recordTransitionImageLayout(vk::ImageLayout::eUndefined, vk::ImageLayout::eShaderReadOnlyOptimal,
                                        outputAttachment->image, primaryCommandBuffer, 1, 1);
 
-    displayRenderPass->setFramebuffer(framebuffer);
+    fxaa->setResolution({swapChainExtent.width, swapChainExtent.height});
+    auto outputAttachmentInfo = outputAttachment->getDescriptorInfo();
+    postProcessManager->tonemap(primaryCommandBuffer, layoutCache, allocator, &outputAttachmentInfo);
+    postProcessManager->render(primaryCommandBuffer, layoutCache, allocator);
+
+    // final result done, blit it to swap chain
+
+    // render pass automatically transitions the image layout to present
+//    Image::recordTransitionImageLayout(vk::ImageLayout::ePresentSrcKHR, vk::ImageLayout::eTransferSrcOptimal,
+//                                       postProcessManager->getCurrentAttachment()->image, primaryCommandBuffer, 1, 1);
+//    Image::recordTransitionImageLayout(vk::ImageLayout::ePresentSrcKHR, vk::ImageLayout::eTransferDstOptimal,
+//                                       framebuffer->attachments[0]->image, primaryCommandBuffer, 1, 1);
+//    Image::blit(postProcessManager->getCurrentAttachment()->image, framebuffer->attachments[0]->image,
+//                primaryCommandBuffer, vk::ImageLayout::eTransferSrcOptimal, vk::ImageLayout::eTransferDstOptimal,
+//                {swapChainExtent.width, swapChainExtent.height, 1});
+//    Image::recordTransitionImageLayout(vk::ImageLayout::eTransferSrcOptimal, vk::ImageLayout::ePresentSrcKHR,
+//                                       postProcessManager->getCurrentAttachment()->image, primaryCommandBuffer, 1, 1);
+
+    Image::recordTransitionImageLayout(vk::ImageLayout::eUndefined, vk::ImageLayout::eShaderReadOnlyOptimal,
+                                       postProcessManager->getCurrentAttachment()->image, primaryCommandBuffer, 1, 1);
+    displayRenderPass->setFramebuffer(framebuffer->framebuffer);
     displayRenderPass->setRenderAreaExtent(swapChainExtent);
     displayRenderPass->clear(0.f, 0.f, 0.f, 1.0f);
     displayRenderPass->begin(primaryCommandBuffer);
@@ -379,26 +398,16 @@ void VulkanApp::recordCommandBuffer(vk::Framebuffer framebuffer)
     vk::DescriptorSet samplerSet;
     vk::DescriptorSetLayout layout;
     DescriptorBuilder::beginSet(&layoutCache, &allocator)
-            .bindImage(0, {outputAttachment->getDescriptorInfo()}, // output attachment sampler
+            .bindImage(0, {postProcessManager->getCurrentAttachment()->getDescriptorInfo()}, // output attachment sampler
                        1, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eFragment)
             .build(samplerSet, layout);
     primaryCommandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, passthroughPipeline->getPipelineLayout(),
                                             0, {samplerSet}, nullptr);
 
-    // get window resolution
-    auto extent = vulkanContext.swapChain->getExtent();
-    auto resolution = glm::vec2(extent.width, extent.height);
-//    passthroughPipeline->setPushConstant(primaryCommandBuffer, &resolution, sizeof(glm::vec2), 0, vk::ShaderStageFlagBits::eFragment);
     primaryCommandBuffer.draw(3, 1, 0, 0);
 
     ui->end(primaryCommandBuffer);
     displayRenderPass->end();
-
-    auto outputAttachmentInfo = outputAttachment->getDescriptorInfo();
-    auto builder = DescriptorBuilder::beginSet(&layoutCache, &allocator);
-    postProcessManager->tonemap(primaryCommandBuffer, builder, &outputAttachmentInfo);
-    builder = DescriptorBuilder::beginSet(&layoutCache, &allocator);
-    postProcessManager->render(primaryCommandBuffer, builder);
 
     //// END RECORDING COMMAND BUFFER
     frame.end(); // ends the frames command buffer
