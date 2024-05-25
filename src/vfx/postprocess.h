@@ -10,9 +10,9 @@ class PostProcess : public Destroyable
 protected:
     uPtr<Shader> shader;
     uPtr<Pipeline> pipeline;
-    const char *name;
 
 public:
+    const char *name;
     PostProcess(const char *name, vk::Device device, const char* shaderPath, PipelineBuilder &pipelineFactory,
                 DescriptorLayoutCache &layoutCache, RenderPass *renderPass);
     virtual void bindData(vk::CommandBuffer commandBuffer) = 0;

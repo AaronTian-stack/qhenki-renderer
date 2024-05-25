@@ -96,7 +96,7 @@ void UserInterface::destroy()
     ImGui::DestroyContext();
 }
 
-void UserInterface::render()
+void UserInterface::render(void *postProcessManager)
 {
     ImGuiStyle& style = ImGui::GetStyle();
     style.FrameRounding = 5.0f;
@@ -145,7 +145,8 @@ void UserInterface::render()
 
     if (postProcessOpen)
     {
-        renderPostProcessStack();
+        auto *postProcessManagerPtr = static_cast<PostProcessManager *>(postProcessManager);
+        renderPostProcessStack(postProcessManagerPtr);
     }
 
     if (cameraOptionsOpen)
@@ -164,16 +165,6 @@ void UserInterface::render()
     }
 
     renderMenuBar();
-
-//    ImGui::SetNextWindowPos(ImVec2(ImGui::GetIO().DisplaySize.x, y), 0, ImVec2(1.0f, 0));
-//    ImGui::Begin("Visual Options", nullptr, flags);
-//    if (ImGui::Combo("Shader", &currentShaderIndex,
-//                     "FXAA\0"))
-//    {
-//
-//    }
-//    ImGui::End();
-
 }
 
 void UserInterface::begin()
@@ -261,7 +252,7 @@ void UserInterface::renderMenuBar()
     ImGui::End();
 }
 
-void UserInterface::renderPostProcessStack()
+void UserInterface::renderPostProcessStack(PostProcessManager *postProcessManager)
 {
     ImGui::Begin("Post-Processing Stack", &postProcessOpen, ImGuiWindowFlags_AlwaysAutoResize);
 
@@ -281,22 +272,24 @@ void UserInterface::renderPostProcessStack()
         ImGui::TableHeadersRow();
         ImGui::TableNextRow();
         ImGui::TableSetColumnIndex(0);
+
         // list box
-        static const char* items[] = { "FXAA", "Sharpen", "Chrom. Abbr.", "Vignette"};
+        auto &postProcesses = postProcessManager->getPostProcesses();
+
         static int item_current_idx = 0;
         float listboxHeight = ImGui::GetTextLineHeightWithSpacing() * 10;
         if (ImGui::BeginListBox("##listbox 1", ImVec2(-FLT_MIN, listboxHeight)))
         {
-            for (int n = 0; n < IM_ARRAYSIZE(items); n++)
+            for (int i = 0; i < postProcesses.size(); i++)
             {
-                ImGui::PushID(n);
-                ImGui::Selectable(items[n]);
+                ImGui::PushID(i);
+                ImGui::Selectable(postProcesses[i]->name);
 
                 if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_None))
                 {
-                    ImGui::SetDragDropPayload("DND", &n, sizeof(int));
+                    ImGui::SetDragDropPayload("DND", &i, sizeof(int)); // post process index
 
-                    ImGui::Text("%s", items[n]);
+                    ImGui::Text("%s", postProcesses[i]->name);
                     ImGui::EndDragDropSource();
                 }
 
@@ -305,20 +298,46 @@ void UserInterface::renderPostProcessStack()
             ImGui::EndListBox();
         }
         ImGui::TableNextColumn();
+
+        auto &toneMappers = postProcessManager->getToneMappers();
+        auto activePostProcesses = postProcessManager->getActivePostProcesses();
         if (ImGui::BeginListBox("##listbox 2", ImVec2(-FLT_MIN, listboxHeight)))
         {
-            static char* current_item = NULL;
             ImGui::SetNextItemWidth(columnWidth * 0.95f);
-            if (ImGui::BeginCombo("##combo", current_item))
+            const auto activeTM = postProcessManager->getActiveToneMapper();
+
+            if (ImGui::BeginCombo("##combo", activeTM->name))
             {
-                for (int n = 0; n < IM_ARRAYSIZE(items); n++)
+                for (int i = 0; i < toneMappers.size(); i++)
                 {
-                    bool is_selected = (current_item == items[n]);
-                    ImGui::Selectable(items[n], is_selected);
+                    bool is_selected = (activeTM == toneMappers[i].get());
+                    ImGui::Selectable(toneMappers[i]->name, is_selected);
                 }
                 ImGui::EndCombo();
             }
-            // selectable, if selected then open menu for parameters, which also has button to remove
+            if (ImGui::BeginItemTooltip())
+            {
+                ImGui::Text("Tonemapper to use");
+                ImGui::EndTooltip();
+            }
+
+            // TODO: if selected then open menu for parameters, which also has button to remove
+            int indexToRemove = -1;
+            for (int i = 0; i < activePostProcesses.size(); i++)
+            {
+                ImGui::PushID(i);
+                if (ImGui::Selectable(activePostProcesses[i]->name))
+                {
+                    indexToRemove = i;
+                }
+                ImGui::PopID();
+            }
+            if (indexToRemove != -1)
+            {
+                std::cout << "Removing " << indexToRemove << std::endl;
+                postProcessManager->deactivatePostProcess(indexToRemove);
+                std::cout << "Active post processes: " << postProcessManager->getActivePostProcesses().size() << std::endl;
+            }
             ImGui::EndListBox();
         }
         if (ImGui::BeginDragDropTarget())
@@ -326,8 +345,9 @@ void UserInterface::renderPostProcessStack()
             if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("DND"))
             {
                 IM_ASSERT(payload->DataSize == sizeof(int));
-                int payload_n = *(const int*)payload->Data;
-                std::cout << "Dropped " << items[payload_n] << std::endl;
+                int index = *(const int*)payload->Data;
+                std::cout << "Dropped " << postProcesses[index]->name << std::endl;
+                postProcessManager->activatePostProcess(index);
             }
             ImGui::EndDragDropTarget();
         }

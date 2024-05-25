@@ -165,14 +165,8 @@ EnvironmentMap::createCubeMap(vk::CommandBuffer *commandBuffer, BufferFactory &b
     case DDSKTX_FORMAT_RGBA16F: // should be radiance map
         imageFormat = vk::Format::eR16G16B16A16Sfloat;
         break;
-    case DDSKTX_FORMAT_RGBA8:
-        imageFormat = vk::Format::eR8G8B8A8Unorm;
-        break;
-    case DDSKTX_FORMAT_BGRA8:
-        imageFormat = vk::Format::eB8G8R8A8Unorm;
-        break;
     default:
-        throw std::runtime_error("Unsupported format");
+        throw std::runtime_error("Unsupported format, environment maps should all be 16f");
     }
 
     // create the image

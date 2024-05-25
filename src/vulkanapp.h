@@ -54,7 +54,6 @@ private:
     uPtr<CommandPool> transferCommandPool;
     Syncer syncer;
 
-    uPtr<PostProcessManager> postProcessManager;
     sPtr<FXAA> fxaa;
 
     int currentFrame = 0;
@@ -81,6 +80,7 @@ public:
     void recordOffscreenBuffer(vk::CommandBuffer buffer, DescriptorAllocator &allocator);
     void recordCommandBuffer(FrameBuffer *framebuffer);
 
+    uPtr<PostProcessManager> postProcessManager;
     UserInterface *ui;
     ImGuiCreateParameters getImGuiCreateParameters();
 

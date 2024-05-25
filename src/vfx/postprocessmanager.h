@@ -33,6 +33,12 @@ public:
     RenderPass& getPingPongRenderPass();
     void addToneMapper(const sPtr<PostProcess> &toneMapper);
     void addPostProcess(const sPtr<PostProcess> &postProcess);
+    void activatePostProcess(int index);
+    void deactivatePostProcess(int index);
     Attachment* getCurrentAttachment();
+    const std::vector<sPtr<PostProcess>>& getToneMappers();
+    const std::vector<sPtr<PostProcess>>& getPostProcesses();
+    const PostProcess* getActiveToneMapper();
+    const std::vector<PostProcess*>& getActivePostProcesses();
     void destroy() override;
 };

@@ -62,7 +62,7 @@ void PostProcessManager::render(vk::CommandBuffer commandBuffer, DescriptorLayou
 {
     int ping = 0; // start by reading from 0 and outputting to 1
     vk::DescriptorSetLayout layout;
-    for (auto &postProcess : postProcesses)
+    for (const auto &postProcess : activePostProcesses)
     {
         Image::recordTransitionImageLayout(vk::ImageLayout::eUndefined, vk::ImageLayout::eShaderReadOnlyOptimal,
                                            afb[ping].attachment->image, commandBuffer, 1, 1);
@@ -134,4 +134,35 @@ RenderPass &PostProcessManager::getPingPongRenderPass()
 Attachment* PostProcessManager::getCurrentAttachment()
 {
     return afb[currentAttachmentIndex].attachment.get();
+}
+
+const std::vector<sPtr<PostProcess>> &PostProcessManager::getToneMappers()
+{
+    return toneMappers;
+}
+
+const std::vector<sPtr<PostProcess>> &PostProcessManager::getPostProcesses()
+{
+    return postProcesses;
+}
+
+const std::vector<PostProcess*> &PostProcessManager::getActivePostProcesses()
+{
+    return activePostProcesses;
+}
+
+const PostProcess *PostProcessManager::getActiveToneMapper()
+{
+    return toneMappers[activeToneMapperIndex].get();
+}
+
+void PostProcessManager::activatePostProcess(int index)
+{
+    activePostProcesses.push_back(postProcesses[index].get());
+}
+
+void PostProcessManager::deactivatePostProcess(int index)
+{
+    currentAttachmentIndex = 0;
+    activePostProcesses.erase(activePostProcesses.begin() + index);
 }

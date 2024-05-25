@@ -214,6 +214,7 @@ void VulkanApp::create(Window &window)
     auto vignette = mkS<Vignette>(vulkanContext.device.logicalDevice, "vignette_frag.spv",
                           pipelineFactory, layoutCache, &postProcessManager->getPingPongRenderPass());
     postProcessManager->addPostProcess(fxaa);
+    postProcessManager->activatePostProcess(0);
     postProcessManager->addPostProcess(vignette);
     auto reinhard = mkS<Reinhard>(vulkanContext.device.logicalDevice, "reinhard_frag.spv",
                                   pipelineFactory, layoutCache, &postProcessManager->getPingPongRenderPass());

@@ -24,7 +24,7 @@ private:
     Window *window;
     VkDescriptorPool imguiPool;
     void renderMenuBar();
-    void renderPostProcessStack();
+    void renderPostProcessStack(PostProcessManager *postProcessManager);
     bool optionsOpen = false;
     bool cameraOptionsOpen = false;
     bool drawBackground = true;
@@ -37,7 +37,7 @@ public:
     ~UserInterface();
 
     void create(ImGuiCreateParameters param, CommandPool &commandPool);
-    void render();
+    void render(void *postProcessManager);
     void destroy() override;
 
     void begin();

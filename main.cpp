@@ -30,7 +30,7 @@ int main()
             break;
 
         ui.begin();
-        ui.render();
+        ui.render(app.postProcessManager.get());
         app.render(); // ui.end() called in here since command buffer is needed
     }
 
