@@ -1,14 +1,15 @@
 #include "attachment.h"
 
 Attachment::Attachment(
-        vk::Image image, vk::ImageView imageView, vk::Format format)
-: allocator(nullptr), allocation(nullptr), image(image), imageView(imageView), format(format)
+        vk::Image image, vk::ImageView imageView, vk::Format format, vk::Extent3D extent)
+: allocator(nullptr), allocation(nullptr), image(image), imageView(imageView), format(format), extent(extent)
 {}
 
 Attachment::Attachment(
         vk::Device device, VmaAllocator allocator, VmaAllocation allocation,
-        vk::Image image, vk::ImageView imageView, vk::Format format)
+        vk::Image image, vk::ImageView imageView, vk::Format format, vk::Extent3D extent)
 : Destroyable(device), allocator(allocator), allocation(allocation), image(image), imageView(imageView), format(format)
+, extent(extent)
 {}
 
 void Attachment::destroy()

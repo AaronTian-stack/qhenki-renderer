@@ -49,7 +49,7 @@ PointLight pointLights[1] = PointLight[1](
 );
 
 SphereLight sphereLights[1] = SphereLight[1](
-    SphereLight(vec4(0.0, 5.0, 0.0, 1.0), vec4(1.0, 0.9, 1.0, 10.0))
+    SphereLight(vec4(0.0, 5.0, 0.0, 1.0), vec4(1.0, 0.9, 1.0, 1000.0))
 );
 
 const float PI = 3.14159;
@@ -210,9 +210,6 @@ void main()
 //    vec3 ambient = vec3(0.03) * albedo.rgb * ao;
     vec3 ambient = calculateIBL(N, V, R, F0, material);
     vec3 color = ambient + Lo + emissive.rgb;
-
-    // TODO: move tonemapping to post process shader. this output is stored in 16f
-    color = color / (color + vec3(1.0));
 
     outColor = vec4(color.xyz, 1.0);
 

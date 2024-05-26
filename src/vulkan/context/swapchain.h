@@ -12,14 +12,14 @@ private:
     vkb::Swapchain vkbSwapchain;
     vk::SwapchainKHR swapChain;
     uint32_t imageIndex;
-    std::vector<FrameBuffer> frameBuffers;
+    std::vector<uPtr<FrameBuffer>> frameBuffers;
 
 public:
     SwapChain(vkb::Swapchain vkbSwapchain);
     void createFramebuffers(vk::RenderPass renderPass, vk::ImageView depthImageView = nullptr);
     vk::Format getFormat() const;
     vk::Extent2D getExtent() const;
-    vk::Framebuffer nextImage(vk::Semaphore imageAvailable);
+    FrameBuffer* nextImage(vk::Semaphore imageAvailable);
     void destroy();
 
     friend class VulkanContext;

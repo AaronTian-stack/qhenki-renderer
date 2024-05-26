@@ -99,7 +99,7 @@ void EnvironmentMap::create(BufferFactory &bufferFactory, CommandPool &commandPo
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(time2 - time1).count();
 
     // ~0.5s faster multithreaded with metro_noord envmap
-    std::cout << "Environment map creation took " << duration << "ms" << std::endl;
+    std::cout << "Environment map creation time: " << duration << "ms" << std::endl;
 
     commandPool.submitSingleTimeCommands(queueManager, commandBuffers, true);
 
@@ -165,14 +165,8 @@ EnvironmentMap::createCubeMap(vk::CommandBuffer *commandBuffer, BufferFactory &b
     case DDSKTX_FORMAT_RGBA16F: // should be radiance map
         imageFormat = vk::Format::eR16G16B16A16Sfloat;
         break;
-    case DDSKTX_FORMAT_RGBA8:
-        imageFormat = vk::Format::eR8G8B8A8Unorm;
-        break;
-    case DDSKTX_FORMAT_BGRA8:
-        imageFormat = vk::Format::eB8G8R8A8Unorm;
-        break;
     default:
-        throw std::runtime_error("Unsupported format");
+        throw std::runtime_error("Unsupported format, environment maps should all be 16f");
     }
 
     // create the image

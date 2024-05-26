@@ -19,7 +19,7 @@ uPtr<Model> GLTFLoader::create(CommandPool &commandPool, QueueManager &queueMana
     std::string err;
     std::string warn;
 
-    loadStatus.store(LoadStatus::PARSING);
+    loadPercent = 0.f;
     bool ret = false;
     // check extension of filename
     std::string ext = filename;
@@ -52,13 +52,11 @@ uPtr<Model> GLTFLoader::create(CommandPool &commandPool, QueueManager &queueMana
     auto loadMaterials = [&]()
     {
         makeMaterialsAndTextures(commandPool, queueManager, bufferFactory, gltfModel, model.get());
-        loadStatus.store(LoadStatus::LOADED_MAT_TEX);
     };
 
     auto processNodes = [&]()
     {
         processNode(bufferFactory, gltfModel, model.get(), nullptr, rootNodeIndex);
-        loadStatus.store(LoadStatus::LOADED_NODE);
     };
 
     std::thread matThread(loadMaterials);
@@ -78,6 +76,7 @@ uPtr<Model> GLTFLoader::create(CommandPool &commandPool, QueueManager &queueMana
 void GLTFLoader::processNode(BufferFactory &bufferFactory, tinygltf::Model &gltfModel, Model *model, Node *parent, int nodeIndex)
 {
     const tinygltf::Node& gltfNode = gltfModel.nodes[nodeIndex];
+    loadPercent.store(loadPercent.load() + 0.5f / gltfModel.nodes.size());
 
     Node *node;
     if (!parent)
@@ -262,6 +261,8 @@ void GLTFLoader::makeMaterialsAndTextures(CommandPool &commandPool, QueueManager
         commandBuffers.push_back(deferredImage.cmd);
         stagingBuffers.push_back(std::move(deferredImage.stagingBufferToDestroy));
         model->images.push_back(std::move(imageTexture));
+
+        loadPercent.store(loadPercent.load() + 0.5f / gltfModel.images.size() * 0.3f);
     }
 
     for (int i = 0; i < gltfModel.textures.size(); i++)
@@ -339,6 +340,7 @@ void GLTFLoader::makeMaterialsAndTextures(CommandPool &commandPool, QueueManager
         }
         model->textures.emplace_back(mkU<Texture>(model->images[texture.source].get()));
         model->textures.back()->createSampler(samplerInfo);
+        loadPercent.store(loadPercent.load() + 0.5f / gltfModel.textures.size() * 0.1f);
     }
 
     for (const auto &mat : gltfModel.materials)
@@ -363,6 +365,7 @@ void GLTFLoader::makeMaterialsAndTextures(CommandPool &commandPool, QueueManager
         material.emissiveFactor = glm::vec3(mat.emissiveFactor[0], mat.emissiveFactor[1], mat.emissiveFactor[2]);
 
         model->materials.push_back(material);
+        loadPercent.store(loadPercent.load() + 0.5f / gltfModel.materials.size() * 0.1f);
     }
 
     // submit as an async batch to make it smoother
@@ -423,12 +426,12 @@ uPtr<Buffer> GLTFLoader::createTangentVectors(BufferFactory &bufferFactory, tiny
     return buffer;
 }
 
-LoadStatus GLTFLoader::getLoadStatus()
+float GLTFLoader::getLoadPercent()
 {
-    return loadStatus.load();
+    return loadPercent.load();
 }
 
-void GLTFLoader::setLoadStatus(LoadStatus status)
+void GLTFLoader::setLoadPercent(float percent)
 {
-    loadStatus.store(status);
+    loadPercent.store(percent);
 }

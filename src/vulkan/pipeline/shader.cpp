@@ -5,6 +5,8 @@
 
 std::vector<char> Shader::readFile(const std::string &filename)
 {
+    // the working directory may be different if running from command line
+//    system("pwd");
     std::ifstream file;
     file.exceptions(std::ifstream::failbit | std::ifstream::badbit);
     try
@@ -22,7 +24,7 @@ std::vector<char> Shader::readFile(const std::string &filename)
     catch (std::ifstream::failure e)
     {
         std::cout << "ERROR: SHADER: " << filename << " FILE_NOT_SUCCESFULLY_READ" << std::endl;
-        std::runtime_error("File not successfully read");
+        throw std::runtime_error("File not successfully read");
     }
     return {};
 }

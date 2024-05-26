@@ -18,8 +18,6 @@ private:
     std::array<Attachment*, (unsigned int)GBufferAttachmentType::END> attachmentMap{};
     std::unordered_map<Attachment*, GBufferAttachmentType> attachmentIndexMap;
 
-    std::array<vk::Framebuffer, (unsigned int)GBufferAttachmentType::END> individualFrameBuffers;
-
 public:
     explicit GBuffer(vk::Device device);
 
@@ -27,6 +25,6 @@ public:
     void setIndividualFramebuffer(GBufferAttachmentType type, vk::Framebuffer framebuffer);
     vk::Framebuffer getIndividualFramebuffer(GBufferAttachmentType type);
 
-    void setAttachment(GBufferAttachmentType type, const sPtr<Attachment> &attachment);
+    void setAttachment(GBufferAttachmentType type, uPtr<Attachment> &attachment, bool own);
     void createFrameBuffer(vk::RenderPass renderPass, vk::Extent2D extent);
 };

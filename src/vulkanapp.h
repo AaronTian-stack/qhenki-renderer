@@ -7,7 +7,7 @@
 #include "vulkan/commandpool.h"
 #include "vulkan/syncer.h"
 #include "vulkan/frame.h"
-#include "userinterface.h"
+#include "ui/userinterface.h"
 #include "vulkan/context/vulkancontext.h"
 #include "models/gltfloader.h"
 #include "vulkan/buffer/bufferfactory.h"
@@ -21,6 +21,8 @@
 #include "vulkan/renderpass/renderpassbuilder.h"
 #include "vulkan/texture/envmap.h"
 #include "vulkan/attachments/gbuffer.h"
+#include "vfx/postprocessmanager.h"
+#include "vfx/effects/fxaa.h"
 #include <atomic>
 #include <mutex>
 
@@ -31,7 +33,7 @@ private:
     std::vector<uPtr<Model>> models;
 
     uPtr<GBuffer> gBuffer;
-    sPtr<Attachment> depthBuffer;
+    uPtr<Attachment> depthBuffer;
 
     GLTFLoader gltfLoad;
     BufferFactory bufferFactory;
@@ -43,9 +45,9 @@ private:
     uPtr<RenderPass> offscreenRenderPass;
     PipelineBuilder pipelineFactory;
 
-    uPtr<Pipeline> gBufferPipeline, lightingPipeline, postProcessPipeline, cubeMapPipeline;
+    uPtr<Pipeline> gBufferPipeline, lightingPipeline, passthroughPipeline, cubeMapPipeline;
 
-    uPtr<Shader> gBufferShader, lightingShader, postProcessShader, cubeMapShader;
+    uPtr<Shader> gBufferShader, lightingShader, passthroughShader, cubeMapShader;
 
     std::mutex modelMutex;
     uPtr<CommandPool> graphicsCommandPool; // one pool per thread
@@ -74,8 +76,9 @@ public:
     void handleInput();
     void updateCameraBuffer();
     void recordOffscreenBuffer(vk::CommandBuffer buffer, DescriptorAllocator &allocator);
-    void recordCommandBuffer(vk::Framebuffer framebuffer); // TODO: NEED TO DELETE THIS LATER
+    void recordCommandBuffer(FrameBuffer *framebuffer);
 
+    uPtr<PostProcessManager> postProcessManager;
     UserInterface *ui;
     ImGuiCreateParameters getImGuiCreateParameters();
 

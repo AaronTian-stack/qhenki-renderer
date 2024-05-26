@@ -17,6 +17,12 @@ public:
                                             vk::Image image, vk::CommandBuffer commandBuffer, int mipCount, int layerCount);
     void recordTransitionImageLayout(vk::ImageLayout oldLayout, vk::ImageLayout newLayout,
                                      vk::CommandBuffer commandBuffer);
+
+
+    static void blit(vk::Image srcImage, vk::Image dstImage, vk::CommandBuffer commandBuffer,
+                    vk::ImageLayout srcLayout, vk::ImageLayout dstLayout, vk::Extent3D extent);
+    void blit(Image &dstImage, vk::CommandBuffer commandBuffer);
+
     void destroy() override;
 
     friend class Texture;

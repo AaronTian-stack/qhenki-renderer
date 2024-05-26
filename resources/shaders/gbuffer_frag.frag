@@ -16,7 +16,7 @@ layout(location = 3) out vec4 outEmissive;
 
 // max out number of samplers in any shader on macOS (with argument buffers turned on, validation still complains)
 // since partial binding is on, indexing into undefined sampler will not show errors!
-layout(set = 1, binding = 0) uniform sampler2D texSampler[128];
+layout(set = 1, binding = 0) uniform sampler2D texSampler[80];
 
 layout(scalar, push_constant) uniform mats {
     layout(offset = 64)

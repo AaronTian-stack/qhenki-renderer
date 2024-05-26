@@ -7,8 +7,14 @@ layout(location = 0) in vec2 fragUV;
 
 layout(location = 0) out vec4 outColor; // location is index of framebuffer / attachment
 
+layout(scalar, push_constant) uniform PushConstant {
+    float intensity;
+} pc;
+
 void main()
 {
-    vec3 color = texture(texSampler, fragUV).rgb;
-    outColor = vec4(color, 1.0);
+    vec2 uv = fragUV * (1.0 - fragUV.yx);
+    float vig = uv.x * uv.y * 15.0;
+    vig = pow(vig, pc.intensity);
+    outColor = vec4(vig) * texture(texSampler, fragUV);
 }

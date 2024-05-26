@@ -5,6 +5,9 @@
 #include "inputprocesser.h"
 #include "imgui/imgui.h"
 #include "models/primitives/primitivedrawer.h"
+#include "vfx/effects/fxaa.h"
+#include "vfx/effects/vignette.h"
+#include "vfx/effects/sharpen.h"
 #include <thread>
 
 VulkanApp::VulkanApp() {}
@@ -29,8 +32,8 @@ VulkanApp::~VulkanApp()
     cubeMapPipeline->destroy();
     cubeMapShader->destroy();
 
-    postProcessPipeline->destroy();
-    postProcessShader->destroy();
+    passthroughPipeline->destroy();
+    passthroughShader->destroy();
 
     pipelineFactory.destroy();
 
@@ -38,7 +41,10 @@ VulkanApp::~VulkanApp()
     displayRenderPass->destroy();
     renderPassBuilder.destroy();
 
+    postProcessManager->destroy();
+
     gBuffer->destroy();
+    depthBuffer->destroy();
 
     envMap.destroy();
 
@@ -90,12 +96,12 @@ void VulkanApp::createGbuffer(vk::Extent2D extent, vk::RenderPass renderPass)
 
     gBuffer = mkU<GBuffer>(vulkanContext.device.logicalDevice);
 
-    gBuffer->setAttachment(GBufferAttachmentType::ALBEDO, colorAttachment);
-    gBuffer->setAttachment(GBufferAttachmentType::NORMAL, normalAttachment);
-    gBuffer->setAttachment(GBufferAttachmentType::METAL_ROUGHNESS_AO, metalRoughnessAOAttachment);
-    gBuffer->setAttachment(GBufferAttachmentType::EMISSIVE, emissiveAttachment);
-    gBuffer->setAttachment(GBufferAttachmentType::DEPTH, depthBuffer);
-    gBuffer->setAttachment(GBufferAttachmentType::OUTPUT, outputAttachment); // this must be last for some reason
+    gBuffer->setAttachment(GBufferAttachmentType::ALBEDO, colorAttachment, true);
+    gBuffer->setAttachment(GBufferAttachmentType::NORMAL, normalAttachment, true);
+    gBuffer->setAttachment(GBufferAttachmentType::METAL_ROUGHNESS_AO, metalRoughnessAOAttachment, true);
+    gBuffer->setAttachment(GBufferAttachmentType::EMISSIVE, emissiveAttachment, true);
+    gBuffer->setAttachment(GBufferAttachmentType::DEPTH, depthBuffer, false);
+    gBuffer->setAttachment(GBufferAttachmentType::OUTPUT, outputAttachment, true); // this must be last for some reason
 
     gBuffer->createFrameBuffer(renderPass, extent);
 }
@@ -175,14 +181,14 @@ void VulkanApp::create(Window &window)
     pipelineFactory.getColorBlending().attachmentCount = 1;
     cubeMapPipeline = pipelineFactory.buildPipeline(offscreenRenderPass.get(), 2, cubeMapShader.get());
 
-    PrimitiveDrawer::create(bufferFactory, vulkanContext.device.logicalDevice, &pipelineFactory, offscreenRenderPass.get(), 2);
+    PrimitiveDrawer::create(bufferFactory, vulkanContext.device.logicalDevice, pipelineFactory, offscreenRenderPass.get(), 2);
 
-    postProcessShader = mkU<Shader>(device, "passthrough_vert.spv", "passthrough_frag.spv");
+    passthroughShader = mkU<Shader>(device, "passthrough_vert.spv", "passthrough_frag.spv");
     pipelineFactory.reset();
     pipelineFactory.parseShader("passthrough_vert.spv", "passthrough_frag.spv", layoutCache, false);
     pipelineFactory.getDepthStencil().depthWriteEnable = VK_FALSE;
     pipelineFactory.getColorBlending().attachmentCount = 1;
-    postProcessPipeline = pipelineFactory.buildPipeline(displayRenderPass.get(), 0, postProcessShader.get());
+    passthroughPipeline = pipelineFactory.buildPipeline(displayRenderPass.get(), 0, passthroughShader.get());
 
     vulkanContext.swapChain->createFramebuffers(displayRenderPass->getRenderPass());
 
@@ -200,7 +206,29 @@ void VulkanApp::create(Window &window)
         allocators.emplace_back(vulkanContext.device.logicalDevice);
     }
 
-    envMap.create(bufferFactory, *graphicsCommandPool, vulkanContext.queueManager, "../resources/envmaps/artist_workshop/artist_workshop.dds");
+    envMap.create(bufferFactory, *graphicsCommandPool, vulkanContext.queueManager,
+                  "../resources/envmaps/artist_workshop/artist_workshop.dds");
+
+    postProcessManager = mkU<PostProcessManager>(vulkanContext.device.logicalDevice, extent, bufferFactory, renderPassBuilder);
+    auto fxaa = mkS<FXAA>(vulkanContext.device.logicalDevice, "fxaa_frag.spv",
+                          pipelineFactory, layoutCache, &postProcessManager->getPingPongRenderPass());
+    auto vignette = mkS<Vignette>(vulkanContext.device.logicalDevice, "vignette_frag.spv",
+                          pipelineFactory, layoutCache, &postProcessManager->getPingPongRenderPass());
+    auto sharpen = mkS<Sharpen>(vulkanContext.device.logicalDevice, "sharpen_frag.spv",
+                          pipelineFactory, layoutCache, &postProcessManager->getPingPongRenderPass());
+    postProcessManager->addPostProcess(fxaa);
+    postProcessManager->addPostProcess(vignette);
+    postProcessManager->addPostProcess(sharpen);
+    postProcessManager->activatePostProcess(0);
+    auto reinhard = mkU<PostProcess>("Reinhard", vulkanContext.device.logicalDevice, "reinhard_frag.spv",
+                                  pipelineFactory, layoutCache, &postProcessManager->getPingPongRenderPass());
+    auto neutral = mkU<PostProcess>("Khronos PBR Neutral", vulkanContext.device.logicalDevice, "pbr_neutral_frag.spv",
+                                  pipelineFactory, layoutCache, &postProcessManager->getPingPongRenderPass());
+    auto aces = mkU<PostProcess>("ACES", vulkanContext.device.logicalDevice, "aces_frag.spv",
+                                  pipelineFactory, layoutCache, &postProcessManager->getPingPongRenderPass());
+    postProcessManager->addToneMapper(reinhard);
+    postProcessManager->addToneMapper(neutral);
+    postProcessManager->addToneMapper(aces);
 }
 
 void VulkanApp::setUpCallbacks() {
@@ -219,20 +247,17 @@ void VulkanApp::setModel(const std::string& filePath)
                                            bufferFactory, filePath.c_str());
         std::lock_guard lock(modelMutex);
         models.push_back(std::move(newModel));
-        GLTFLoader::setLoadStatus(LoadStatus::READY);
+        GLTFLoader::setLoadPercent(1.f);
     });
     t.detach();
 }
 
 void VulkanApp::recordOffscreenBuffer(vk::CommandBuffer commandBuffer, DescriptorAllocator &allocator)
 {
-    auto extent = vulkanContext.swapChain->getExtent();
     offscreenRenderPass->setFramebuffer(gBuffer->framebuffer);
     offscreenRenderPass->setRenderAreaExtent(vulkanContext.swapChain->getExtent());
     offscreenRenderPass->clear(0.f, 0.f, 0.f, 0.f);
     offscreenRenderPass->begin(commandBuffer);
-    ScreenUtils::setViewport(commandBuffer, extent.width, extent.height);
-    ScreenUtils::setScissor(commandBuffer, extent);
 
     vk::DescriptorSetLayout layout;
     vk::DescriptorSet cameraSet;
@@ -255,10 +280,11 @@ void VulkanApp::recordOffscreenBuffer(vk::CommandBuffer commandBuffer, Descripto
 
         if (!imageInfos.empty()) // pipeline still expects uv though
         {
-            if (imageInfos.size() > 128) throw std::runtime_error("Too many textures");
+            const int textureCount = 80;
+            if (imageInfos.size() > textureCount) throw std::runtime_error("Too many textures");
             DescriptorBuilder::beginSet(&layoutCache, &allocator)
                     .bindImage(0, imageInfos,
-                               128, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eFragment)
+                               textureCount, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eFragment)
                     .build(samplerSet, layout);
 
             commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, gBufferPipeline->getPipelineLayout(),
@@ -332,7 +358,7 @@ void VulkanApp::recordOffscreenBuffer(vk::CommandBuffer commandBuffer, Descripto
     offscreenRenderPass->end();
 }
 
-void VulkanApp::recordCommandBuffer(vk::Framebuffer framebuffer)
+void VulkanApp::recordCommandBuffer(FrameBuffer *framebuffer)
 {
     // TODO: multi thread secondary command buffer recording
     auto &frame = frames[currentFrame];
@@ -346,32 +372,48 @@ void VulkanApp::recordCommandBuffer(vk::Framebuffer framebuffer)
 
     auto &allocator = allocators[currentFrame];
     allocator.resetPools();
+    ScreenUtils::setViewport(primaryCommandBuffer, swapChainExtent.width, swapChainExtent.height);
+    ScreenUtils::setScissor(primaryCommandBuffer, swapChainExtent);
     recordOffscreenBuffer(primaryCommandBuffer, allocator);
 
     auto &outputAttachment = gBuffer->attachments.back();
     Image::recordTransitionImageLayout(vk::ImageLayout::eUndefined, vk::ImageLayout::eShaderReadOnlyOptimal,
-                                       outputAttachment->image,primaryCommandBuffer, 1, 1);
+                                       outputAttachment->image, primaryCommandBuffer, 1, 1);
 
-    displayRenderPass->setFramebuffer(framebuffer);
+    auto outputAttachmentInfo = outputAttachment->getDescriptorInfo();
+    postProcessManager->tonemap(primaryCommandBuffer, layoutCache, allocator, &outputAttachmentInfo);
+    postProcessManager->render(primaryCommandBuffer, layoutCache, allocator);
+
+    // final result done, blit it to swap chain
+
+    // render pass automatically transitions the image layout to present
+//    Image::recordTransitionImageLayout(vk::ImageLayout::ePresentSrcKHR, vk::ImageLayout::eTransferSrcOptimal,
+//                                       postProcessManager->getCurrentAttachment()->image, primaryCommandBuffer, 1, 1);
+//    Image::recordTransitionImageLayout(vk::ImageLayout::ePresentSrcKHR, vk::ImageLayout::eTransferDstOptimal,
+//                                       framebuffer->attachments[0]->image, primaryCommandBuffer, 1, 1);
+//    Image::blit(postProcessManager->getCurrentAttachment()->image, framebuffer->attachments[0]->image,
+//                primaryCommandBuffer, vk::ImageLayout::eTransferSrcOptimal, vk::ImageLayout::eTransferDstOptimal,
+//                {swapChainExtent.width, swapChainExtent.height, 1});
+//    Image::recordTransitionImageLayout(vk::ImageLayout::eTransferSrcOptimal, vk::ImageLayout::ePresentSrcKHR,
+//                                       postProcessManager->getCurrentAttachment()->image, primaryCommandBuffer, 1, 1);
+
+    Image::recordTransitionImageLayout(vk::ImageLayout::eUndefined, vk::ImageLayout::eShaderReadOnlyOptimal,
+                                       postProcessManager->getCurrentAttachment()->image, primaryCommandBuffer, 1, 1);
+    displayRenderPass->setFramebuffer(framebuffer->framebuffer);
     displayRenderPass->setRenderAreaExtent(swapChainExtent);
     displayRenderPass->clear(0.f, 0.f, 0.f, 1.0f);
     displayRenderPass->begin(primaryCommandBuffer);
 
-    primaryCommandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, postProcessPipeline->getGraphicsPipeline());
-    ScreenUtils::setViewport(primaryCommandBuffer, swapChainExtent.width, swapChainExtent.height);
-    ScreenUtils::setScissor(primaryCommandBuffer, swapChainExtent);
+    primaryCommandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, passthroughPipeline->getGraphicsPipeline());
     vk::DescriptorSet samplerSet;
     vk::DescriptorSetLayout layout;
     DescriptorBuilder::beginSet(&layoutCache, &allocator)
-            .bindImage(0, {outputAttachment->getDescriptorInfo()}, // output attachment sampler
+            .bindImage(0, {postProcessManager->getCurrentAttachment()->getDescriptorInfo()}, // output attachment sampler
                        1, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eFragment)
             .build(samplerSet, layout);
-    primaryCommandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, postProcessPipeline->getPipelineLayout(),
+    primaryCommandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, passthroughPipeline->getPipelineLayout(),
                                             0, {samplerSet}, nullptr);
-    // get window resolution
-    auto extent = vulkanContext.swapChain->getExtent();
-    auto resolution = glm::vec2(extent.width, extent.height);
-    postProcessPipeline->setPushConstant(primaryCommandBuffer, &resolution, sizeof(glm::vec2), 0, vk::ShaderStageFlagBits::eFragment);
+
     primaryCommandBuffer.draw(3, 1, 0, 0);
 
     ui->end(primaryCommandBuffer);
