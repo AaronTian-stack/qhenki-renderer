@@ -49,7 +49,7 @@ PointLight pointLights[1] = PointLight[1](
 );
 
 SphereLight sphereLights[1] = SphereLight[1](
-    SphereLight(vec4(0.0, 5.0, 0.0, 1.0), vec4(1.0, 0.9, 1.0, 10.0))
+    SphereLight(vec4(0.0, 5.0, 0.0, 1.0), vec4(1.0, 0.9, 1.0, 1000.0))
 );
 
 const float PI = 3.14159;

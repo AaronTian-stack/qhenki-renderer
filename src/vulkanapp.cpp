@@ -206,7 +206,8 @@ void VulkanApp::create(Window &window)
         allocators.emplace_back(vulkanContext.device.logicalDevice);
     }
 
-    envMap.create(bufferFactory, *graphicsCommandPool, vulkanContext.queueManager, "../resources/envmaps/artist_workshop/artist_workshop.dds");
+    envMap.create(bufferFactory, *graphicsCommandPool, vulkanContext.queueManager,
+                  "../resources/envmaps/artist_workshop/artist_workshop.dds");
 
     postProcessManager = mkU<PostProcessManager>(vulkanContext.device.logicalDevice, extent, bufferFactory, renderPassBuilder);
     auto fxaa = mkS<FXAA>(vulkanContext.device.logicalDevice, "fxaa_frag.spv",
@@ -221,9 +222,12 @@ void VulkanApp::create(Window &window)
     postProcessManager->activatePostProcess(0);
     auto reinhard = mkU<PostProcess>("Reinhard", vulkanContext.device.logicalDevice, "reinhard_frag.spv",
                                   pipelineFactory, layoutCache, &postProcessManager->getPingPongRenderPass());
+    auto neutral = mkU<PostProcess>("Khronos PBR Neutral", vulkanContext.device.logicalDevice, "pbr_neutral_frag.spv",
+                                  pipelineFactory, layoutCache, &postProcessManager->getPingPongRenderPass());
     auto aces = mkU<PostProcess>("ACES", vulkanContext.device.logicalDevice, "aces_frag.spv",
                                   pipelineFactory, layoutCache, &postProcessManager->getPingPongRenderPass());
     postProcessManager->addToneMapper(reinhard);
+    postProcessManager->addToneMapper(neutral);
     postProcessManager->addToneMapper(aces);
 }
 

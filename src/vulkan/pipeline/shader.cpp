@@ -24,7 +24,7 @@ std::vector<char> Shader::readFile(const std::string &filename)
     catch (std::ifstream::failure e)
     {
         std::cout << "ERROR: SHADER: " << filename << " FILE_NOT_SUCCESFULLY_READ" << std::endl;
-        std::runtime_error("File not successfully read");
+        throw std::runtime_error("File not successfully read");
     }
     return {};
 }
