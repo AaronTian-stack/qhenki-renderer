@@ -1,13 +1,14 @@
 #include "userinterface.h"
 #include "imgui/imgui_impl_glfw.h"
 #include "imgui/imgui_impl_vulkan.h"
-#include <vulkan/vulkan.h>
+#include "vulkan/vulkan.h"
 #include <iterator>
 #include <filesystem>
-#include "inputprocesser.h"
+#include "../inputprocesser.h"
 #include <iostream>
 #include "ImGuiFileDialog-0.6.7/ImGuiFileDialog.h"
-#include "models/gltfloader.h"
+#include "../models/gltfloader.h"
+#include "menu.h"
 #include <cstdlib>
 
 UserInterface::UserInterface() {}
@@ -101,7 +102,7 @@ void UserInterface::render(void *postProcessManager)
     ImGuiStyle& style = ImGui::GetStyle();
     style.FrameRounding = 5.0f;
 
-    const int y = 21;
+    const int y = 22;
 //    ImGui::ShowDemoWindow();
     ImGui::SetNextWindowPos(ImVec2(0, y));
     auto flags = ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove;
@@ -259,7 +260,8 @@ void UserInterface::renderPostProcessStack(PostProcessManager *postProcessManage
     ImGui::TextDisabled("(?)");
     if (ImGui::BeginItemTooltip())
     {
-        ImGui::Text("Drag and drop effects to apply.");
+        ImGui::PushTextWrapPos(200.0f);
+        ImGui::Text("Drag and drop effects to apply. Note that order matters, and that duplicates of the same effect will share the same parameters.");
         ImGui::EndTooltip();
     }
 
@@ -311,7 +313,10 @@ void UserInterface::renderPostProcessStack(PostProcessManager *postProcessManage
                 for (int i = 0; i < toneMappers.size(); i++)
                 {
                     bool is_selected = (activeTM == toneMappers[i].get());
-                    ImGui::Selectable(toneMappers[i]->name, is_selected);
+                    if (ImGui::Selectable(toneMappers[i]->name, is_selected))
+                    {
+                        postProcessManager->setToneMapper(i);
+                    }
                 }
                 ImGui::EndCombo();
             }
@@ -328,15 +333,34 @@ void UserInterface::renderPostProcessStack(PostProcessManager *postProcessManage
                 ImGui::PushID(i);
                 if (ImGui::Selectable(activePostProcesses[i]->name))
                 {
-                    indexToRemove = i;
+                    auto *menu = dynamic_cast<Menu*>(activePostProcesses[i]);
+                    if (menu)
+                    {
+                        menu->open = true;
+                    }
+                }
+                ImGui::PopID();
+            }
+            for (int i = 0; i < activePostProcesses.size(); i++)
+            {
+                auto *menu = dynamic_cast<Menu*>(activePostProcesses[i]);
+                ImGui::PushID(activePostProcesses[i]);
+                if (menu && menu->open)
+                {
+                    ImGui::Begin(activePostProcesses[i]->name, &menu->open, ImGuiWindowFlags_AlwaysAutoResize);
+                    menu->renderMenu();
+                    if (ImGui::Button("Remove"))
+                    {
+                        indexToRemove = i;
+                        menu->open = false;
+                    }
+                    ImGui::End();
                 }
                 ImGui::PopID();
             }
             if (indexToRemove != -1)
             {
-                std::cout << "Removing " << indexToRemove << std::endl;
                 postProcessManager->deactivatePostProcess(indexToRemove);
-                std::cout << "Active post processes: " << postProcessManager->getActivePostProcesses().size() << std::endl;
             }
             ImGui::EndListBox();
         }

@@ -15,7 +15,7 @@ struct AttachmentFrameBuffer
 class PostProcessManager : public Destroyable
 {
 private:
-    std::vector<sPtr<PostProcess>> toneMappers;
+    std::vector<uPtr<PostProcess>> toneMappers;
     int activeToneMapperIndex;
     std::vector<sPtr<PostProcess>> postProcesses;
     std::vector<PostProcess*> activePostProcesses;
@@ -31,12 +31,13 @@ public:
                  vk::DescriptorImageInfo *imageInfo);
     void render(vk::CommandBuffer commandBuffer, DescriptorLayoutCache &layoutCache, DescriptorAllocator &allocator);
     RenderPass& getPingPongRenderPass();
-    void addToneMapper(const sPtr<PostProcess> &toneMapper);
+    void addToneMapper(uPtr<PostProcess> &toneMapper);
     void addPostProcess(const sPtr<PostProcess> &postProcess);
+    void setToneMapper(int index);
     void activatePostProcess(int index);
     void deactivatePostProcess(int index);
     Attachment* getCurrentAttachment();
-    const std::vector<sPtr<PostProcess>>& getToneMappers();
+    const std::vector<uPtr<PostProcess>>& getToneMappers();
     const std::vector<sPtr<PostProcess>>& getPostProcesses();
     const PostProcess* getActiveToneMapper();
     const std::vector<PostProcess*>& getActivePostProcesses();

@@ -116,9 +116,9 @@ void PostProcessManager::destroy()
     pingPongRenderPass->destroy();
 }
 
-void PostProcessManager::addToneMapper(const sPtr<PostProcess> &toneMapper)
+void PostProcessManager::addToneMapper(uPtr<PostProcess> &toneMapper)
 {
-    toneMappers.push_back(toneMapper);
+    toneMappers.push_back(std::move(toneMapper));
 }
 
 void PostProcessManager::addPostProcess(const sPtr<PostProcess> &postProcess)
@@ -136,7 +136,7 @@ Attachment* PostProcessManager::getCurrentAttachment()
     return afb[currentAttachmentIndex].attachment.get();
 }
 
-const std::vector<sPtr<PostProcess>> &PostProcessManager::getToneMappers()
+const std::vector<uPtr<PostProcess>> &PostProcessManager::getToneMappers()
 {
     return toneMappers;
 }
@@ -165,4 +165,9 @@ void PostProcessManager::deactivatePostProcess(int index)
 {
     currentAttachmentIndex = 0;
     activePostProcesses.erase(activePostProcesses.begin() + index);
+}
+
+void PostProcessManager::setToneMapper(int index)
+{
+    activeToneMapperIndex = index;
 }

@@ -16,3 +16,6 @@ void PostProcess::destroy()
     shader->destroy();
     pipeline->destroy();
 }
+
+void PostProcess::bindData(vk::CommandBuffer commandBuffer)
+{}

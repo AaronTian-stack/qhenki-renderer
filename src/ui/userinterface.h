@@ -1,13 +1,13 @@
 #pragma once
 
 #include "vulkan/vulkan_core.h"
-#include "window.h"
-#include "vulkan/renderpass/renderpass.h"
-#include "vulkan/queuemanager.h"
-#include "vulkan/commandpool.h"
-#include "vulkan/context/vulkancontext.h"
-#include "camera.h"
-#include "vfx/postprocessmanager.h"
+#include "../window.h"
+#include "../vulkan/renderpass/renderpass.h"
+#include "../vulkan/queuemanager.h"
+#include "../vulkan/commandpool.h"
+#include "../vulkan/context/vulkancontext.h"
+#include "../camera.h"
+#include "../vfx/postprocessmanager.h"
 #include <functional>
 
 struct ImGuiCreateParameters

@@ -7,7 +7,7 @@
 #include "vulkan/commandpool.h"
 #include "vulkan/syncer.h"
 #include "vulkan/frame.h"
-#include "userinterface.h"
+#include "ui/userinterface.h"
 #include "vulkan/context/vulkancontext.h"
 #include "models/gltfloader.h"
 #include "vulkan/buffer/bufferfactory.h"
@@ -53,8 +53,6 @@ private:
     uPtr<CommandPool> graphicsCommandPool; // one pool per thread
     uPtr<CommandPool> transferCommandPool;
     Syncer syncer;
-
-    sPtr<FXAA> fxaa;
 
     int currentFrame = 0;
     const int MAX_FRAMES_IN_FLIGHT = 2;

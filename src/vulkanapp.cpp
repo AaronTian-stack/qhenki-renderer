@@ -6,8 +6,8 @@
 #include "imgui/imgui.h"
 #include "models/primitives/primitivedrawer.h"
 #include "vfx/effects/fxaa.h"
-#include "vfx/effects/reinhard.h"
 #include "vfx/effects/vignette.h"
+#include "vfx/effects/sharpen.h"
 #include <thread>
 
 VulkanApp::VulkanApp() {}
@@ -209,16 +209,22 @@ void VulkanApp::create(Window &window)
     envMap.create(bufferFactory, *graphicsCommandPool, vulkanContext.queueManager, "../resources/envmaps/artist_workshop/artist_workshop.dds");
 
     postProcessManager = mkU<PostProcessManager>(vulkanContext.device.logicalDevice, extent, bufferFactory, renderPassBuilder);
-    fxaa = mkS<FXAA>(vulkanContext.device.logicalDevice, "fxaa_frag.spv",
+    auto fxaa = mkS<FXAA>(vulkanContext.device.logicalDevice, "fxaa_frag.spv",
                           pipelineFactory, layoutCache, &postProcessManager->getPingPongRenderPass());
     auto vignette = mkS<Vignette>(vulkanContext.device.logicalDevice, "vignette_frag.spv",
                           pipelineFactory, layoutCache, &postProcessManager->getPingPongRenderPass());
+    auto sharpen = mkS<Sharpen>(vulkanContext.device.logicalDevice, "sharpen_frag.spv",
+                          pipelineFactory, layoutCache, &postProcessManager->getPingPongRenderPass());
     postProcessManager->addPostProcess(fxaa);
-    postProcessManager->activatePostProcess(0);
     postProcessManager->addPostProcess(vignette);
-    auto reinhard = mkS<Reinhard>(vulkanContext.device.logicalDevice, "reinhard_frag.spv",
+    postProcessManager->addPostProcess(sharpen);
+    postProcessManager->activatePostProcess(0);
+    auto reinhard = mkU<PostProcess>("Reinhard", vulkanContext.device.logicalDevice, "reinhard_frag.spv",
+                                  pipelineFactory, layoutCache, &postProcessManager->getPingPongRenderPass());
+    auto aces = mkU<PostProcess>("ACES", vulkanContext.device.logicalDevice, "aces_frag.spv",
                                   pipelineFactory, layoutCache, &postProcessManager->getPingPongRenderPass());
     postProcessManager->addToneMapper(reinhard);
+    postProcessManager->addToneMapper(aces);
 }
 
 void VulkanApp::setUpCallbacks() {
@@ -370,7 +376,6 @@ void VulkanApp::recordCommandBuffer(FrameBuffer *framebuffer)
     Image::recordTransitionImageLayout(vk::ImageLayout::eUndefined, vk::ImageLayout::eShaderReadOnlyOptimal,
                                        outputAttachment->image, primaryCommandBuffer, 1, 1);
 
-    fxaa->setResolution({swapChainExtent.width, swapChainExtent.height});
     auto outputAttachmentInfo = outputAttachment->getDescriptorInfo();
     postProcessManager->tonemap(primaryCommandBuffer, layoutCache, allocator, &outputAttachmentInfo);
     postProcessManager->render(primaryCommandBuffer, layoutCache, allocator);

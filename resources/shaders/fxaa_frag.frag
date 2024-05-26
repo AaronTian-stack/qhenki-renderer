@@ -8,7 +8,6 @@ layout(location = 0) in vec2 fragUV;
 layout(location = 0) out vec4 outColor; // location is index of framebuffer / attachment
 
 layout(scalar, push_constant) uniform PushConstant {
-    vec2 viewport;
     float fxaaReduceMul;
     float fxaaReduceMin;
     float fxaaSpanMax;
@@ -79,7 +78,7 @@ vec3 fxaa(vec2 texCoords, vec2 viewportInv)
 
 void main()
 {
-    vec2 viewportInv = vec2(1.0) / pc.viewport;
+    vec2 viewportInv = vec2(1.0) / textureSize(texSampler, 0);
     vec3 color = fxaa(fragUV, viewportInv);
     outColor = vec4(color, 1.0);
 }
