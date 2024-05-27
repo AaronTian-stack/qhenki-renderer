@@ -23,6 +23,7 @@
 #include "vulkan/attachments/gbuffer.h"
 #include "vfx/postprocessmanager.h"
 #include "vfx/effects/fxaa.h"
+#include "lights.h"
 #include <atomic>
 #include <mutex>
 
@@ -32,6 +33,7 @@ private:
     EnvironmentMap envMap;
     std::vector<uPtr<Model>> models;
 
+    LightingParameters lightingParameters;
     uPtr<GBuffer> gBuffer;
     uPtr<Attachment> depthBuffer;
 
@@ -42,12 +44,13 @@ private:
 
     RenderPassBuilder renderPassBuilder;
     uPtr<RenderPass> displayRenderPass;
+    uPtr<RenderPass> clearRenderPass;
     uPtr<RenderPass> offscreenRenderPass;
     PipelineBuilder pipelineFactory;
 
-    uPtr<Pipeline> gBufferPipeline, lightingPipeline, passthroughPipeline, cubeMapPipeline;
+    uPtr<Pipeline> gBufferPipeline, lightingPipeline, passPipeline, passAndClearPipeline, cubeMapPipeline;
 
-    uPtr<Shader> gBufferShader, lightingShader, passthroughShader, cubeMapShader;
+    uPtr<Shader> gBufferShader, lightingShader, passShader, passAndClearShader, cubeMapShader;
 
     std::mutex modelMutex;
     uPtr<CommandPool> graphicsCommandPool; // one pool per thread

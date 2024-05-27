@@ -32,8 +32,11 @@ VulkanApp::~VulkanApp()
     cubeMapPipeline->destroy();
     cubeMapShader->destroy();
 
-    passthroughPipeline->destroy();
-    passthroughShader->destroy();
+    passAndClearPipeline->destroy();
+    passAndClearShader->destroy();
+
+    passPipeline->destroy();
+    passShader->destroy();
 
     pipelineFactory.destroy();
 
@@ -123,16 +126,25 @@ void VulkanApp::create(Window &window)
     bufferFactory.create(vulkanContext);
     auto extent = vulkanContext.swapChain->getExtent();
     depthBuffer = bufferFactory.createAttachment(vk::Format::eD32Sfloat, {extent.width, extent.height, 1},
-                                                   vk::ImageUsageFlagBits::eDepthStencilAttachment | vk::ImageUsageFlagBits::eInputAttachment,
+                                                   vk::ImageUsageFlagBits::eDepthStencilAttachment
+                                                   | vk::ImageUsageFlagBits::eInputAttachment | vk::ImageUsageFlagBits::eSampled,
                                                    vk::ImageAspectFlagBits::eDepth);
+    depthBuffer->createGenericSampler(vk::Filter::eNearest, vk::SamplerMipmapMode::eNearest);
 
     renderPassBuilder.create(vulkanContext.device.logicalDevice);
 
-    renderPassBuilder.reset();
     // create render pass
+    renderPassBuilder.reset();
     renderPassBuilder.addColorAttachment(vulkanContext.swapChain->getFormat());
     renderPassBuilder.addSubPass({}, {}, {0}, {});
     displayRenderPass = renderPassBuilder.buildRenderPass();
+
+    // drawing background color. must happen after tonemapping and before post processing effects
+    renderPassBuilder.reset();
+    renderPassBuilder.addColorAttachment(vk::Format::eR8G8B8A8Unorm);
+    renderPassBuilder.addDepthAttachment(depthBuffer->format, vk::AttachmentLoadOp::eLoad);
+    renderPassBuilder.addSubPass({}, {}, {0}, {}, 1);
+    clearRenderPass = renderPassBuilder.buildRenderPass();
 
     renderPassBuilder.reset();
     renderPassBuilder.addColorAttachment(vk::Format::eR8G8B8A8Unorm); // albedo 0
@@ -183,12 +195,12 @@ void VulkanApp::create(Window &window)
 
     PrimitiveDrawer::create(bufferFactory, vulkanContext.device.logicalDevice, pipelineFactory, offscreenRenderPass.get(), 2);
 
-    passthroughShader = mkU<Shader>(device, "passthrough_vert.spv", "passthrough_frag.spv");
+    passShader = mkU<Shader>(device, "passthrough_vert.spv", "passthrough_frag.spv");
     pipelineFactory.reset();
     pipelineFactory.parseShader("passthrough_vert.spv", "passthrough_frag.spv", layoutCache, false);
     pipelineFactory.getDepthStencil().depthWriteEnable = VK_FALSE;
     pipelineFactory.getColorBlending().attachmentCount = 1;
-    passthroughPipeline = pipelineFactory.buildPipeline(displayRenderPass.get(), 0, passthroughShader.get());
+    passPipeline = pipelineFactory.buildPipeline(displayRenderPass.get(), 0, passShader.get());
 
     vulkanContext.swapChain->createFramebuffers(displayRenderPass->getRenderPass());
 
@@ -207,9 +219,17 @@ void VulkanApp::create(Window &window)
     }
 
     envMap.create(bufferFactory, *graphicsCommandPool, vulkanContext.queueManager,
-                  "../resources/envmaps/artist_workshop/artist_workshop.dds");
+                  "../resources/envmaps/artist_workshop/artist_workshop.dds"
+//                  "../resources/envmaps/metro_noord/metro_noord.dds"
+                  );
 
     postProcessManager = mkU<PostProcessManager>(vulkanContext.device.logicalDevice, extent, bufferFactory, renderPassBuilder);
+    passAndClearShader = mkU<Shader>(device, "passthrough_vert.spv", "passthrough_depth_frag.spv");
+    pipelineFactory.reset();
+    pipelineFactory.parseShader("passthrough_vert.spv", "passthrough_depth_frag.spv", layoutCache, false);
+    pipelineFactory.getDepthStencil().depthWriteEnable = VK_FALSE;
+    pipelineFactory.getColorBlending().attachmentCount = 1;
+    passAndClearPipeline = pipelineFactory.buildPipeline(&postProcessManager->getPingPongRenderPass(), 0, passAndClearShader.get());
     auto fxaa = mkS<FXAA>(vulkanContext.device.logicalDevice, "fxaa_frag.spv",
                           pipelineFactory, layoutCache, &postProcessManager->getPingPongRenderPass());
     auto vignette = mkS<Vignette>(vulkanContext.device.logicalDevice, "vignette_frag.spv",
@@ -298,7 +318,9 @@ void VulkanApp::recordOffscreenBuffer(vk::CommandBuffer commandBuffer, Descripto
     offscreenRenderPass->nextSubpass(); // composition pass
 
     commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, lightingPipeline->getGraphicsPipeline());
-    lightingPipeline->setPushConstant(commandBuffer, &ui->clearColor, sizeof(glm::vec3), 0, vk::ShaderStageFlagBits::eFragment);
+    lightingParameters.clearColor = {ui->clearColor[0], ui->clearColor[1], ui->clearColor[2]};
+    lightingParameters.iblIntensity = ui->iblIntensity;
+    lightingPipeline->setPushConstant(commandBuffer, &lightingParameters, sizeof(LightingParameters), 0, vk::ShaderStageFlagBits::eFragment);
 
     std::vector<std::vector<vk::DescriptorImageInfo>> gBufferInfo =
     {
@@ -382,38 +404,52 @@ void VulkanApp::recordCommandBuffer(FrameBuffer *framebuffer)
 
     auto outputAttachmentInfo = outputAttachment->getDescriptorInfo();
     postProcessManager->tonemap(primaryCommandBuffer, layoutCache, allocator, &outputAttachmentInfo);
+    // transition depth buffer for clear color
+    Image::recordTransitionImageLayout(vk::ImageLayout::eDepthStencilAttachmentOptimal, vk::ImageLayout::eShaderReadOnlyOptimal,
+                                       depthBuffer->image, primaryCommandBuffer, 1, 1);
+    Image::recordTransitionImageLayout(vk::ImageLayout::eUndefined, vk::ImageLayout::eShaderReadOnlyOptimal,
+                                       postProcessManager->getAttachment(0)->image, primaryCommandBuffer, 1, 1);
+
+    //// CLEAR COLOR
+    auto &ppr = postProcessManager->getPingPongRenderPass();
+    ppr.setFramebuffer(postProcessManager->getFramebuffer(1));
+    ppr.setRenderAreaExtent(swapChainExtent);
+    ppr.clear(0.f, 0.f, 0.f, 1.f);
+    ppr.begin(primaryCommandBuffer);
+    primaryCommandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, passAndClearPipeline->getGraphicsPipeline());
+    vk::DescriptorSet pprSamplerSet; vk::DescriptorSetLayout layout;
+    DescriptorBuilder::beginSet(&layoutCache, &allocator)
+            .bindImage(0, {postProcessManager->getAttachment(0)->getDescriptorInfo()},
+                       1, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eFragment)
+            .bindImage(1, {depthBuffer->getDescriptorInfo()}, // depth attachment sampler
+                       1, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eFragment)
+            .build(pprSamplerSet, layout);
+    primaryCommandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, passAndClearPipeline->getPipelineLayout(),
+                                            0, {pprSamplerSet}, nullptr);
+    glm::vec4 clear = {ui->clearColor[0], ui->clearColor[1], ui->clearColor[2], ui->drawBackground ? 0.f : 1.f};
+    passAndClearPipeline->setPushConstant(primaryCommandBuffer, &clear, sizeof(glm::vec4), 0, vk::ShaderStageFlagBits::eFragment);
+    primaryCommandBuffer.draw(3, 1, 0, 0);
+    ppr.end();
+    //// END CLEAR COLOR
+
     postProcessManager->render(primaryCommandBuffer, layoutCache, allocator);
-
-    // final result done, blit it to swap chain
-
-    // render pass automatically transitions the image layout to present
-//    Image::recordTransitionImageLayout(vk::ImageLayout::ePresentSrcKHR, vk::ImageLayout::eTransferSrcOptimal,
-//                                       postProcessManager->getCurrentAttachment()->image, primaryCommandBuffer, 1, 1);
-//    Image::recordTransitionImageLayout(vk::ImageLayout::ePresentSrcKHR, vk::ImageLayout::eTransferDstOptimal,
-//                                       framebuffer->attachments[0]->image, primaryCommandBuffer, 1, 1);
-//    Image::blit(postProcessManager->getCurrentAttachment()->image, framebuffer->attachments[0]->image,
-//                primaryCommandBuffer, vk::ImageLayout::eTransferSrcOptimal, vk::ImageLayout::eTransferDstOptimal,
-//                {swapChainExtent.width, swapChainExtent.height, 1});
-//    Image::recordTransitionImageLayout(vk::ImageLayout::eTransferSrcOptimal, vk::ImageLayout::ePresentSrcKHR,
-//                                       postProcessManager->getCurrentAttachment()->image, primaryCommandBuffer, 1, 1);
 
     Image::recordTransitionImageLayout(vk::ImageLayout::eUndefined, vk::ImageLayout::eShaderReadOnlyOptimal,
                                        postProcessManager->getCurrentAttachment()->image, primaryCommandBuffer, 1, 1);
+
     displayRenderPass->setFramebuffer(framebuffer->framebuffer);
     displayRenderPass->setRenderAreaExtent(swapChainExtent);
     displayRenderPass->clear(0.f, 0.f, 0.f, 1.0f);
     displayRenderPass->begin(primaryCommandBuffer);
 
-    primaryCommandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, passthroughPipeline->getGraphicsPipeline());
+    primaryCommandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, passPipeline->getGraphicsPipeline());
     vk::DescriptorSet samplerSet;
-    vk::DescriptorSetLayout layout;
     DescriptorBuilder::beginSet(&layoutCache, &allocator)
             .bindImage(0, {postProcessManager->getCurrentAttachment()->getDescriptorInfo()}, // output attachment sampler
                        1, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eFragment)
             .build(samplerSet, layout);
-    primaryCommandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, passthroughPipeline->getPipelineLayout(),
+    primaryCommandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, passPipeline->getPipelineLayout(),
                                             0, {samplerSet}, nullptr);
-
     primaryCommandBuffer.draw(3, 1, 0, 0);
 
     ui->end(primaryCommandBuffer);

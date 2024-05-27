@@ -27,6 +27,8 @@ void RenderPassBuilder::addDepthAttachment(vk::Format format, vk::AttachmentLoad
     depthAttachment.stencilLoadOp = vk::AttachmentLoadOp::eDontCare;
     depthAttachment.stencilStoreOp = vk::AttachmentStoreOp::eDontCare;
     depthAttachment.initialLayout = vk::ImageLayout::eUndefined;
+    if (loadOp == vk::AttachmentLoadOp::eLoad)
+        depthAttachment.initialLayout = vk::ImageLayout::eDepthStencilAttachmentOptimal;
     depthAttachment.finalLayout = vk::ImageLayout::eDepthStencilAttachmentOptimal;
     addAttachment(&depthAttachment, vk::ImageLayout::eDepthStencilAttachmentOptimal);
 }

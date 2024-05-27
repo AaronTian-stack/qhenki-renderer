@@ -20,6 +20,7 @@ layout(location = 3) in mat4 cameraViewProj;
 
 layout(scalar, push_constant) uniform PushConstant {
     vec3 clearColor;
+    float iblIntensity;
 } pc;
 
 layout(location = 0) out vec4 outColor; // location is index of framebuffer / attachment
@@ -179,7 +180,7 @@ void main()
 
     if (depth == 1.0)
     {
-        outColor = vec4(pc.clearColor, 1.0);
+//        outColor = vec4(pc.clearColor, 1.0);
         return;
     }
 
@@ -208,7 +209,7 @@ void main()
 //    }
 
 //    vec3 ambient = vec3(0.03) * albedo.rgb * ao;
-    vec3 ambient = calculateIBL(N, V, R, F0, material);
+    vec3 ambient = calculateIBL(N, V, R, F0, material) * pc.iblIntensity;
     vec3 color = ambient + Lo + emissive.rgb;
 
     outColor = vec4(color.xyz, 1.0);

@@ -20,7 +20,7 @@ void Attachment::destroy()
         device.destroySampler(sampler);
 }
 
-vk::DescriptorImageInfo  Attachment::getDescriptorInfo()
+vk::DescriptorImageInfo Attachment::getDescriptorInfo()
 {
     return {sampler, imageView, vk::ImageLayout::eShaderReadOnlyOptimal};
 }

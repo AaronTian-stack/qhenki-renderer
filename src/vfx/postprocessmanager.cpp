@@ -2,7 +2,7 @@
 
 PostProcessManager::PostProcessManager(vk::Device device, vk::Extent2D extent, BufferFactory &bufferFactory,
                                        RenderPassBuilder &renderPassBuilder)
-: Destroyable(device), activeToneMapperIndex(0), currentAttachmentIndex(0)
+: Destroyable(device), activeToneMapperIndex(0), currentAttachmentIndex(1)
 {
     renderPassBuilder.reset();
     renderPassBuilder.addColorAttachment(vk::Format::eR8G8B8A8Unorm);
@@ -60,7 +60,7 @@ void PostProcessManager::tonemap(vk::CommandBuffer commandBuffer,
 
 void PostProcessManager::render(vk::CommandBuffer commandBuffer, DescriptorLayoutCache &layoutCache, DescriptorAllocator &allocator)
 {
-    int ping = 0; // start by reading from 0 and outputting to 1
+    int ping = 1; // start by reading from 1 and outputting to 0
     vk::DescriptorSetLayout layout;
     for (const auto &postProcess : activePostProcesses)
     {
@@ -131,9 +131,14 @@ RenderPass &PostProcessManager::getPingPongRenderPass()
     return *pingPongRenderPass;
 }
 
+Attachment* PostProcessManager::getAttachment(int index)
+{
+    return afb[index].attachment.get();
+}
+
 Attachment* PostProcessManager::getCurrentAttachment()
 {
-    return afb[currentAttachmentIndex].attachment.get();
+    return getAttachment(currentAttachmentIndex);
 }
 
 const std::vector<uPtr<PostProcess>> &PostProcessManager::getToneMappers()
@@ -170,4 +175,9 @@ void PostProcessManager::deactivatePostProcess(int index)
 void PostProcessManager::setToneMapper(int index)
 {
     activeToneMapperIndex = index;
+}
+
+vk::Framebuffer PostProcessManager::getFramebuffer(int index)
+{
+    return afb[index].framebuffer;
 }

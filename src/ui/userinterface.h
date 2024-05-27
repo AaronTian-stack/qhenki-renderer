@@ -30,7 +30,8 @@ private:
     bool drawBackground = true;
     bool postProcessOpen = false;
 
-    float clearColor[3] = {0.25f, 0.25f, 0.25f };
+    float iblIntensity = 1.0f;
+    float clearColor[3] = {0.25f, 0.25f, 0.25f};
 
 public:
     UserInterface();

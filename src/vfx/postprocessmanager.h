@@ -36,7 +36,9 @@ public:
     void setToneMapper(int index);
     void activatePostProcess(int index);
     void deactivatePostProcess(int index);
+    Attachment* getAttachment(int index);
     Attachment* getCurrentAttachment();
+    vk::Framebuffer getFramebuffer(int index);
     const std::vector<uPtr<PostProcess>>& getToneMappers();
     const std::vector<sPtr<PostProcess>>& getPostProcesses();
     const PostProcess* getActiveToneMapper();
