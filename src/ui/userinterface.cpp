@@ -139,6 +139,8 @@ void UserInterface::render(void *postProcessManager)
         ImGui::ColorEdit3("Clear Color", clearColor);
         ImGui::EndDisabled();
         ImGui::Separator();
+        ImGui::DragFloat("IBL Intensity", &iblIntensity, 0.01f, 0.f, 100.f);
+        ImGui::Separator();
         if (ImGui::Button("Post-Processing Stack"))
             postProcessOpen = true;
         ImGui::End();
@@ -197,7 +199,8 @@ void UserInterface::renderMenuBar()
 
         if (ImGui::MenuItem("Load Model"))
         {
-            IGFD::FileDialogConfig config;config.path = "../resources/gltf/";
+            IGFD::FileDialogConfig config;
+            config.path = "../resources/gltf/";
             ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose File", ".gltf,.glb", config);
         }
 
@@ -326,7 +329,6 @@ void UserInterface::renderPostProcessStack(PostProcessManager *postProcessManage
                 ImGui::EndTooltip();
             }
 
-            // TODO: if selected then open menu for parameters, which also has button to remove
             int indexToRemove = -1;
             for (int i = 0; i < activePostProcesses.size(); i++)
             {
@@ -370,7 +372,6 @@ void UserInterface::renderPostProcessStack(PostProcessManager *postProcessManage
             {
                 IM_ASSERT(payload->DataSize == sizeof(int));
                 int index = *(const int*)payload->Data;
-                std::cout << "Dropped " << postProcesses[index]->name << std::endl;
                 postProcessManager->activatePostProcess(index);
             }
             ImGui::EndDragDropTarget();
