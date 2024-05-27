@@ -18,6 +18,6 @@ void Vignette::renderMenu()
     ImGui::SliderFloat("Inner Falloff", &data.vignetteY, 0.0f, 1.f);
     if (data.vignetteX <= data.vignetteY)
         data.vignetteX = data.vignetteY + 0.001f;
-    ImGui::SliderFloat("Saturation", &data.saturation, 0.0f, 10.f);
-    ImGui::SliderFloat("Saturation Mul", &data.saturationMul, 0.0f, 10.f);
+    ImGui::DragFloat("Saturation", &data.saturation, 0.01f, 10.f);
+    ImGui::DragFloat("Saturation Mul", &data.saturationMul, 0.01f, 10.f);
 }
