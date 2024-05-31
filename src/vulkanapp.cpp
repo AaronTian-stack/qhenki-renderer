@@ -139,13 +139,6 @@ void VulkanApp::create(Window &window)
     renderPassBuilder.addSubPass({}, {}, {0}, {});
     displayRenderPass = renderPassBuilder.buildRenderPass();
 
-    // drawing background color. must happen after tonemapping and before post processing effects
-    renderPassBuilder.reset();
-    renderPassBuilder.addColorAttachment(vk::Format::eR8G8B8A8Unorm);
-    renderPassBuilder.addDepthAttachment(depthBuffer->format, vk::AttachmentLoadOp::eLoad);
-    renderPassBuilder.addSubPass({}, {}, {0}, {}, 1);
-    clearRenderPass = renderPassBuilder.buildRenderPass();
-
     renderPassBuilder.reset();
     renderPassBuilder.addColorAttachment(vk::Format::eR8G8B8A8Unorm); // albedo 0
     renderPassBuilder.addColorAttachment(vk::Format::eR16G16B16A16Sfloat); // normal 1

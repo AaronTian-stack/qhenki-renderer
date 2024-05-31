@@ -44,7 +44,6 @@ private:
 
     RenderPassBuilder renderPassBuilder;
     uPtr<RenderPass> displayRenderPass;
-    uPtr<RenderPass> clearRenderPass;
     uPtr<RenderPass> offscreenRenderPass;
     PipelineBuilder pipelineFactory;
 
