@@ -21,9 +21,9 @@ My personal hobby renderer written in C++ using Vulkan. It is intended as a plac
 |---|---|
 |  ![](screenshots/gun.png) | ![](screenshots/teapot.png) |
 
-| Post-Processing Enabled      |
-|------------------------------|
-|                              |
+|   Post-Processing Enabled    |
+|:----------------------------:|
+|  ![](screenshots/demo.gif)   |
 | ![](screenshots/samurai.png) |
 
 ## Features

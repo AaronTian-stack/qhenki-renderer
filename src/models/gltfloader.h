@@ -1,5 +1,6 @@
 #pragma once
 
+#include <atomic>
 #include "gltf/tiny_gltf.h"
 #include "model.h"
 #include "../smartpointer.h"
