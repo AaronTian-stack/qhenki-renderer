@@ -106,7 +106,7 @@ Several tools such as [glslc](https://github.com/google/shaderc/tree/main/glslc)
 ## Technical Details
 Uses Vulkan 1.2 (SDK 1.3.268.1) with only core features. Built using CMake and C++17. Runs on Windows and macOS (MoltenVK).
 
-# References (in no particular order)
+# References
 - https://vulkan-tutorial.com/
 - https://vkguide.dev/
 - https://www.intel.com/content/www/us/en/developer/articles/training/api-without-secrets-introduction-to-vulkan-part-1.html
