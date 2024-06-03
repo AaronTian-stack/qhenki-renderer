@@ -44,7 +44,7 @@ My personal hobby renderer written in C++ using Vulkan. It is intended as a plac
   * Interactive loading bar
   * Loads most gltf 2.0 models with support for up to 2 UV channels
 * Heavy multithreading
-  * Older APIs such as OpenGL require that GPU work be submitted from one thread (with workarounds such as shared contexts). I take advantage of Vulkan's exposure of command buffers by using multiple threads to perform tasks such as loading environment maps. This provides noticeable performance improvements (~57% faster)
+  * Older APIs such as OpenGL require that GPU work be recorded/submitted from one thread (with workarounds such as shared contexts). I take advantage of Vulkan's exposure of command buffers by using multiple threads to perform tasks such as loading environment maps. This provides noticeable performance improvements (~57% faster)
 * Post-processing Stack
   * Apply a variety of configurable post-processing shaders in any order, as many times as you would like. 
     * FXAA
@@ -65,6 +65,7 @@ In the order I will most likely implement them:
   - Sphere, tube, and rectangle lights along with 3D previews and gizmo manipulation
 - [ ] Compute Skinning and Skeletal + Morph Animation
 - [ ] High Quality Bokeh Depth of Field (physically based)
+- [ ] Physically Based Bloom
 - [ ] Volumetric Lighting
 - [ ] Screen Space Reflections
 - [ ] Shadow Atlas System
