@@ -90,6 +90,7 @@ void Camera::simpleReset()
     regular.theta = 0.f;
     regular.phi = 90.f;
     regular.targetDistance = 2.f;
+    regular.fov = 45.f;
     recalculateFields();
 }
 

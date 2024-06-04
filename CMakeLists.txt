@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.5)
-project(vulkan_pathtracer)
+project(qhenki-renderer)
 
 set(CMAKE_CXX_STANDARD 17)
 

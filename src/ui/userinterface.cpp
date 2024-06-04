@@ -222,7 +222,7 @@ void UserInterface::renderMenuBar()
 
         const char* name = "Aaron Tian 2024";
         ImGui::SameLine(ImGui::GetWindowWidth() - ImGui::CalcTextSize(name).x - 15);
-        ImGui::Text(name);
+        ImGui::Text("%s", name);
         ImGui::EndMainMenuBar();
     }
 
@@ -346,7 +346,7 @@ void UserInterface::renderPostProcessStack(PostProcessManager *postProcessManage
             for (int i = 0; i < activePostProcesses.size(); i++)
             {
                 auto *menu = dynamic_cast<Menu*>(activePostProcesses[i]);
-                ImGui::PushID(activePostProcesses[i]);
+                ImGui::PushID(i);
                 if (menu && menu->open)
                 {
                     ImGui::Begin(activePostProcesses[i]->name, &menu->open, ImGuiWindowFlags_AlwaysAutoResize);
