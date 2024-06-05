@@ -140,9 +140,13 @@ void UserInterface::render(void *postProcessManager)
         ImGui::EndDisabled();
         ImGui::Separator();
         ImGui::DragFloat("IBL Intensity", &iblIntensity, 0.01f, 0.f, 100.f);
+        ImGui::DragFloat("Emission Multiplier", &emissionMultiplier, 0.1f, 0.f, 100.f);
         ImGui::Separator();
         if (ImGui::Button("Post-Processing Stack"))
-            postProcessOpen = true;
+            postProcessOpen = !postProcessOpen;
+        ImGui::SameLine();
+        if (ImGui::Button("Lights"))
+            lightsOpen = !lightsOpen;
         ImGui::End();
     }
 
@@ -150,6 +154,11 @@ void UserInterface::render(void *postProcessManager)
     {
         auto *postProcessManagerPtr = static_cast<PostProcessManager *>(postProcessManager);
         renderPostProcessStack(postProcessManagerPtr);
+    }
+
+    if (lightsOpen)
+    {
+
     }
 
     if (cameraOptionsOpen)
@@ -197,14 +206,16 @@ void UserInterface::renderMenuBar()
         if (ImGui::MenuItem("About"))
             about = true;
 
+        float status = GLTFLoader::getLoadPercent();
+        ImGui::BeginDisabled(status < 1.f);
         if (ImGui::MenuItem("Load Model"))
         {
             IGFD::FileDialogConfig config;
             config.path = "../resources/gltf/";
             ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose File", ".gltf,.glb", config);
         }
+        ImGui::EndDisabled();
 
-        float status = GLTFLoader::getLoadPercent();
         static float smoothPercent = 1.f;
         smoothPercent = glm::mix(smoothPercent, status, 0.2f);
 

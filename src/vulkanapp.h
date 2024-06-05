@@ -23,7 +23,7 @@
 #include "vulkan/attachments/gbuffer.h"
 #include "vfx/postprocessmanager.h"
 #include "vfx/effects/fxaa.h"
-#include "lights.h"
+#include "lights/lights.h"
 #include <atomic>
 #include <mutex>
 
@@ -44,7 +44,6 @@ private:
 
     RenderPassBuilder renderPassBuilder;
     uPtr<RenderPass> displayRenderPass;
-    uPtr<RenderPass> clearRenderPass;
     uPtr<RenderPass> offscreenRenderPass;
     PipelineBuilder pipelineFactory;
 
@@ -60,7 +59,14 @@ private:
     int currentFrame = 0;
     const int MAX_FRAMES_IN_FLIGHT = 2;
     std::vector<Frame> frames;
+
     std::vector<uPtr<Buffer>> cameraBuffers;
+
+    const int MAX_LIGHTS = 10;
+//    std::vector<uPtr<Buffer>> pointLightBuffers;
+    std::vector<SphereLight> sphereLights;
+    std::vector<uPtr<Buffer>> sphereLightBuffers;
+//    std::vector<uPtr<Buffer>> rectangleLightBuffers;
 
     Camera camera;
     CameraMatrices cameraMatrices;
@@ -72,12 +78,19 @@ public:
     ~VulkanApp();
 
     void createGbuffer(vk::Extent2D extent, vk::RenderPass renderPass);
+    void createRenderPasses();
+    void createPipelines();
+    void createPostProcess();
     void create(Window &window);
     void render();
     void resize();
 
     void handleInput();
+    void updateLightBuffers();
     void updateCameraBuffer();
+
+    void attemptToDeleteOldModel();
+
     void recordOffscreenBuffer(vk::CommandBuffer buffer, DescriptorAllocator &allocator);
     void recordCommandBuffer(FrameBuffer *framebuffer);
 

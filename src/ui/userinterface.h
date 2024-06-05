@@ -29,8 +29,10 @@ private:
     bool cameraOptionsOpen = false;
     bool drawBackground = true;
     bool postProcessOpen = false;
+    bool lightsOpen = false;
 
     float iblIntensity = 1.0f;
+    float emissionMultiplier = 1.0f;
     float clearColor[3] = {0.25f, 0.25f, 0.25f};
 
 public:

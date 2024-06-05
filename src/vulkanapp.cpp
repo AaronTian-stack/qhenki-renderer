@@ -58,6 +58,9 @@ VulkanApp::~VulkanApp()
     for (auto &cameraBuffer : cameraBuffers)
         cameraBuffer->destroy();
 
+    for (auto &sphereLightBuffer : sphereLightBuffers)
+        sphereLightBuffer->destroy();
+
     for (auto &allocator : allocators)
         allocator.destroy();
 
@@ -109,42 +112,14 @@ void VulkanApp::createGbuffer(vk::Extent2D extent, vk::RenderPass renderPass)
     gBuffer->createFrameBuffer(renderPass, extent);
 }
 
-void VulkanApp::create(Window &window)
+void VulkanApp::createRenderPasses()
 {
-    InputProcesser::setCallbacks(window);
-
-    vulkanContext.create(window);
-
-    layoutCache.create(vulkanContext.device.logicalDevice);
-    allocators.emplace_back(vulkanContext.device.logicalDevice);
-
-    auto device = vulkanContext.device.logicalDevice;
-    graphicsCommandPool = mkU<CommandPool>(vulkanContext.device, vkb::QueueType::graphics, vulkanContext.queueManager.getGraphicsIndex());
-    transferCommandPool = mkU<CommandPool>(vulkanContext.device, vkb::QueueType::transfer, vulkanContext.queueManager.getTransferIndex());
-    pipelineFactory.create(device);
-
-    bufferFactory.create(vulkanContext);
-    auto extent = vulkanContext.swapChain->getExtent();
-    depthBuffer = bufferFactory.createAttachment(vk::Format::eD32Sfloat, {extent.width, extent.height, 1},
-                                                   vk::ImageUsageFlagBits::eDepthStencilAttachment
-                                                   | vk::ImageUsageFlagBits::eInputAttachment | vk::ImageUsageFlagBits::eSampled,
-                                                   vk::ImageAspectFlagBits::eDepth);
-    depthBuffer->createGenericSampler(vk::Filter::eNearest, vk::SamplerMipmapMode::eNearest);
-
     renderPassBuilder.create(vulkanContext.device.logicalDevice);
 
-    // create render pass
     renderPassBuilder.reset();
     renderPassBuilder.addColorAttachment(vulkanContext.swapChain->getFormat());
     renderPassBuilder.addSubPass({}, {}, {0}, {});
     displayRenderPass = renderPassBuilder.buildRenderPass();
-
-    // drawing background color. must happen after tonemapping and before post processing effects
-    renderPassBuilder.reset();
-    renderPassBuilder.addColorAttachment(vk::Format::eR8G8B8A8Unorm);
-    renderPassBuilder.addDepthAttachment(depthBuffer->format, vk::AttachmentLoadOp::eLoad);
-    renderPassBuilder.addSubPass({}, {}, {0}, {}, 1);
-    clearRenderPass = renderPassBuilder.buildRenderPass();
 
     renderPassBuilder.reset();
     renderPassBuilder.addColorAttachment(vk::Format::eR8G8B8A8Unorm); // albedo 0
@@ -163,6 +138,11 @@ void VulkanApp::create(Window &window)
     renderPassBuilder.addColorDependency(0, 1);
     renderPassBuilder.addColorDependency(1, 2);
     offscreenRenderPass = renderPassBuilder.buildRenderPass();
+}
+
+void VulkanApp::createPipelines()
+{
+    auto device = vulkanContext.device.logicalDevice;
 
     gBufferShader = mkU<Shader>(device, "gbuffer_vert.spv", "gbuffer_frag.spv");
     pipelineFactory.reset();
@@ -173,6 +153,7 @@ void VulkanApp::create(Window &window)
     pipelineFactory.addVertexInputBinding({4, sizeof(glm::vec2), vk::VertexInputRate::eVertex}); // uv_1
     pipelineFactory.parseShader("gbuffer_vert.spv", "gbuffer_frag.spv", layoutCache, false);
     pipelineFactory.getColorBlending().attachmentCount = 4; // blending is disabled for now. pipeline factory does not set color blendings correctly
+
     // TODO: some models don't render correctly without culling. investigate
     pipelineFactory.getRasterizer().cullMode = vk::CullModeFlagBits::eBack;
     gBufferPipeline = pipelineFactory.buildPipeline(offscreenRenderPass.get(), 0, gBufferShader.get());
@@ -201,6 +182,66 @@ void VulkanApp::create(Window &window)
     pipelineFactory.getDepthStencil().depthWriteEnable = VK_FALSE;
     pipelineFactory.getColorBlending().attachmentCount = 1;
     passPipeline = pipelineFactory.buildPipeline(displayRenderPass.get(), 0, passShader.get());
+}
+
+void VulkanApp::createPostProcess()
+{
+    auto device = vulkanContext.device.logicalDevice;
+    auto extent = vulkanContext.swapChain->getExtent();
+
+    postProcessManager = mkU<PostProcessManager>(vulkanContext.device.logicalDevice, extent, bufferFactory, renderPassBuilder);
+    passAndClearShader = mkU<Shader>(device, "passthrough_vert.spv", "passthrough_depth_frag.spv");
+    pipelineFactory.reset();
+    pipelineFactory.parseShader("passthrough_vert.spv", "passthrough_depth_frag.spv", layoutCache, false);
+    pipelineFactory.getDepthStencil().depthWriteEnable = VK_FALSE;
+    pipelineFactory.getColorBlending().attachmentCount = 1;
+    passAndClearPipeline = pipelineFactory.buildPipeline(&postProcessManager->getPingPongRenderPass(), 0, passAndClearShader.get());
+    auto fxaa = mkS<FXAA>(vulkanContext.device.logicalDevice, "fxaa_frag.spv",
+                          pipelineFactory, layoutCache, &postProcessManager->getPingPongRenderPass());
+    auto vignette = mkS<Vignette>(vulkanContext.device.logicalDevice, "vignette_frag.spv",
+                                  pipelineFactory, layoutCache, &postProcessManager->getPingPongRenderPass());
+    auto sharpen = mkS<Sharpen>(vulkanContext.device.logicalDevice, "sharpen_frag.spv",
+                                pipelineFactory, layoutCache, &postProcessManager->getPingPongRenderPass());
+    postProcessManager->addPostProcess(fxaa);
+    postProcessManager->addPostProcess(vignette);
+    postProcessManager->addPostProcess(sharpen);
+    postProcessManager->activatePostProcess(0);
+    auto reinhard = mkU<PostProcess>("Reinhard", vulkanContext.device.logicalDevice, "reinhard_frag.spv",
+                                     pipelineFactory, layoutCache, &postProcessManager->getPingPongRenderPass());
+    auto neutral = mkU<PostProcess>("Khronos PBR Neutral", vulkanContext.device.logicalDevice, "pbr_neutral_frag.spv",
+                                    pipelineFactory, layoutCache, &postProcessManager->getPingPongRenderPass());
+    auto aces = mkU<PostProcess>("ACES", vulkanContext.device.logicalDevice, "aces_frag.spv",
+                                 pipelineFactory, layoutCache, &postProcessManager->getPingPongRenderPass());
+    postProcessManager->addToneMapper(reinhard);
+    postProcessManager->addToneMapper(neutral);
+    postProcessManager->addToneMapper(aces);
+}
+
+void VulkanApp::create(Window &window)
+{
+    InputProcesser::setCallbacks(window);
+
+    vulkanContext.create(window);
+
+    layoutCache.create(vulkanContext.device.logicalDevice);
+    allocators.emplace_back(vulkanContext.device.logicalDevice);
+
+    auto device = vulkanContext.device.logicalDevice;
+    graphicsCommandPool = mkU<CommandPool>(vulkanContext.device, vkb::QueueType::graphics, vulkanContext.queueManager.getGraphicsIndex());
+    transferCommandPool = mkU<CommandPool>(vulkanContext.device, vkb::QueueType::transfer, vulkanContext.queueManager.getTransferIndex());
+    pipelineFactory.create(device);
+
+    bufferFactory.create(vulkanContext);
+    auto extent = vulkanContext.swapChain->getExtent();
+    depthBuffer = bufferFactory.createAttachment(vk::Format::eD32Sfloat, {extent.width, extent.height, 1},
+                                                   vk::ImageUsageFlagBits::eDepthStencilAttachment
+                                                   | vk::ImageUsageFlagBits::eInputAttachment | vk::ImageUsageFlagBits::eSampled,
+                                                   vk::ImageAspectFlagBits::eDepth);
+    depthBuffer->createGenericSampler(vk::Filter::eNearest, vk::SamplerMipmapMode::eNearest);
+
+    createRenderPasses();
+
+    createPipelines();
 
     vulkanContext.swapChain->createFramebuffers(displayRenderPass->getRenderPass());
 
@@ -215,6 +256,11 @@ void VulkanApp::create(Window &window)
         cameraBuffers.emplace_back(bufferFactory.createBuffer(sizeof(CameraMatrices),
                                                               vk::BufferUsageFlagBits::eUniformBuffer,
                                                               flags));
+
+        sphereLightBuffers.emplace_back(bufferFactory.createBuffer(sizeof(SphereLight) * MAX_LIGHTS,
+                                                              vk::BufferUsageFlagBits::eStorageBuffer,
+                                                              flags));
+
         allocators.emplace_back(vulkanContext.device.logicalDevice);
     }
 
@@ -223,32 +269,12 @@ void VulkanApp::create(Window &window)
 //                  "../resources/envmaps/metro_noord/metro_noord.dds"
                   );
 
-    postProcessManager = mkU<PostProcessManager>(vulkanContext.device.logicalDevice, extent, bufferFactory, renderPassBuilder);
-    passAndClearShader = mkU<Shader>(device, "passthrough_vert.spv", "passthrough_depth_frag.spv");
-    pipelineFactory.reset();
-    pipelineFactory.parseShader("passthrough_vert.spv", "passthrough_depth_frag.spv", layoutCache, false);
-    pipelineFactory.getDepthStencil().depthWriteEnable = VK_FALSE;
-    pipelineFactory.getColorBlending().attachmentCount = 1;
-    passAndClearPipeline = pipelineFactory.buildPipeline(&postProcessManager->getPingPongRenderPass(), 0, passAndClearShader.get());
-    auto fxaa = mkS<FXAA>(vulkanContext.device.logicalDevice, "fxaa_frag.spv",
-                          pipelineFactory, layoutCache, &postProcessManager->getPingPongRenderPass());
-    auto vignette = mkS<Vignette>(vulkanContext.device.logicalDevice, "vignette_frag.spv",
-                          pipelineFactory, layoutCache, &postProcessManager->getPingPongRenderPass());
-    auto sharpen = mkS<Sharpen>(vulkanContext.device.logicalDevice, "sharpen_frag.spv",
-                          pipelineFactory, layoutCache, &postProcessManager->getPingPongRenderPass());
-    postProcessManager->addPostProcess(fxaa);
-    postProcessManager->addPostProcess(vignette);
-    postProcessManager->addPostProcess(sharpen);
-    postProcessManager->activatePostProcess(0);
-    auto reinhard = mkU<PostProcess>("Reinhard", vulkanContext.device.logicalDevice, "reinhard_frag.spv",
-                                  pipelineFactory, layoutCache, &postProcessManager->getPingPongRenderPass());
-    auto neutral = mkU<PostProcess>("Khronos PBR Neutral", vulkanContext.device.logicalDevice, "pbr_neutral_frag.spv",
-                                  pipelineFactory, layoutCache, &postProcessManager->getPingPongRenderPass());
-    auto aces = mkU<PostProcess>("ACES", vulkanContext.device.logicalDevice, "aces_frag.spv",
-                                  pipelineFactory, layoutCache, &postProcessManager->getPingPongRenderPass());
-    postProcessManager->addToneMapper(reinhard);
-    postProcessManager->addToneMapper(neutral);
-    postProcessManager->addToneMapper(aces);
+    createPostProcess();
+
+    for (int i = 0; i < 1; i++)
+    {
+        sphereLights.push_back({{1.f, 1.f, 1.f}, {1.f, 1.f, 1.f}, 1.f});
+    }
 }
 
 void VulkanApp::setUpCallbacks() {
@@ -318,8 +344,8 @@ void VulkanApp::recordOffscreenBuffer(vk::CommandBuffer commandBuffer, Descripto
     offscreenRenderPass->nextSubpass(); // composition pass
 
     commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, lightingPipeline->getGraphicsPipeline());
-    lightingParameters.clearColor = {ui->clearColor[0], ui->clearColor[1], ui->clearColor[2]};
     lightingParameters.iblIntensity = ui->iblIntensity;
+    lightingParameters.emissionMultiplier = ui->emissionMultiplier;
     lightingPipeline->setPushConstant(commandBuffer, &lightingParameters, sizeof(LightingParameters), 0, vk::ShaderStageFlagBits::eFragment);
 
     std::vector<std::vector<vk::DescriptorImageInfo>> gBufferInfo =
@@ -388,6 +414,7 @@ void VulkanApp::recordCommandBuffer(FrameBuffer *framebuffer)
     auto swapChainExtent = vulkanContext.swapChain->getExtent();
 
     updateCameraBuffer();
+    updateLightBuffers();
 
     //// BEGIN RECORDING COMMAND BUFFER
     frame.begin(); // begins the frames command buffer
@@ -467,31 +494,7 @@ void VulkanApp::render()
     auto &frame = frames[currentFrame];
     frame.finish(syncer); // waits for fence to be signalled (finished frame) and resets the frames inFlightFence
 
-    std::unique_lock lock(modelMutex);
-    if (models.size() > 1)
-    {
-        bool canDelete = true;
-        for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
-        {
-            auto result = vulkanContext.device.logicalDevice.getFenceStatus(frames[0].inFlightFence);
-            if (result != vk::Result::eSuccess)
-            {
-                canDelete = false;
-                break;
-            }
-        }
-        if (canDelete)
-        {
-            // remove first model. it will get deleted. eventually...
-            while(models.size() > 1)
-            {
-                models[0]->destroy();
-                models.erase(models.begin());
-            }
-            std::cout << "DELETED MODEL" << std::endl;
-        }
-    }
-    lock.unlock();
+    attemptToDeleteOldModel();
 
     auto commandBuffer = frame.commandBuffer;
 
@@ -546,7 +549,8 @@ void VulkanApp::updateCameraBuffer()
     cameraMatrices.inverseViewProj = glm::inverse(cameraMatrices.viewProj);
     cameraMatrices.view = view;
     cameraMatrices.proj = proj;
-    cameraBuffers[currentFrame]->fill(&cameraMatrices);
+    auto cb = static_cast<CameraMatrices*>(cameraBuffers[currentFrame]->getPointer());
+    *cb = cameraMatrices;
 }
 
 void VulkanApp::handleInput()
@@ -569,4 +573,42 @@ void VulkanApp::handleInput()
             InputProcesser::enableCursor();
         }
     }
+}
+
+void VulkanApp::updateLightBuffers()
+{
+    auto lightBuffer = static_cast<SphereLight*>(sphereLightBuffers[currentFrame]->getPointer());
+    for (int i = 0; i < sphereLights.size(); i++)
+    {
+        lightBuffer[i] = sphereLights[i];
+    }
+}
+
+void VulkanApp::attemptToDeleteOldModel()
+{
+    std::unique_lock lock(modelMutex);
+    if (models.size() > 1)
+    {
+        bool canDelete = true;
+        for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
+        {
+            auto result = vulkanContext.device.logicalDevice.getFenceStatus(frames[0].inFlightFence);
+            if (result != vk::Result::eSuccess)
+            {
+                canDelete = false;
+                break;
+            }
+        }
+        if (canDelete)
+        {
+            // remove first model. it will get deleted. eventually...
+            while(models.size() > 1)
+            {
+                models[0]->destroy();
+                models.erase(models.begin());
+            }
+            std::cout << "DELETED MODEL" << std::endl;
+        }
+    }
+    lock.unlock();
 }

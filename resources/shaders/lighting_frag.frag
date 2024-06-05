@@ -19,8 +19,12 @@ layout(location = 2) in vec3 cameraForward;
 layout(location = 3) in mat4 cameraViewProj;
 
 layout(scalar, push_constant) uniform PushConstant {
-    vec3 clearColor;
     float iblIntensity;
+    float emissionMultiplier;
+    int pointLightCount;
+    int sphereLightCount;
+    int tubeLightCount;
+    int rectangleLightCount;
 } pc;
 
 layout(location = 0) out vec4 outColor; // location is index of framebuffer / attachment
@@ -41,17 +45,14 @@ struct PointLight
 
 struct SphereLight
 {
-    vec4 position; // last parameter is radius
-    vec4 color; // last parameter is intensity
+    vec3 position;
+    vec3 color;
+    float radius;
 };
 
-PointLight pointLights[1] = PointLight[1](
-    PointLight(vec4(0.0, 0.0, 5.0, 1.0), vec4(0.0, 1.0, 0.0, 10.0))
-);
-
-SphereLight sphereLights[1] = SphereLight[1](
-    SphereLight(vec4(0.0, 5.0, 0.0, 1.0), vec4(1.0, 0.9, 1.0, 1000.0))
-);
+layout(scalar, set = 3, binding = 0) readonly buffer ObjectBuffer{
+    SphereLight sphereLights[];
+} lights;
 
 const float PI = 3.14159;
 
@@ -130,8 +131,7 @@ vec3 closestPointSphere(SphereLight light, vec3 R, vec3 fragPos)
 {
     vec3 L = light.position.xyz - fragPos;
     vec3 centerToRay = (dot(L, R) * R) - L;
-    float sphereRadius = light.position.w;
-    vec3 closestPoint = L + centerToRay * clamp(sphereRadius / length(centerToRay), 0, 1);
+    vec3 closestPoint = L + centerToRay * clamp(light.radius / length(centerToRay), 0, 1);
     return closestPoint;
 }
 
@@ -180,7 +180,6 @@ void main()
 
     if (depth == 1.0)
     {
-//        outColor = vec4(pc.clearColor, 1.0);
         return;
     }
 
@@ -208,15 +207,9 @@ void main()
 //        calculateForLight(Lo, light, N, V, material, position.xyz);
 //    }
 
-//    vec3 ambient = vec3(0.03) * albedo.rgb * ao;
+
     vec3 ambient = calculateIBL(N, V, R, F0, material) * pc.iblIntensity;
-    vec3 color = ambient + Lo + emissive.rgb;
+    vec3 color = ambient + Lo + emissive.rgb * pc.emissionMultiplier;
 
     outColor = vec4(color.xyz, 1.0);
-
-    // basic blinn phong as debug for normals
-//    vec3 lightDir = normalize(vec3(0.0, 0.0, 1.0) - position.xyz);
-//    float diff = max(dot(N, lightDir), 0.0) + 0.2;
-//    vec3 diffuse = diff * albedo.rgb;
-//    outColor = vec4(diffuse, 1.0);
 }
