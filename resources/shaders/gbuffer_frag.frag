@@ -18,7 +18,8 @@ layout(location = 3) out vec4 outEmissive;
 // since partial binding is on, indexing into undefined sampler will not show errors!
 layout(set = 1, binding = 0) uniform sampler2D texSampler[80];
 
-layout(scalar, push_constant) uniform mats {
+// TODO: convert to singular massive ssbo for entire model
+layout(scalar, push_constant) uniform Material {
     layout(offset = 64)
     vec4 baseColorFactor;
     int baseColorTexture;

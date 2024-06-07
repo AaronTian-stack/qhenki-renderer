@@ -208,18 +208,15 @@ void PipelineBuilder::parseVertexShader(const char *filePath, DescriptorLayoutCa
     //// CREATE DESCRIPTOR SET LAYOUT
     for (const auto &uniformBuffer : resources.uniform_buffers)
     {
-        // the descriptors for the uniform buffers
-        uint32_t bindingNum = glsl.get_decoration(uniformBuffer.id, spv::DecorationBinding);
-        uint32_t set = glsl.get_decoration(uniformBuffer.id, spv::DecorationDescriptorSet);
-
-        bindingsMap[set].bindings.emplace_back(bindingNum,
+        std::cout << "Uniform Buffer: " << uniformBuffer.name << std::endl;
+        BindInfo bindInfo = getBindInfo(glsl, uniformBuffer);
+        bindingsMap[bindInfo.set].bindings.emplace_back(bindInfo.binding,
                                             vk::DescriptorType::eUniformBuffer,
-                                            1, // number of values in array // TODO: get this via reflection
+                                            bindInfo.arrayLength, // number of values in array
                                             vk::ShaderStageFlagBits::eVertex,
                                             nullptr // for images
                                             );
     }
-    // TODO: might want to do something eventually for storage buffers
     updateDescriptorSetLayouts(layoutCache);
 }
 
@@ -236,19 +233,10 @@ void PipelineBuilder::parseFragmentShader(const char *filePath, DescriptorLayout
     for (auto &sampledImage : resources.sampled_images)
     {
         std::cout << "Sampled Image: " << sampledImage.name << std::endl;
-
-        uint32_t bindingNum = glsl.get_decoration(sampledImage.id, spv::DecorationBinding);
-        uint32_t set = glsl.get_decoration(sampledImage.id, spv::DecorationDescriptorSet);
-        uint32_t arrayLength = 1;
-        auto sizes = glsl.get_type(sampledImage.type_id).array;
-        if (!sizes.empty()) // array
-        {
-            arrayLength = sizes[0];
-        }
-
-        bindingsMap[set].bindings.emplace_back(bindingNum,
+        BindInfo bindInfo = getBindInfo(glsl, sampledImage);
+        bindingsMap[bindInfo.set].bindings.emplace_back(bindInfo.binding,
                                             vk::DescriptorType::eCombinedImageSampler,
-                                            arrayLength, // number of values in array
+                                            bindInfo.arrayLength, // number of values in array
                                             vk::ShaderStageFlagBits::eFragment,
                                             nullptr
                                             );
@@ -258,19 +246,27 @@ void PipelineBuilder::parseFragmentShader(const char *filePath, DescriptorLayout
     for (auto &subpassInput : resources.subpass_inputs)
     {
         std::cout << "Subpass Input: " << subpassInput.name << std::endl;
-
-        uint32_t bindingNum = glsl.get_decoration(subpassInput.id, spv::DecorationBinding);
-        uint32_t set = glsl.get_decoration(subpassInput.id, spv::DecorationDescriptorSet);
-        uint32_t arrayLength = 1;
-        auto sizes = glsl.get_type(subpassInput.type_id).array;
-        if (!sizes.empty()) // array
-        {
-            arrayLength = sizes[0];
-        }
-
-        bindingsMap[set].bindings.emplace_back(bindingNum,
+        BindInfo bindInfo = getBindInfo(glsl, subpassInput);
+        bindingsMap[bindInfo.set].bindings.emplace_back(bindInfo.binding,
                                             vk::DescriptorType::eInputAttachment,
-                                            arrayLength, // number of values in array
+                                                        bindInfo.arrayLength, // number of values in array
+                                            vk::ShaderStageFlagBits::eFragment,
+                                            nullptr
+                                            );
+    }
+
+    for (const auto &uniformBuffer : resources.uniform_buffers)
+    {
+        throw std::runtime_error("Uniform Buffers in Fragment Shader are not yet supported");
+    }
+
+    for (const auto &storageBuffer : resources.storage_buffers)
+    {
+        std::cout << "Storage Buffer" << storageBuffer.name << std::endl;
+        BindInfo bindInfo = getBindInfo(glsl, storageBuffer);
+        bindingsMap[bindInfo.set].bindings.emplace_back(bindInfo.binding,
+                                            vk::DescriptorType::eStorageBuffer,
+                                            bindInfo.arrayLength, // number of values in array
                                             vk::ShaderStageFlagBits::eFragment,
                                             nullptr
                                             );
@@ -380,4 +376,17 @@ void PipelineBuilder::addDefaultColorBlendAttachment(int count)
     }
     colorBlending.attachmentCount = colorBlendAttachments.size();
     colorBlending.pAttachments = colorBlendAttachments.data();
+}
+
+BindInfo PipelineBuilder::getBindInfo(const spirv_cross::CompilerGLSL &glsl, const spirv_cross::Resource &resource)
+{
+    uint32_t bindingNum = glsl.get_decoration(resource.id, spv::DecorationBinding);
+    uint32_t set = glsl.get_decoration(resource.id, spv::DecorationDescriptorSet);
+    uint32_t arrayLength = 1;
+    auto sizes = glsl.get_type(resource.type_id).array;
+    if (!sizes.empty()) // array
+    {
+        arrayLength = sizes[0];
+    }
+    return {bindingNum, set, arrayLength};
 }

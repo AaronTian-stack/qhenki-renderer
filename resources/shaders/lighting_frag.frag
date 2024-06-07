@@ -18,14 +18,14 @@ layout(location = 1) in vec3 cameraPos;
 layout(location = 2) in vec3 cameraForward;
 layout(location = 3) in mat4 cameraViewProj;
 
-layout(scalar, push_constant) uniform PushConstant {
+layout(scalar, push_constant) uniform LightingInfo {
     float iblIntensity;
     float emissionMultiplier;
     int pointLightCount;
     int sphereLightCount;
     int tubeLightCount;
     int rectangleLightCount;
-} pc;
+} lightingInfo;
 
 layout(location = 0) out vec4 outColor; // location is index of framebuffer / attachment
 
@@ -33,26 +33,26 @@ struct Light
 {
     vec3 position;
     vec3 color;
-    float intensity;
 };
 
-// TODO: change these since I have scalar
 struct PointLight
 {
-    vec4 position;
-    vec4 color; // last parameter is intensity
+    vec3 position;
+    vec3 color;
+    float intensity;
 };
 
 struct SphereLight
 {
     vec3 position;
     vec3 color;
+    float intensity;
     float radius;
 };
 
-layout(scalar, set = 3, binding = 0) readonly buffer ObjectBuffer{
+layout(scalar, set = 3, binding = 0) readonly buffer SphereLightBuffer {
     SphereLight sphereLights[];
-} lights;
+} sphereLightBuffer;
 
 const float PI = 3.14159;
 
@@ -106,8 +106,7 @@ void calculateForLight(inout vec3 Lo, Light light, vec3 N, vec3 V, Material mate
     float distance    = distance(light.position, fragPos);
     float attenuation = 1.0 / (distance * distance);
 
-    vec3 lightColor = light.color * light.intensity;
-    vec3 radiance   = lightColor * attenuation;
+    vec3 radiance   = light.color * attenuation;
 
     // cook-torrance brdf
     float NDF = DistributionGGX(N, H, material.roughness);
@@ -196,20 +195,20 @@ void main()
     Material material = Material(albedo.rgb, metallic, roughness, ao);
 
     vec3 Lo = vec3(0.0);
-//    for(int i = 0; i < 1; ++i)
-//    {
-//        Light light = Light(closestPointSphere(sphereLights[i], R, position.xyz), sphereLights[i].color.rgb, sphereLights[i].color.a);
-//        calculateForLight(Lo, light, N, V, material, position.xyz);
-//    }
+    for(int i = 0; i < lightingInfo.sphereLightCount; ++i)
+    {
+        SphereLight sphereLight = sphereLightBuffer.sphereLights[i];
+        Light light = Light(closestPointSphere(sphereLight, R, position.xyz), sphereLight.color * sphereLight.intensity);
+        calculateForLight(Lo, light, N, V, material, position.xyz);
+    }
 //    for(int i = 0; i < 1; ++i)
 //    {
 //        Light light = Light(pointLights[i].position.xyz, pointLights[i].color.rgb, pointLights[i].color.a);
 //        calculateForLight(Lo, light, N, V, material, position.xyz);
 //    }
 
-
-    vec3 ambient = calculateIBL(N, V, R, F0, material) * pc.iblIntensity;
-    vec3 color = ambient + Lo + emissive.rgb * pc.emissionMultiplier;
+    vec3 ambient = calculateIBL(N, V, R, F0, material) * lightingInfo.iblIntensity;
+    vec3 color = ambient + Lo + emissive.rgb * lightingInfo.emissionMultiplier;
 
     outColor = vec4(color.xyz, 1.0);
 }

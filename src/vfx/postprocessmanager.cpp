@@ -5,7 +5,9 @@ PostProcessManager::PostProcessManager(vk::Device device, vk::Extent2D extent, B
 : Destroyable(device), activeToneMapperIndex(0), currentAttachmentIndex(1)
 {
     renderPassBuilder.reset();
-    renderPassBuilder.addColorAttachment(vk::Format::eR8G8B8A8Unorm);
+    renderPassBuilder.addColorAttachment(vk::Format::eR8G8B8A8Unorm,
+                                         vk::AttachmentLoadOp::eClear,
+                                         vk::ImageLayout::eShaderReadOnlyOptimal);
     renderPassBuilder.addSubPass({}, {}, {0}, {});
     pingPongRenderPass = renderPassBuilder.buildRenderPass();
 
@@ -64,9 +66,7 @@ void PostProcessManager::render(vk::CommandBuffer commandBuffer, DescriptorLayou
     vk::DescriptorSetLayout layout;
     for (const auto &postProcess : activePostProcesses)
     {
-        Image::recordTransitionImageLayout(vk::ImageLayout::eUndefined, vk::ImageLayout::eShaderReadOnlyOptimal,
-                                           afb[ping].attachment->image, commandBuffer, 1, 1);
-
+        // previous pass should already in shader read layout from render pass
         pingPongRenderPass->setFramebuffer(afb[1 - ping].framebuffer);
         auto extent = afb[ping].attachment->extent;
         pingPongRenderPass->setRenderAreaExtent({extent.width, extent.height});

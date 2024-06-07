@@ -47,9 +47,9 @@ private:
     uPtr<RenderPass> offscreenRenderPass;
     PipelineBuilder pipelineFactory;
 
-    uPtr<Pipeline> gBufferPipeline, lightingPipeline, passPipeline, passAndClearPipeline, cubeMapPipeline;
+    uPtr<Pipeline> gBufferPipeline, lightingPipeline, passPipeline, passAndClearPipeline, cubeMapPipeline, lightDisplayPipeline;
 
-    uPtr<Shader> gBufferShader, lightingShader, passShader, passAndClearShader, cubeMapShader;
+    uPtr<Shader> gBufferShader, lightingShader, passShader, passAndClearShader, cubeMapShader, lightDisplayShader;
 
     std::mutex modelMutex;
     uPtr<CommandPool> graphicsCommandPool; // one pool per thread

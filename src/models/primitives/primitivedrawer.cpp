@@ -1,14 +1,8 @@
 #include "primitivedrawer.h"
 #include <thread>
 
-void PrimitiveDrawer::create(BufferFactory &bufferFactory, vk::Device device, PipelineBuilder &pipelineFactory, RenderPass *renderPass, int subpass)
+void PrimitiveDrawer::create(BufferFactory &bufferFactory)
 {
-//    primitiveShader = mkU<Shader>(device, "primitive_vert.spv", "primitive_frag.spv");
-//    pipelineFactory->reset();
-//    pipelineFactory->addVertexInputBinding({0, sizeof(glm::vec3), vk::VertexInputRate::eVertex});
-//    pipelineFactory->getColorBlending().attachmentCount = 1; // TODO: get rid of this eventually
-//    primitivePipeline = pipelineFactory->buildPipeline(renderPass, subpass, primitiveShader.get());
-
     auto time1 = std::chrono::high_resolution_clock::now();
     auto cubeF = [&]() {
         cube = mkU<Primitive>(bufferFactory, "../resources/objs/cube.obj");
@@ -25,26 +19,29 @@ void PrimitiveDrawer::create(BufferFactory &bufferFactory, vk::Device device, Pi
     std::cout << "Primitive creation time: " << duration << "ms" << std::endl;
 }
 
-void PrimitiveDrawer::drawCube(vk::CommandBuffer commandBuffer, glm::vec4 color, glm::mat4 transform)
+void PrimitiveDrawer::setPushConstants(vk::CommandBuffer commandBuffer, Pipeline &primitivePipeline, glm::vec4 *color,
+                                       glm::mat4 *transform)
 {
-    commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, primitivePipeline->getGraphicsPipeline());
-    primitivePipeline->setPushConstant(commandBuffer, &transform, sizeof(glm::mat4), 0, vk::ShaderStageFlagBits::eVertex);
-    primitivePipeline->setPushConstant(commandBuffer, &color, sizeof(glm::vec4), sizeof(glm::mat4), vk::ShaderStageFlagBits::eFragment);
+    primitivePipeline.setPushConstant(commandBuffer, transform, sizeof(glm::mat4), 0, vk::ShaderStageFlagBits::eVertex);
+    primitivePipeline.setPushConstant(commandBuffer, color, sizeof(glm::vec4), sizeof(glm::mat4), vk::ShaderStageFlagBits::eFragment);
+}
+
+void PrimitiveDrawer::drawCube(vk::CommandBuffer commandBuffer, Pipeline &primitivePipeline, glm::vec4 color, glm::mat4 transform)
+{
+    commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, primitivePipeline.getGraphicsPipeline());
+    setPushConstants(commandBuffer, primitivePipeline, &color, &transform);
     cube->draw(commandBuffer);
 }
 
-void PrimitiveDrawer::drawSphere(vk::CommandBuffer commandBuffer, glm::vec4 color, glm::mat4 transform)
+void PrimitiveDrawer::drawSphere(vk::CommandBuffer commandBuffer, Pipeline &primitivePipeline, glm::vec4 color, glm::mat4 transform)
 {
-    commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, primitivePipeline->getGraphicsPipeline());
-    primitivePipeline->setPushConstant(commandBuffer, &transform, sizeof(glm::mat4), 0, vk::ShaderStageFlagBits::eVertex);
-    primitivePipeline->setPushConstant(commandBuffer, &color, sizeof(glm::vec4), sizeof(glm::mat4), vk::ShaderStageFlagBits::eFragment);
+    commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, primitivePipeline.getGraphicsPipeline());
+    setPushConstants(commandBuffer, primitivePipeline, &color, &transform);
     sphere->draw(commandBuffer);
 }
 
 void PrimitiveDrawer::destroy()
 {
-//    primitivePipeline->destroy();
-//    primitiveShader->destroy();
     cube->destroy();
     sphere->destroy();
 }

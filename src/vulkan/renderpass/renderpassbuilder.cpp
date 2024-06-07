@@ -3,7 +3,7 @@
 void RenderPassBuilder::destroy()
 {}
 
-void RenderPassBuilder::addColorAttachment(vk::Format format, vk::AttachmentLoadOp loadOp)
+void RenderPassBuilder::addColorAttachment(vk::Format format, vk::AttachmentLoadOp loadOp, vk::ImageLayout finalLayout)
 {
     vk::AttachmentDescription colorAttachment{};
     colorAttachment.format = format;
@@ -13,11 +13,11 @@ void RenderPassBuilder::addColorAttachment(vk::Format format, vk::AttachmentLoad
     colorAttachment.stencilLoadOp = vk::AttachmentLoadOp::eDontCare;
     colorAttachment.stencilStoreOp = vk::AttachmentStoreOp::eDontCare;
     colorAttachment.initialLayout = vk::ImageLayout::eUndefined;
-    colorAttachment.finalLayout = vk::ImageLayout::ePresentSrcKHR;
+    colorAttachment.finalLayout = finalLayout;
     addAttachment(&colorAttachment, vk::ImageLayout::eColorAttachmentOptimal);
 }
 
-void RenderPassBuilder::addDepthAttachment(vk::Format format, vk::AttachmentLoadOp loadOp)
+void RenderPassBuilder::addDepthAttachment(vk::Format format, vk::AttachmentLoadOp loadOp, vk::ImageLayout finalLayout)
 {
     vk::AttachmentDescription depthAttachment{};
     depthAttachment.format = format;
@@ -29,7 +29,7 @@ void RenderPassBuilder::addDepthAttachment(vk::Format format, vk::AttachmentLoad
     depthAttachment.initialLayout = vk::ImageLayout::eUndefined;
     if (loadOp == vk::AttachmentLoadOp::eLoad)
         depthAttachment.initialLayout = vk::ImageLayout::eDepthStencilAttachmentOptimal;
-    depthAttachment.finalLayout = vk::ImageLayout::eDepthStencilAttachmentOptimal;
+    depthAttachment.finalLayout = finalLayout;
     addAttachment(&depthAttachment, vk::ImageLayout::eDepthStencilAttachmentOptimal);
 }
 
@@ -121,6 +121,7 @@ void RenderPassBuilder::addColorDependency(int srcSubpass, int dstSubpass)
 
 void RenderPassBuilder::addDepthDependency(int srcSubpass, int dstSubpass)
 {
+    throw std::runtime_error("not tested");
     vk::SubpassDependency dependency{};
     dependency.srcSubpass = srcSubpass;
     dependency.dstSubpass = dstSubpass;

@@ -32,6 +32,9 @@ VulkanApp::~VulkanApp()
     cubeMapPipeline->destroy();
     cubeMapShader->destroy();
 
+    lightDisplayPipeline->destroy();
+    lightDisplayShader->destroy();
+
     passAndClearPipeline->destroy();
     passAndClearShader->destroy();
 
@@ -126,17 +129,30 @@ void VulkanApp::createRenderPasses()
     renderPassBuilder.addColorAttachment(vk::Format::eR16G16B16A16Sfloat); // normal 1
     renderPassBuilder.addColorAttachment(vk::Format::eR8G8B8A8Unorm); // metal roughness ao 2
     renderPassBuilder.addColorAttachment(vk::Format::eR16G16B16A16Sfloat); // emissive 3
-    renderPassBuilder.addDepthAttachment(depthBuffer->format); // depth 4
-    renderPassBuilder.addColorAttachment(vk::Format::eR16G16B16A16Sfloat); // final output 5
-    renderPassBuilder.addSubPass({}, {}, {0, 1, 2, 3}, {}, 4);
+
+    renderPassBuilder.addDepthAttachment(depthBuffer->format,
+                                         vk::AttachmentLoadOp::eClear,
+                                         vk::ImageLayout::eShaderReadOnlyOptimal); // depth 4
+
+    renderPassBuilder.addColorAttachment(vk::Format::eR16G16B16A16Sfloat,
+                                         vk::AttachmentLoadOp::eClear,
+                                         vk::ImageLayout::eShaderReadOnlyOptimal); // final output 5
+
+    renderPassBuilder.addSubPass({}, {}, {0, 1, 2, 3}, {}, 4); // draw to gbuffer
+
     renderPassBuilder.addSubPass({0, 1, 2, 3, 4},
                                  {vk::ImageLayout::eShaderReadOnlyOptimal},
-                                 {5}, {});
+                                 {5}, {}); // composite
+
     renderPassBuilder.addSubPass({},
-                                 {vk::ImageLayout::eShaderReadOnlyOptimal},
-                                 {5}, {}, 4);
+                                 {},
+                                 {5}, {}, 4); // draw cube map
+
+    renderPassBuilder.addSubPass({}, {}, {5}, {}, 4); // draw background
+
     renderPassBuilder.addColorDependency(0, 1);
     renderPassBuilder.addColorDependency(1, 2);
+    renderPassBuilder.addColorDependency(2, 3);
     offscreenRenderPass = renderPassBuilder.buildRenderPass();
 }
 
@@ -174,7 +190,7 @@ void VulkanApp::createPipelines()
     pipelineFactory.getColorBlending().attachmentCount = 1;
     cubeMapPipeline = pipelineFactory.buildPipeline(offscreenRenderPass.get(), 2, cubeMapShader.get());
 
-    PrimitiveDrawer::create(bufferFactory, vulkanContext.device.logicalDevice, pipelineFactory, offscreenRenderPass.get(), 2);
+    PrimitiveDrawer::create(bufferFactory);
 
     passShader = mkU<Shader>(device, "passthrough_vert.spv", "passthrough_frag.spv");
     pipelineFactory.reset();
@@ -182,6 +198,13 @@ void VulkanApp::createPipelines()
     pipelineFactory.getDepthStencil().depthWriteEnable = VK_FALSE;
     pipelineFactory.getColorBlending().attachmentCount = 1;
     passPipeline = pipelineFactory.buildPipeline(displayRenderPass.get(), 0, passShader.get());
+
+    lightDisplayShader = mkU<Shader>(device, "solid_vert.spv", "solid_frag.spv");
+    pipelineFactory.reset();
+    pipelineFactory.addVertexInputBinding({0, sizeof(glm::vec3), vk::VertexInputRate::eVertex}); // position
+    pipelineFactory.parseShader("solid_vert.spv", "solid_frag.spv", layoutCache, false);
+    pipelineFactory.getColorBlending().attachmentCount = 1;
+    lightDisplayPipeline = pipelineFactory.buildPipeline(offscreenRenderPass.get(), 3, lightDisplayShader.get());
 }
 
 void VulkanApp::createPostProcess()
@@ -253,6 +276,7 @@ void VulkanApp::create(Window &window)
         frames.emplace_back(device, *graphicsCommandPool, syncer);
         auto flags = static_cast<VmaAllocationCreateFlagBits>(VMA_ALLOCATION_CREATE_MAPPED_BIT |
                                                                                     VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
+
         cameraBuffers.emplace_back(bufferFactory.createBuffer(sizeof(CameraMatrices),
                                                               vk::BufferUsageFlagBits::eUniformBuffer,
                                                               flags));
@@ -271,9 +295,15 @@ void VulkanApp::create(Window &window)
 
     createPostProcess();
 
-    for (int i = 0; i < 1; i++)
+    int iterations = 4;
+    for (int i = 0; i < iterations; i++)
     {
-        sphereLights.push_back({{1.f, 1.f, 1.f}, {1.f, 1.f, 1.f}, 1.f});
+        auto t = glm::radians((360.f / iterations) * i);
+        auto x = glm::cos(t) * 4.f;
+        auto y = glm::sin(t) * 4.f;
+        auto u = (glm::vec2(x, y) + glm::vec2(4)) * 0.5f / glm::vec2(4.f);
+        glm::vec3 col = glm::vec3(0.5) + 0.5 * glm::cos(glm::vec3(u.x, u.y, u.x) + glm::vec3(0, 2, 4));
+        sphereLights.push_back({{}, col, 50.f, 0.5f});
     }
 }
 
@@ -344,8 +374,14 @@ void VulkanApp::recordOffscreenBuffer(vk::CommandBuffer commandBuffer, Descripto
     offscreenRenderPass->nextSubpass(); // composition pass
 
     commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, lightingPipeline->getGraphicsPipeline());
-    lightingParameters.iblIntensity = ui->iblIntensity;
-    lightingParameters.emissionMultiplier = ui->emissionMultiplier;
+    lightingParameters = {
+            ui->iblIntensity,
+            ui->emissionMultiplier,
+            0,
+            static_cast<int>(sphereLights.size()),
+            0,
+            0
+    };
     lightingPipeline->setPushConstant(commandBuffer, &lightingParameters, sizeof(LightingParameters), 0, vk::ShaderStageFlagBits::eFragment);
 
     std::vector<std::vector<vk::DescriptorImageInfo>> gBufferInfo =
@@ -381,8 +417,16 @@ void VulkanApp::recordOffscreenBuffer(vk::CommandBuffer commandBuffer, Descripto
     }
     cubeBuilder.build(iblSamplerSet, layout);
 
+    if (sphereLights.size() > MAX_LIGHTS) throw std::runtime_error("Too many sphere lights");
+
+    auto sphereLightBufferInfo = sphereLightBuffers[currentFrame]->getDescriptorInfo();
+    vk::DescriptorSet lightSet;
+    DescriptorBuilder::beginSet(&layoutCache, &allocator)
+            .bindBuffer(0, &sphereLightBufferInfo, vk::DescriptorType::eStorageBuffer, vk::ShaderStageFlagBits::eFragment)
+            .build(lightSet, layout);
+
     commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, lightingPipeline->getPipelineLayout(),
-                                     0, {cameraSet, inputSet, iblSamplerSet}, nullptr);
+                                     0, {cameraSet, inputSet, iblSamplerSet, lightSet}, nullptr);
 
     commandBuffer.draw(3, 1, 0, 0);
 
@@ -401,6 +445,17 @@ void VulkanApp::recordOffscreenBuffer(vk::CommandBuffer commandBuffer, Descripto
                                          0, {cameraSet, cubeSamplerSet}, nullptr);
 
         PrimitiveDrawer::drawCube(commandBuffer);
+    }
+
+    offscreenRenderPass->nextSubpass(); // light display pass
+
+    commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, lightDisplayPipeline->getGraphicsPipeline());
+    commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, lightDisplayPipeline->getPipelineLayout(),
+                                     0, {cameraSet}, nullptr);
+    for (auto &light : sphereLights)
+    {
+        auto transform = glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(light.radius)), light.position);
+        PrimitiveDrawer::drawSphere(commandBuffer, *lightDisplayPipeline, glm::vec4(light.color, 1.f) * light.intensity, transform);
     }
 
     offscreenRenderPass->end();
@@ -425,17 +480,10 @@ void VulkanApp::recordCommandBuffer(FrameBuffer *framebuffer)
     ScreenUtils::setScissor(primaryCommandBuffer, swapChainExtent);
     recordOffscreenBuffer(primaryCommandBuffer, allocator);
 
+    // output already transitioned by render pass
     auto &outputAttachment = gBuffer->attachments.back();
-    Image::recordTransitionImageLayout(vk::ImageLayout::eUndefined, vk::ImageLayout::eShaderReadOnlyOptimal,
-                                       outputAttachment->image, primaryCommandBuffer, 1, 1);
-
     auto outputAttachmentInfo = outputAttachment->getDescriptorInfo();
     postProcessManager->tonemap(primaryCommandBuffer, layoutCache, allocator, &outputAttachmentInfo);
-    // transition depth buffer for clear color
-    Image::recordTransitionImageLayout(vk::ImageLayout::eDepthStencilAttachmentOptimal, vk::ImageLayout::eShaderReadOnlyOptimal,
-                                       depthBuffer->image, primaryCommandBuffer, 1, 1);
-    Image::recordTransitionImageLayout(vk::ImageLayout::eUndefined, vk::ImageLayout::eShaderReadOnlyOptimal,
-                                       postProcessManager->getAttachment(0)->image, primaryCommandBuffer, 1, 1);
 
     //// CLEAR COLOR
     auto &ppr = postProcessManager->getPingPongRenderPass();
@@ -461,8 +509,7 @@ void VulkanApp::recordCommandBuffer(FrameBuffer *framebuffer)
 
     postProcessManager->render(primaryCommandBuffer, layoutCache, allocator);
 
-    Image::recordTransitionImageLayout(vk::ImageLayout::eUndefined, vk::ImageLayout::eShaderReadOnlyOptimal,
-                                       postProcessManager->getCurrentAttachment()->image, primaryCommandBuffer, 1, 1);
+    // final post process buffer already in shader read layout from render pass
 
     displayRenderPass->setFramebuffer(framebuffer->framebuffer);
     displayRenderPass->setRenderAreaExtent(swapChainExtent);
@@ -580,6 +627,14 @@ void VulkanApp::updateLightBuffers()
     auto lightBuffer = static_cast<SphereLight*>(sphereLightBuffers[currentFrame]->getPointer());
     for (int i = 0; i < sphereLights.size(); i++)
     {
+        // calculate position based off index
+        auto t = glm::radians((360.f / sphereLights.size()) * i);
+        float time = (0.5f * (glm::sin(glfwGetTime()) + 1.f)) * 2 + 3.f;
+        auto x = glm::cos(t) * time;
+        auto y = glm::sin(t) * time;
+        sphereLights[i].position = glm::vec3(glm::rotate(glm::mat4(), (float)glfwGetTime() * 3.f, glm::vec3(0.f, 0.f, 1.f)) * glm::vec4(x, y, 0, 1.f));
+
+        sphereLights[i].position += glm::normalize(sphereLights[i].position) * glm::sin((float)glfwGetTime() * 2) * 0.04f;
         lightBuffer[i] = sphereLights[i];
     }
 }

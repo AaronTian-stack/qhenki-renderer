@@ -17,6 +17,13 @@ struct SetLayout
     bool added;
 };
 
+struct BindInfo
+{
+    uint32_t binding;
+    uint32_t set;
+    uint32_t arrayLength;
+};
+
 class PipelineBuilder : public Destroyable
 {
 private:
@@ -25,6 +32,8 @@ private:
         vk::DynamicState::eViewport,
         vk::DynamicState::eScissor
     };
+
+    BindInfo getBindInfo(const spirv_cross::CompilerGLSL &glsl, const spirv_cross::Resource &resource);
 
     vk::PipelineDynamicStateCreateInfo dynamicState{};
     vk::PipelineVertexInputStateCreateInfo vertexInputInfo{};
