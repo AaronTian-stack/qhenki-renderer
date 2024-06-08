@@ -51,7 +51,6 @@ void PipelineBuilder::reset()
     depthStencil.depthWriteEnable = VK_TRUE;
     depthStencil.depthCompareOp = vk::CompareOp::eLess;
     depthStencil.depthBoundsTestEnable = VK_FALSE;
-    depthStencil.depthBoundsTestEnable = VK_FALSE;
     depthStencil.stencilTestEnable = VK_FALSE;
 
     colorBlendAttachments.clear();

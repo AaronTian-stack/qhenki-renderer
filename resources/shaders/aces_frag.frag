@@ -19,6 +19,6 @@ vec3 ACESFilm(vec3 x)
 
 void main()
 {
-    vec3 color = texture(texSampler, fragUV).rgb;
-    outColor = vec4(ACESFilm(color), 1.0);
+    vec4 color = texture(texSampler, fragUV);
+    outColor = vec4(ACESFilm(color.rgb), color.a);
 }

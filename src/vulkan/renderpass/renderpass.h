@@ -22,6 +22,7 @@ public:
     vk::RenderPass getRenderPass() { return renderPass; }
 
     void clear(float r, float g, float b, float a);
+    void doNotClear();
     void begin(vk::CommandBuffer commandBuffer);
     void nextSubpass();
     void end();

@@ -10,5 +10,5 @@ layout(scalar, push_constant) uniform Color {
 
 void main()
 {
-    outColor = color.color;
+    outColor = vec4(color.color.rgb, 0.1);
 }

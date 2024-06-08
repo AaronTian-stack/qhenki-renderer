@@ -2,7 +2,6 @@
 #extension GL_EXT_scalar_block_layout : require
 
 layout(set = 0, binding = 0) uniform sampler2D texSampler;
-layout(set = 0, binding = 1) uniform sampler2D depth;
 
 layout(location = 0) in vec2 fragUV;
 
@@ -14,9 +13,10 @@ layout(scalar, push_constant) uniform PushConstant {
 
 void main()
 {
-    vec3 color = texture(texSampler, fragUV).rgb;
-    float depth = texture(depth, fragUV).r;
-    if (pc.clearColor.a > 0.0 && depth == 1.0)
+    vec4 tex = texture(texSampler, fragUV);
+    vec3 color = tex.rgb;
+    // alpha is used as true false flag
+    if (pc.clearColor.a > 0.0 && tex.a == 0)
     {
         color = pc.clearColor.rgb;
     }

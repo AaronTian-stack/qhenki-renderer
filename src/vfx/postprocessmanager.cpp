@@ -60,9 +60,10 @@ void PostProcessManager::tonemap(vk::CommandBuffer commandBuffer,
     pingPongRenderPass->end();
 }
 
-void PostProcessManager::render(vk::CommandBuffer commandBuffer, DescriptorLayoutCache &layoutCache, DescriptorAllocator &allocator)
+void PostProcessManager::render(int startIndex, vk::CommandBuffer commandBuffer, DescriptorLayoutCache &layoutCache, DescriptorAllocator &allocator)
 {
-    int ping = 1; // start by reading from 1 and outputting to 0
+    currentAttachmentIndex = startIndex;
+    int ping = startIndex; // start by reading from 1 and outputting to 0
     vk::DescriptorSetLayout layout;
     for (const auto &postProcess : activePostProcesses)
     {
@@ -168,7 +169,6 @@ void PostProcessManager::activatePostProcess(int index)
 
 void PostProcessManager::deactivatePostProcess(int index)
 {
-    currentAttachmentIndex = 0;
     activePostProcesses.erase(activePostProcesses.begin() + index);
 }
 

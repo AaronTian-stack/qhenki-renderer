@@ -28,7 +28,7 @@ vec3 PBRNeutralToneMapping(vec3 color) {
 
 void main()
 {
-    vec3 color = texture(texSampler, fragUV).rgb;
-    color = PBRNeutralToneMapping(color);
-    outColor = vec4(color, 1.0);
+    vec4 color = texture(texSampler, fragUV);
+    color.rgb = PBRNeutralToneMapping(color.rgb);
+    outColor = color;
 }

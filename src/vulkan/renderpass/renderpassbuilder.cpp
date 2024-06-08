@@ -10,7 +10,7 @@ void RenderPassBuilder::addColorAttachment(vk::Format format, vk::AttachmentLoad
     colorAttachment.samples = vk::SampleCountFlagBits::e1;
     colorAttachment.loadOp = loadOp;
     colorAttachment.storeOp = vk::AttachmentStoreOp::eStore;
-    colorAttachment.stencilLoadOp = vk::AttachmentLoadOp::eDontCare;
+    colorAttachment.stencilLoadOp = loadOp;
     colorAttachment.stencilStoreOp = vk::AttachmentStoreOp::eDontCare;
     colorAttachment.initialLayout = vk::ImageLayout::eUndefined;
     colorAttachment.finalLayout = finalLayout;
@@ -24,8 +24,8 @@ void RenderPassBuilder::addDepthAttachment(vk::Format format, vk::AttachmentLoad
     depthAttachment.samples = vk::SampleCountFlagBits::e1;
     depthAttachment.loadOp = loadOp;
     depthAttachment.storeOp = vk::AttachmentStoreOp::eDontCare;
-    depthAttachment.stencilLoadOp = vk::AttachmentLoadOp::eDontCare;
-    depthAttachment.stencilStoreOp = vk::AttachmentStoreOp::eDontCare;
+    depthAttachment.stencilLoadOp = loadOp;
+    depthAttachment.stencilStoreOp = vk::AttachmentStoreOp::eStore;
     depthAttachment.initialLayout = vk::ImageLayout::eUndefined;
     if (loadOp == vk::AttachmentLoadOp::eLoad)
         depthAttachment.initialLayout = vk::ImageLayout::eDepthStencilAttachmentOptimal;

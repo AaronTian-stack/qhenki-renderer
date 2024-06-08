@@ -179,6 +179,7 @@ void main()
 
     if (depth == 1.0)
     {
+        outColor = vec4(0.0);
         return;
     }
 

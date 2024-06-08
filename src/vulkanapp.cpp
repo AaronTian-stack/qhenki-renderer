@@ -148,7 +148,7 @@ void VulkanApp::createRenderPasses()
                                  {},
                                  {5}, {}, 4); // draw cube map
 
-    renderPassBuilder.addSubPass({}, {}, {5}, {}, 4); // draw background
+    renderPassBuilder.addSubPass({}, {}, {5}, {}, 4); // draw lights
 
     renderPassBuilder.addColorDependency(0, 1);
     renderPassBuilder.addColorDependency(1, 2);
@@ -304,6 +304,7 @@ void VulkanApp::create(Window &window)
         auto u = (glm::vec2(x, y) + glm::vec2(4)) * 0.5f / glm::vec2(4.f);
         glm::vec3 col = glm::vec3(0.5) + 0.5 * glm::cos(glm::vec3(u.x, u.y, u.x) + glm::vec3(0, 2, 4));
         sphereLights.push_back({{}, col, 50.f, 0.5f});
+//sphereLights.push_back({glm::vec3(i - iterations * 0.5f, 1.f, 0.f), glm::vec3(1.f * i / iterations), 50.f, 0.5f});
     }
 }
 
@@ -496,8 +497,6 @@ void VulkanApp::recordCommandBuffer(FrameBuffer *framebuffer)
     DescriptorBuilder::beginSet(&layoutCache, &allocator)
             .bindImage(0, {postProcessManager->getAttachment(0)->getDescriptorInfo()},
                        1, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eFragment)
-            .bindImage(1, {depthBuffer->getDescriptorInfo()}, // depth attachment sampler
-                       1, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eFragment)
             .build(pprSamplerSet, layout);
     primaryCommandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, passAndClearPipeline->getPipelineLayout(),
                                             0, {pprSamplerSet}, nullptr);
@@ -507,7 +506,7 @@ void VulkanApp::recordCommandBuffer(FrameBuffer *framebuffer)
     ppr.end();
     //// END CLEAR COLOR
 
-    postProcessManager->render(primaryCommandBuffer, layoutCache, allocator);
+    postProcessManager->render(1, primaryCommandBuffer, layoutCache, allocator);
 
     // final post process buffer already in shader read layout from render pass
 
