@@ -24,10 +24,12 @@ void CommandPool::destroy()
 
 vk::CommandBuffer CommandPool::createCommandBuffer(vk::CommandBufferLevel level)
 {
-    // allocating command buffers from same pool is not thread safe
-    std::lock_guard<std::mutex> lock(mutex);
+    // interacting with command pools are not thread safe
+    std::unique_lock<std::mutex> lock(mutex);
     auto allocInfo = vk::CommandBufferAllocateInfo(commandPool,level,1);
-    return device.allocateCommandBuffers(allocInfo)[0];
+    auto cmd = device.allocateCommandBuffers(allocInfo)[0];
+    lock.unlock();
+    return cmd;
 }
 
 vk::CommandBuffer CommandPool::createCommandBuffer(const char* name, vk::CommandBufferLevel level)

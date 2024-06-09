@@ -66,6 +66,8 @@ private:
 //    std::vector<uPtr<Buffer>> pointLightBuffers;
     std::vector<SphereLight> sphereLights;
     std::vector<uPtr<Buffer>> sphereLightBuffers;
+    std::vector<TubeLight> tubeLights;
+    std::vector<uPtr<Buffer>> tubeLightsBuffers;
 //    std::vector<uPtr<Buffer>> rectangleLightBuffers;
 
     Camera camera;

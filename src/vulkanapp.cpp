@@ -64,6 +64,9 @@ VulkanApp::~VulkanApp()
     for (auto &sphereLightBuffer : sphereLightBuffers)
         sphereLightBuffer->destroy();
 
+    for (auto &tubeLightBuffer : tubeLightsBuffers)
+        tubeLightBuffer->destroy();
+
     for (auto &allocator : allocators)
         allocator.destroy();
 
@@ -285,6 +288,10 @@ void VulkanApp::create(Window &window)
                                                               vk::BufferUsageFlagBits::eStorageBuffer,
                                                               flags));
 
+        tubeLightsBuffers.emplace_back(bufferFactory.createBuffer(sizeof(TubeLightShader) * MAX_LIGHTS,
+                                                                   vk::BufferUsageFlagBits::eStorageBuffer,
+                                                                   flags));
+
         allocators.emplace_back(vulkanContext.device.logicalDevice);
     }
 
@@ -304,8 +311,20 @@ void VulkanApp::create(Window &window)
         auto u = (glm::vec2(x, y) + glm::vec2(4)) * 0.5f / glm::vec2(4.f);
         glm::vec3 col = glm::vec3(0.5) + 0.5 * glm::cos(glm::vec3(u.x, u.y, u.x) + glm::vec3(0, 2, 4));
         sphereLights.push_back({{}, col, 50.f, 0.5f});
-//sphereLights.push_back({glm::vec3(i - iterations * 0.5f, 1.f, 0.f), glm::vec3(1.f * i / iterations), 50.f, 0.5f});
     }
+    TubeLight l;
+    l.radius = 0.2f;
+    l.length = 1.5f;
+    l.color1 = glm::vec3(1.f, 0.0f, 0.0f);
+    l.color2 = glm::vec3(0.f, 1.f, 0.f);
+    l.intensity = 1.f;
+    l.position = glm::vec3(0.f, 2.f, 0.f);
+
+    l.rotation = glm::angleAxis(glm::radians(0.f), glm::vec3(0, 1, 0));
+
+//    glm::eulerAngles(l.rotation);
+
+    tubeLights.push_back(l);
 }
 
 void VulkanApp::setUpCallbacks() {
@@ -380,7 +399,7 @@ void VulkanApp::recordOffscreenBuffer(vk::CommandBuffer commandBuffer, Descripto
             ui->emissionMultiplier,
             0,
             static_cast<int>(sphereLights.size()),
-            0,
+            static_cast<int>(tubeLights.size()),
             0
     };
     lightingPipeline->setPushConstant(commandBuffer, &lightingParameters, sizeof(LightingParameters), 0, vk::ShaderStageFlagBits::eFragment);
@@ -421,9 +440,11 @@ void VulkanApp::recordOffscreenBuffer(vk::CommandBuffer commandBuffer, Descripto
     if (sphereLights.size() > MAX_LIGHTS) throw std::runtime_error("Too many sphere lights");
 
     auto sphereLightBufferInfo = sphereLightBuffers[currentFrame]->getDescriptorInfo();
+    auto tubeLightBufferInfo = tubeLightsBuffers[currentFrame]->getDescriptorInfo();
     vk::DescriptorSet lightSet;
     DescriptorBuilder::beginSet(&layoutCache, &allocator)
             .bindBuffer(0, &sphereLightBufferInfo, vk::DescriptorType::eStorageBuffer, vk::ShaderStageFlagBits::eFragment)
+            .bindBuffer(1, &tubeLightBufferInfo, vk::DescriptorType::eStorageBuffer, vk::ShaderStageFlagBits::eFragment)
             .build(lightSet, layout);
 
     commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, lightingPipeline->getPipelineLayout(),
@@ -456,7 +477,14 @@ void VulkanApp::recordOffscreenBuffer(vk::CommandBuffer commandBuffer, Descripto
     for (auto &light : sphereLights)
     {
         auto transform = glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(light.radius)), light.position);
-        PrimitiveDrawer::drawSphere(commandBuffer, *lightDisplayPipeline, glm::vec4(light.color, 1.f) * light.intensity, transform);
+        PrimitiveDrawer::drawSphere(commandBuffer, *lightDisplayPipeline, glm::vec4(light.color * light.intensity, 1.f), transform);
+    }
+    for (auto &light : tubeLights)
+    {
+        auto transform = glm::translate(light.position);
+        auto rotate = glm::toMat4(light.rotation);
+        auto scale = glm::scale(glm::mat4(1.f), glm::vec3(light.length, light.radius, light.radius));
+        PrimitiveDrawer::drawCube(commandBuffer, *lightDisplayPipeline, glm::vec4(light.color1 * light.intensity, 1.f), transform * rotate * scale);
     }
 
     offscreenRenderPass->end();
@@ -623,7 +651,7 @@ void VulkanApp::handleInput()
 
 void VulkanApp::updateLightBuffers()
 {
-    auto lightBuffer = static_cast<SphereLight*>(sphereLightBuffers[currentFrame]->getPointer());
+    auto sphereLightBuffer = static_cast<SphereLight*>(sphereLightBuffers[currentFrame]->getPointer());
     for (int i = 0; i < sphereLights.size(); i++)
     {
         // calculate position based off index
@@ -634,7 +662,24 @@ void VulkanApp::updateLightBuffers()
         sphereLights[i].position = glm::vec3(glm::rotate(glm::mat4(), (float)glfwGetTime() * 3.f, glm::vec3(0.f, 0.f, 1.f)) * glm::vec4(x, y, 0, 1.f));
 
         sphereLights[i].position += glm::normalize(sphereLights[i].position) * glm::sin((float)glfwGetTime() * 2) * 0.04f;
-        lightBuffer[i] = sphereLights[i];
+        sphereLightBuffer[i] = sphereLights[i];
+    }
+    auto tubeLightBuffer = static_cast<TubeLightShader*>(tubeLightsBuffers[currentFrame]->getPointer());
+    for (int i = 0; i < tubeLights.size(); i++)
+    {
+        tubeLights[i].rotation = glm::angleAxis((float)glfwGetTime(), glm::vec3(0, 1, 0));
+        TubeLightShader light;
+        light.color1 = tubeLights[i].color1 * tubeLights[i].intensity;
+        light.color2 = tubeLights[i].color2 * tubeLights[i].intensity;
+        light.radius = tubeLights[i].radius;
+
+        auto rm = tubeLights[i].rotation;
+        auto tm = glm::translate(tubeLights[i].position);
+
+        light.position1 = glm::vec3(tm * (rm * glm::vec4(glm::vec3(1.f, 0.f, 0.f), 1.f)));
+        light.position2 = glm::vec3(tm * (rm * glm::vec4(glm::vec3(-1.f, 0.f, 0.f), 1.f)));
+
+        tubeLightBuffer[i] = light;
     }
 }
 

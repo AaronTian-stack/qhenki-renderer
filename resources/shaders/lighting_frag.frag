@@ -50,9 +50,22 @@ struct SphereLight
     float radius;
 };
 
+struct TubeLight
+{
+    vec3 position1;
+    vec3 position2;
+    vec3 color1;
+    vec3 color2;
+    float radius;
+};
+
 layout(scalar, set = 3, binding = 0) readonly buffer SphereLightBuffer {
     SphereLight sphereLights[];
 } sphereLightBuffer;
+
+layout(scalar, set = 3, binding = 1) readonly buffer TubeLightBuffer {
+    TubeLight tubeLights[];
+} tubeLightBuffer;
 
 const float PI = 3.14159;
 
@@ -103,10 +116,10 @@ void calculateForLight(inout vec3 Lo, Light light, vec3 N, vec3 V, Material mate
 
     vec3 L = normalize(light.position - fragPos);
     vec3 H = normalize(V + L);
-    float distance    = distance(light.position, fragPos);
+    float distance = distance(light.position, fragPos);
     float attenuation = 1.0 / (distance * distance);
 
-    vec3 radiance   = light.color * attenuation;
+    vec3 radiance = light.color * attenuation;
 
     // cook-torrance brdf
     float NDF = DistributionGGX(N, H, material.roughness);
@@ -130,8 +143,23 @@ vec3 closestPointSphere(SphereLight light, vec3 R, vec3 fragPos)
 {
     vec3 L = light.position.xyz - fragPos;
     vec3 centerToRay = (dot(L, R) * R) - L;
-    vec3 closestPoint = L + centerToRay * clamp(light.radius / length(centerToRay), 0, 1);
+    vec3 closestPoint = L + centerToRay * clamp(light.radius / length(centerToRay), 0.0, 1.0);
     return closestPoint;
+}
+
+vec3 closestPointTube(TubeLight light, vec3 R, vec3 fragPos, out float t)
+{
+    vec3 lineToPoint = fragPos - light.position1;
+    vec3 lineVector = light.position2 - light.position1;
+    t = dot(lineToPoint, lineVector) / dot(lineVector, lineVector);
+    t = clamp(t, 0.0, 1.0);
+
+    vec3 closestPointLine = light.position1 + lineVector * t;
+
+    SphereLight s;
+    s.radius = light.radius;
+    s.position = closestPointLine;
+    return closestPointSphere(s, R, fragPos);
 }
 
 vec3 calculateIBL(vec3 N, vec3 V, vec3 R, vec3 F0, Material material)
@@ -200,6 +228,14 @@ void main()
     {
         SphereLight sphereLight = sphereLightBuffer.sphereLights[i];
         Light light = Light(closestPointSphere(sphereLight, R, position.xyz), sphereLight.color * sphereLight.intensity);
+        calculateForLight(Lo, light, N, V, material, position.xyz);
+    }
+    for (int i = 0; i < lightingInfo.tubeLightCount; ++i)
+    {
+        TubeLight tubeLight = tubeLightBuffer.tubeLights[i];
+        float t;
+        vec3 c = closestPointTube(tubeLight, R, position.xyz, t);
+        Light light = Light(c, mix(tubeLight.color1, tubeLight.color2, t));
         calculateForLight(Lo, light, N, V, material, position.xyz);
     }
 //    for(int i = 0; i < 1; ++i)
