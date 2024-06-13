@@ -9,8 +9,9 @@
 class PrimitiveDrawer
 {
 private:
-    static inline uPtr<Primitive> cube, sphere;
+    static inline uPtr<Primitive> cube, sphere, cylinder;
     static void setPushConstants(vk::CommandBuffer commandBuffer, Pipeline &primitivePipeline, glm::vec4 *color, glm::mat4 *transform);
+    static void drawShape(Primitive *p, vk::CommandBuffer commandBuffer, Pipeline &primitivePipeline, glm::vec4 color, glm::mat4 transform);
 
 public:
     static void create(BufferFactory &bufferFactory);
@@ -21,4 +22,7 @@ public:
     // assumes you have a pipeline bound. only binds position
     static void drawSphere(vk::CommandBuffer commandBuffer);
     static void drawSphere(vk::CommandBuffer commandBuffer, Pipeline &primitivePipeline, glm::vec4 color, glm::mat4 transform);
+
+    static void drawCylinder(vk::CommandBuffer commandBuffer);
+    static void drawCylinder(vk::CommandBuffer commandBuffer, Pipeline &primitivePipeline, glm::vec4 color, glm::mat4 transform);
 };

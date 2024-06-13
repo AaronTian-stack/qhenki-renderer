@@ -10,7 +10,7 @@
 #include "vfx/effects/sharpen.h"
 #include <thread>
 
-VulkanApp::VulkanApp() {}
+VulkanApp::VulkanApp() : drawBackground(true), clearColor(0.25f) {}
 
 VulkanApp::~VulkanApp()
 {
@@ -310,19 +310,16 @@ void VulkanApp::create(Window &window)
         auto y = glm::sin(t) * 4.f;
         auto u = (glm::vec2(x, y) + glm::vec2(4)) * 0.5f / glm::vec2(4.f);
         glm::vec3 col = glm::vec3(0.5) + 0.5 * glm::cos(glm::vec3(u.x, u.y, u.x) + glm::vec3(0, 2, 4));
-        sphereLights.push_back({{}, col, 50.f, 0.5f});
+        sphereLights.push_back({{x, y, 0}, col, 50.f, 0.5f});
     }
     TubeLight l;
     l.radius = 0.2f;
-    l.length = 1.5f;
-    l.color1 = glm::vec3(1.f, 0.0f, 0.0f);
-    l.color2 = glm::vec3(0.f, 1.f, 0.f);
-    l.intensity = 1.f;
-    l.position = glm::vec3(0.f, 2.f, 0.f);
+    l.length = 0.5f;
+    l.color = glm::vec3(1.f, 0.0f, 0.0f);
+    l.intensity = 10.f;
+    l.position = glm::vec3(0.f, 1.f, 0.f);
 
     l.rotation = glm::angleAxis(glm::radians(0.f), glm::vec3(0, 1, 0));
-
-//    glm::eulerAngles(l.rotation);
 
     tubeLights.push_back(l);
 }
@@ -394,14 +391,11 @@ void VulkanApp::recordOffscreenBuffer(vk::CommandBuffer commandBuffer, Descripto
     offscreenRenderPass->nextSubpass(); // composition pass
 
     commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, lightingPipeline->getGraphicsPipeline());
-    lightingParameters = {
-            ui->iblIntensity,
-            ui->emissionMultiplier,
-            0,
-            static_cast<int>(sphereLights.size()),
-            static_cast<int>(tubeLights.size()),
-            0
-    };
+    lightingParameters.pointLightCount = 0;
+    lightingParameters.rectangleLightCount = 0;
+    lightingParameters.sphereLightCount = static_cast<int>(sphereLights.size());
+    lightingParameters.tubeLightCount = static_cast<int>(tubeLights.size());
+
     lightingPipeline->setPushConstant(commandBuffer, &lightingParameters, sizeof(LightingParameters), 0, vk::ShaderStageFlagBits::eFragment);
 
     std::vector<std::vector<vk::DescriptorImageInfo>> gBufferInfo =
@@ -454,7 +448,7 @@ void VulkanApp::recordOffscreenBuffer(vk::CommandBuffer commandBuffer, Descripto
 
     offscreenRenderPass->nextSubpass(); // cube map pass
 
-    if (ui->drawBackground)
+    if (drawBackground)
     {
         vk::DescriptorSet cubeSamplerSet;
         commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, cubeMapPipeline->getGraphicsPipeline());
@@ -483,8 +477,8 @@ void VulkanApp::recordOffscreenBuffer(vk::CommandBuffer commandBuffer, Descripto
     {
         auto transform = glm::translate(light.position);
         auto rotate = glm::toMat4(light.rotation);
-        auto scale = glm::scale(glm::mat4(1.f), glm::vec3(light.length, light.radius, light.radius));
-        PrimitiveDrawer::drawCube(commandBuffer, *lightDisplayPipeline, glm::vec4(light.color1 * light.intensity, 1.f), transform * rotate * scale);
+        auto scale = glm::scale(glm::mat4(1.f), glm::vec3(light.length + light.radius * 2, light.radius, light.radius));
+        PrimitiveDrawer::drawCylinder(commandBuffer, *lightDisplayPipeline, glm::vec4(light.color * light.intensity, 1.f), transform * rotate * scale);
     }
 
     offscreenRenderPass->end();
@@ -528,8 +522,7 @@ void VulkanApp::recordCommandBuffer(FrameBuffer *framebuffer)
             .build(pprSamplerSet, layout);
     primaryCommandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, passAndClearPipeline->getPipelineLayout(),
                                             0, {pprSamplerSet}, nullptr);
-    glm::vec4 clear = {ui->clearColor[0], ui->clearColor[1], ui->clearColor[2], ui->drawBackground ? 0.f : 1.f};
-    passAndClearPipeline->setPushConstant(primaryCommandBuffer, &clear, sizeof(glm::vec4), 0, vk::ShaderStageFlagBits::eFragment);
+    passAndClearPipeline->setPushConstant(primaryCommandBuffer, &clearColor, sizeof(glm::vec4), 0, vk::ShaderStageFlagBits::eFragment);
     primaryCommandBuffer.draw(3, 1, 0, 0);
     ppr.end();
     //// END CLEAR COLOR
@@ -655,13 +648,13 @@ void VulkanApp::updateLightBuffers()
     for (int i = 0; i < sphereLights.size(); i++)
     {
         // calculate position based off index
-        auto t = glm::radians((360.f / sphereLights.size()) * i);
-        float time = (0.5f * (glm::sin(glfwGetTime()) + 1.f)) * 2 + 3.f;
-        auto x = glm::cos(t) * time;
-        auto y = glm::sin(t) * time;
-        sphereLights[i].position = glm::vec3(glm::rotate(glm::mat4(), (float)glfwGetTime() * 3.f, glm::vec3(0.f, 0.f, 1.f)) * glm::vec4(x, y, 0, 1.f));
-
-        sphereLights[i].position += glm::normalize(sphereLights[i].position) * glm::sin((float)glfwGetTime() * 2) * 0.04f;
+//        auto t = glm::radians((360.f / sphereLights.size()) * i);
+//        float time = (0.5f * (glm::sin(glfwGetTime()) + 1.f)) * 2 + 3.f;
+//        auto x = glm::cos(t) * time;
+//        auto y = glm::sin(t) * time;
+//        sphereLights[i].position = glm::vec3(glm::rotate(glm::mat4(), (float)glfwGetTime() * 3.f, glm::vec3(0.f, 0.f, 1.f)) * glm::vec4(x, y, 0, 1.f));
+//
+//        sphereLights[i].position += glm::normalize(sphereLights[i].position) * glm::sin((float)glfwGetTime() * 2) * 0.04f;
         sphereLightBuffer[i] = sphereLights[i];
     }
     auto tubeLightBuffer = static_cast<TubeLightShader*>(tubeLightsBuffers[currentFrame]->getPointer());
@@ -669,15 +662,16 @@ void VulkanApp::updateLightBuffers()
     {
         tubeLights[i].rotation = glm::angleAxis((float)glfwGetTime(), glm::vec3(0, 1, 0));
         TubeLightShader light;
-        light.color1 = tubeLights[i].color1 * tubeLights[i].intensity;
-        light.color2 = tubeLights[i].color2 * tubeLights[i].intensity;
+        light.color = tubeLights[i].color * tubeLights[i].intensity;
         light.radius = tubeLights[i].radius;
 
         auto rm = tubeLights[i].rotation;
         auto tm = glm::translate(tubeLights[i].position);
 
-        light.position1 = glm::vec3(tm * (rm * glm::vec4(glm::vec3(1.f, 0.f, 0.f), 1.f)));
-        light.position2 = glm::vec3(tm * (rm * glm::vec4(glm::vec3(-1.f, 0.f, 0.f), 1.f)));
+        auto px = glm::vec3(glm::abs(tubeLights[i].length), 0.f, 0.f);
+
+        light.position1 = glm::vec3(tm * (rm * glm::vec4(px, 1.f)));
+        light.position2 = glm::vec3(tm * (rm * glm::vec4(-px, 1.f)));
 
         tubeLightBuffer[i] = light;
     }
@@ -710,4 +704,15 @@ void VulkanApp::attemptToDeleteOldModel()
         }
     }
     lock.unlock();
+}
+
+MenuPayloads VulkanApp::getPartialMenuPayload()
+{
+    MenuPayloads m{};
+    m.postProcessManager = postProcessManager.get();
+    m.camera = &camera;
+    m.visualMenuPayload.lightingParameters = &lightingParameters;
+    m.visualMenuPayload.clearColor = &clearColor;
+    m.visualMenuPayload.drawBackground = &drawBackground;
+    return m;
 }

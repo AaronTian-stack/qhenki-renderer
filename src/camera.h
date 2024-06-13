@@ -44,8 +44,9 @@ public:
     void setTarget(glm::vec3 position);
     void setThetaPhi(float theta, float phi);
     void setTargetDistance(float distance);
-
     void simpleReset();
+
+    friend class CameraMenu;
 };
 
 glm::vec3 sphericalToCartesian(float theta, float phi, float radius);

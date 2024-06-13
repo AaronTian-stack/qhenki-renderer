@@ -30,6 +30,8 @@
 class VulkanApp
 {
 private:
+    bool drawBackground;
+    glm::vec3 clearColor;
     EnvironmentMap envMap;
     std::vector<uPtr<Model>> models;
 
@@ -70,6 +72,8 @@ private:
     std::vector<uPtr<Buffer>> tubeLightsBuffers;
 //    std::vector<uPtr<Buffer>> rectangleLightBuffers;
 
+    uPtr<PostProcessManager> postProcessManager;
+
     Camera camera;
     CameraMatrices cameraMatrices;
     DescriptorLayoutCache layoutCache;
@@ -96,9 +100,9 @@ public:
     void recordOffscreenBuffer(vk::CommandBuffer buffer, DescriptorAllocator &allocator);
     void recordCommandBuffer(FrameBuffer *framebuffer);
 
-    uPtr<PostProcessManager> postProcessManager;
     UserInterface *ui;
     ImGuiCreateParameters getImGuiCreateParameters();
+    MenuPayloads getPartialMenuPayload();
 
     CommandPool& getGraphicsCommandPool();
 

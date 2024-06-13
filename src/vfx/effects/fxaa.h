@@ -10,15 +10,12 @@ struct FXAAData
     float fxaaSpanMax = 8.f;
 };
 
-class FXAA : public PostProcess, public Menu
+class FXAA : public PostProcess
 {
-private:
-    FXAAData fxaaData;
-
 public:
+    FXAAData fxaaData;
     FXAA(vk::Device device, const char* shaderPath, PipelineBuilder &pipelineFactory,
         DescriptorLayoutCache &layoutCache, RenderPass *renderPass);
     void bindData(vk::CommandBuffer commandBuffer) override;
-    void renderMenu() override;
 };
 

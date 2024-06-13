@@ -30,10 +30,10 @@ int main()
             break;
 
         ui.begin();
-        ui.render(app.postProcessManager.get());
+        ui.render(app.getPartialMenuPayload());
         app.render(); // ui.end() called in here since command buffer is needed
     }
 
-    //ui.destroy(); // destructor does this
+    ui.destroy();
     return 0;
 }

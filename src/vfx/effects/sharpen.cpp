@@ -10,8 +10,3 @@ void Sharpen::bindData(vk::CommandBuffer commandBuffer)
 {
     pipeline->setPushConstant(commandBuffer, &intensity, sizeof(float), 0, vk::ShaderStageFlagBits::eFragment);
 }
-
-void Sharpen::renderMenu()
-{
-    ImGui::SliderFloat("Intensity", &intensity, 0.0f, 2.0f);
-}

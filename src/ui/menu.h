@@ -1,10 +1,14 @@
 #pragma once
 
+#include "imgui/imgui.h"
+
 class Menu
 {
-private:
-    bool open = false;
+protected:
+    bool open;
+
 public:
-    virtual void renderMenu() = 0;
+    Menu() : open(false) {}
+    virtual void renderMenu(void *payload) = 0;
     friend class UserInterface;
 };

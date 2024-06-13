@@ -54,8 +54,7 @@ struct TubeLight
 {
     vec3 position1;
     vec3 position2;
-    vec3 color1;
-    vec3 color2;
+    vec3 color;
     float radius;
 };
 
@@ -147,14 +146,13 @@ vec3 closestPointSphere(SphereLight light, vec3 R, vec3 fragPos)
     return closestPoint;
 }
 
-vec3 closestPointTube(TubeLight light, vec3 R, vec3 fragPos, out float t)
+vec3 closestPointTube(TubeLight light, vec3 R, vec3 fragPos)
 {
     vec3 lineToPoint = fragPos - light.position1;
     vec3 lineVector = light.position2 - light.position1;
-    t = dot(lineToPoint, lineVector) / dot(lineVector, lineVector);
-    t = clamp(t, 0.0, 1.0);
+    float t = dot(lineToPoint, lineVector) / dot(lineVector, lineVector);
 
-    vec3 closestPointLine = light.position1 + lineVector * t;
+    vec3 closestPointLine = light.position1 + lineVector * clamp(t, 0.0, 1.0);
 
     SphereLight s;
     s.radius = light.radius;
@@ -234,8 +232,8 @@ void main()
     {
         TubeLight tubeLight = tubeLightBuffer.tubeLights[i];
         float t;
-        vec3 c = closestPointTube(tubeLight, R, position.xyz, t);
-        Light light = Light(c, mix(tubeLight.color1, tubeLight.color2, t));
+        vec3 c = closestPointTube(tubeLight, R, position.xyz);
+        Light light = Light(c, tubeLight.color);
         calculateForLight(Lo, light, N, V, material, position.xyz);
     }
 //    for(int i = 0; i < 1; ++i)

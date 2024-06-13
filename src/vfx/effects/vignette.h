@@ -12,15 +12,12 @@ struct VignetteData
     float saturationMul = 1.f;
 };
 
-class Vignette : public PostProcess, public Menu
+class Vignette : public PostProcess
 {
-private:
-    VignetteData data;
-
 public:
+    VignetteData vignetteData;
     Vignette(vk::Device device, const char* shaderPath, PipelineBuilder &pipelineFactory,
         DescriptorLayoutCache &layoutCache, RenderPass *renderPass);
     void bindData(vk::CommandBuffer commandBuffer) override;
-    void renderMenu() override;
 };
 
