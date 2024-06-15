@@ -1,7 +1,7 @@
 #include "vulkanapp.h"
 
 #include "vulkan/screenutils.h"
-#include "glm/glm.hpp"
+#include <glm/glm.hpp>
 #include "inputprocesser.h"
 #include "imgui/imgui.h"
 #include "models/primitives/primitivedrawer.h"
@@ -302,16 +302,18 @@ void VulkanApp::create(Window &window)
 
     createPostProcess();
 
-    int iterations = 4;
-    for (int i = 0; i < iterations; i++)
-    {
-        auto t = glm::radians((360.f / iterations) * i);
-        auto x = glm::cos(t) * 4.f;
-        auto y = glm::sin(t) * 4.f;
-        auto u = (glm::vec2(x, y) + glm::vec2(4)) * 0.5f / glm::vec2(4.f);
-        glm::vec3 col = glm::vec3(0.5) + 0.5 * glm::cos(glm::vec3(u.x, u.y, u.x) + glm::vec3(0, 2, 4));
-        sphereLights.push_back({{x, y, 0}, col, 50.f, 0.5f});
-    }
+//    int iterations = 4;
+//    for (int i = 0; i < iterations; i++)
+//    {
+//        auto t = glm::radians((360.f / iterations) * i);
+//        auto x = glm::cos(t) * 4.f;
+//        auto y = glm::sin(t) * 4.f;
+//        auto u = (glm::vec2(x, y) + glm::vec2(4)) * 0.5f / glm::vec2(4.f);
+//        glm::vec3 col = glm::vec3(0.5) + 0.5 * glm::cos(glm::vec3(u.x, u.y, u.x) + glm::vec3(0, 2, 4));
+//        sphereLights.push_back({{x, y, 0}, col, 50.f, 0.5f});
+//    }
+    sphereLights.push_back({{0, 1, 0}, glm::vec3(1.f, 1.f, 1.f), 50.f, 0.5f});
+
     TubeLight l;
     l.radius = 0.2f;
     l.length = 0.5f;
@@ -470,15 +472,16 @@ void VulkanApp::recordOffscreenBuffer(vk::CommandBuffer commandBuffer, Descripto
                                      0, {cameraSet}, nullptr);
     for (auto &light : sphereLights)
     {
-        auto transform = glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(light.radius)), light.position);
-        PrimitiveDrawer::drawSphere(commandBuffer, *lightDisplayPipeline, glm::vec4(light.color * light.intensity, 1.f), transform);
+        auto translate = glm::translate(light.position);
+        auto scale = glm::scale(glm::vec3(light.radius));
+        PrimitiveDrawer::drawSphere(commandBuffer, *lightDisplayPipeline, glm::vec4(light.color * light.intensity, 1.f), translate * scale);
     }
     for (auto &light : tubeLights)
     {
-        auto transform = glm::translate(light.position);
-        auto rotate = glm::toMat4(light.rotation);
-        auto scale = glm::scale(glm::mat4(1.f), glm::vec3(light.length + light.radius * 2, light.radius, light.radius));
-        PrimitiveDrawer::drawCylinder(commandBuffer, *lightDisplayPipeline, glm::vec4(light.color * light.intensity, 1.f), transform * rotate * scale);
+        auto translate = glm::translate(light.position);
+        auto rotate = glm::mat4_cast(light.rotation);
+        auto scale = glm::scale(glm::vec3(light.length + light.radius * 2, light.radius, light.radius));
+        PrimitiveDrawer::drawCylinder(commandBuffer, *lightDisplayPipeline, glm::vec4(light.color * light.intensity, 1.f), translate * rotate * scale);
     }
 
     offscreenRenderPass->end();
@@ -647,20 +650,11 @@ void VulkanApp::updateLightBuffers()
     auto sphereLightBuffer = static_cast<SphereLight*>(sphereLightBuffers[currentFrame]->getPointer());
     for (int i = 0; i < sphereLights.size(); i++)
     {
-        // calculate position based off index
-//        auto t = glm::radians((360.f / sphereLights.size()) * i);
-//        float time = (0.5f * (glm::sin(glfwGetTime()) + 1.f)) * 2 + 3.f;
-//        auto x = glm::cos(t) * time;
-//        auto y = glm::sin(t) * time;
-//        sphereLights[i].position = glm::vec3(glm::rotate(glm::mat4(), (float)glfwGetTime() * 3.f, glm::vec3(0.f, 0.f, 1.f)) * glm::vec4(x, y, 0, 1.f));
-//
-//        sphereLights[i].position += glm::normalize(sphereLights[i].position) * glm::sin((float)glfwGetTime() * 2) * 0.04f;
         sphereLightBuffer[i] = sphereLights[i];
     }
     auto tubeLightBuffer = static_cast<TubeLightShader*>(tubeLightsBuffers[currentFrame]->getPointer());
     for (int i = 0; i < tubeLights.size(); i++)
     {
-        tubeLights[i].rotation = glm::angleAxis((float)glfwGetTime(), glm::vec3(0, 1, 0));
         TubeLightShader light;
         light.color = tubeLights[i].color * tubeLights[i].intensity;
         light.radius = tubeLights[i].radius;
@@ -714,5 +708,7 @@ MenuPayloads VulkanApp::getPartialMenuPayload()
     m.visualMenuPayload.lightingParameters = &lightingParameters;
     m.visualMenuPayload.clearColor = &clearColor;
     m.visualMenuPayload.drawBackground = &drawBackground;
+    m.lightsList.sphereLights = &sphereLights;
+    m.lightsList.tubeLights = &tubeLights;
     return m;
 }

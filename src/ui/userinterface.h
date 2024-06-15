@@ -27,6 +27,7 @@ struct MenuPayloads
     void *camera;
     void *postProcessManager;
     VisualMenuPayload visualMenuPayload;
+    LightsList lightsList;
 };
 
 class UserInterface : Destroyable

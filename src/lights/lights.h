@@ -1,7 +1,7 @@
 #pragma once
 
-#include "glm/glm.hpp"
-#include "glm/gtc/quaternion.hpp"
+#include <glm/glm.hpp>
+#include <glm/gtc/quaternion.hpp>
 
 struct LightingParameters
 {
@@ -36,6 +36,7 @@ struct TubeLight
     float intensity;
     float radius;
     glm::quat rotation;
+    glm::vec3 eulerAngle;
 };
 
 struct TubeLightShader

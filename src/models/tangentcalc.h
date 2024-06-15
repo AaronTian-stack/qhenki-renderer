@@ -2,7 +2,7 @@
 
 #include "mikkTspace/mikktspace.h"
 #include "gltf/tiny_gltf.h"
-#include "glm/glm.hpp"
+#include <glm/glm.hpp>
 
 struct VertexCountIndex
 {

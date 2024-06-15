@@ -125,7 +125,7 @@ void UserInterface::render(MenuPayloads menuPayloads)
     visualMenu.renderMenu(&menuPayloads.visualMenuPayload);
     postProcessMenu.renderMenu(menuPayloads.postProcessManager);
     cameraMenu.renderMenu(menuPayloads.camera);
-    lightMenu.renderMenu(nullptr);
+    lightMenu.renderMenu(&menuPayloads.lightsList);
 
     renderMenuBar();
 }

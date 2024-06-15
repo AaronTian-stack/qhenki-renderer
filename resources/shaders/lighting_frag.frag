@@ -140,10 +140,10 @@ void calculateForLight(inout vec3 Lo, Light light, vec3 N, vec3 V, Material mate
 
 vec3 closestPointSphere(SphereLight light, vec3 R, vec3 fragPos)
 {
-    vec3 L = light.position.xyz - fragPos;
+    vec3 L = light.position - fragPos;
     vec3 centerToRay = (dot(L, R) * R) - L;
     vec3 closestPoint = L + centerToRay * clamp(light.radius / length(centerToRay), 0.0, 1.0);
-    return closestPoint;
+    return closestPoint + light.position;
 }
 
 vec3 closestPointTube(TubeLight light, vec3 R, vec3 fragPos)
