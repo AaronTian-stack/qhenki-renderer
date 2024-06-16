@@ -8,6 +8,7 @@
 #include "vfx/effects/fxaa.h"
 #include "vfx/effects/vignette.h"
 #include "vfx/effects/sharpen.h"
+#include "vfx/effects/filmgrain.h"
 #include <thread>
 
 VulkanApp::VulkanApp() : drawBackground(true), clearColor(0.25f) {}
@@ -163,31 +164,31 @@ void VulkanApp::createPipelines()
 {
     auto device = vulkanContext.device.logicalDevice;
 
-    gBufferShader = mkU<Shader>(device, "gbuffer_vert.spv", "gbuffer_frag.spv");
+    gBufferShader = mkU<Shader>(device, "gbuffer.vert", "gbuffer.frag");
     pipelineFactory.reset();
     pipelineFactory.addVertexInputBinding({0, sizeof(glm::vec3), vk::VertexInputRate::eVertex}); // position
     pipelineFactory.addVertexInputBinding({1, sizeof(glm::vec3), vk::VertexInputRate::eVertex}); // normal
     pipelineFactory.addVertexInputBinding({2, sizeof(glm::vec3), vk::VertexInputRate::eVertex}); // tangent
     pipelineFactory.addVertexInputBinding({3, sizeof(glm::vec2), vk::VertexInputRate::eVertex}); // uv_0
     pipelineFactory.addVertexInputBinding({4, sizeof(glm::vec2), vk::VertexInputRate::eVertex}); // uv_1
-    pipelineFactory.parseShader("gbuffer_vert.spv", "gbuffer_frag.spv", layoutCache, false);
+    pipelineFactory.parseShader("gbuffer.vert", "gbuffer.frag", layoutCache, false);
     pipelineFactory.getColorBlending().attachmentCount = 4; // blending is disabled for now. pipeline factory does not set color blendings correctly
 
     // TODO: some models don't render correctly without culling. investigate
     pipelineFactory.getRasterizer().cullMode = vk::CullModeFlagBits::eBack;
     gBufferPipeline = pipelineFactory.buildPipeline(offscreenRenderPass.get(), 0, gBufferShader.get());
 
-    lightingShader = mkU<Shader>(device, "lighting_vert.spv", "lighting_frag.spv");
+    lightingShader = mkU<Shader>(device, "lighting.vert", "lighting.frag");
     pipelineFactory.reset();
-    pipelineFactory.parseShader("lighting_vert.spv", "lighting_frag.spv", layoutCache, false);
+    pipelineFactory.parseShader("lighting.vert", "lighting.frag", layoutCache, false);
     pipelineFactory.getDepthStencil().depthWriteEnable = VK_FALSE;
     pipelineFactory.getColorBlending().attachmentCount = 1;
     lightingPipeline = pipelineFactory.buildPipeline(offscreenRenderPass.get(), 1, lightingShader.get());
 
-    cubeMapShader = mkU<Shader>(device, "cubemap_vert.spv", "cubemap_frag.spv");
+    cubeMapShader = mkU<Shader>(device, "cubemap.vert", "cubemap.frag");
     pipelineFactory.reset();
     pipelineFactory.addVertexInputBinding({0, sizeof(glm::vec3), vk::VertexInputRate::eVertex}); // position
-    pipelineFactory.parseShader("cubemap_vert.spv", "cubemap_frag.spv", layoutCache, false);
+    pipelineFactory.parseShader("cubemap.vert", "cubemap.frag", layoutCache, false);
     pipelineFactory.getDepthStencil().depthWriteEnable = VK_FALSE;
     pipelineFactory.getDepthStencil().depthCompareOp = vk::CompareOp::eLessOrEqual; // NEEDS TO BE EXPLICITLY SET
     pipelineFactory.getColorBlending().attachmentCount = 1;
@@ -195,17 +196,17 @@ void VulkanApp::createPipelines()
 
     PrimitiveDrawer::create(bufferFactory);
 
-    passShader = mkU<Shader>(device, "passthrough_vert.spv", "passthrough_frag.spv");
+    passShader = mkU<Shader>(device, "passthrough.vert", "passthrough.frag");
     pipelineFactory.reset();
-    pipelineFactory.parseShader("passthrough_vert.spv", "passthrough_frag.spv", layoutCache, false);
+    pipelineFactory.parseShader("passthrough.vert", "passthrough.frag", layoutCache, false);
     pipelineFactory.getDepthStencil().depthWriteEnable = VK_FALSE;
     pipelineFactory.getColorBlending().attachmentCount = 1;
     passPipeline = pipelineFactory.buildPipeline(displayRenderPass.get(), 0, passShader.get());
 
-    lightDisplayShader = mkU<Shader>(device, "solid_vert.spv", "solid_frag.spv");
+    lightDisplayShader = mkU<Shader>(device, "solid.vert", "solid.frag");
     pipelineFactory.reset();
     pipelineFactory.addVertexInputBinding({0, sizeof(glm::vec3), vk::VertexInputRate::eVertex}); // position
-    pipelineFactory.parseShader("solid_vert.spv", "solid_frag.spv", layoutCache, false);
+    pipelineFactory.parseShader("solid.vert", "solid.frag", layoutCache, false);
     pipelineFactory.getColorBlending().attachmentCount = 1;
     lightDisplayPipeline = pipelineFactory.buildPipeline(offscreenRenderPass.get(), 3, lightDisplayShader.get());
 }
@@ -216,27 +217,30 @@ void VulkanApp::createPostProcess()
     auto extent = vulkanContext.swapChain->getExtent();
 
     postProcessManager = mkU<PostProcessManager>(vulkanContext.device.logicalDevice, extent, bufferFactory, renderPassBuilder);
-    passAndClearShader = mkU<Shader>(device, "passthrough_vert.spv", "passthrough_depth_frag.spv");
+    passAndClearShader = mkU<Shader>(device, "passthrough.vert", "passthrough_depth.frag");
     pipelineFactory.reset();
-    pipelineFactory.parseShader("passthrough_vert.spv", "passthrough_depth_frag.spv", layoutCache, false);
+    pipelineFactory.parseShader("passthrough.vert", "passthrough_depth.frag", layoutCache, false);
     pipelineFactory.getDepthStencil().depthWriteEnable = VK_FALSE;
     pipelineFactory.getColorBlending().attachmentCount = 1;
     passAndClearPipeline = pipelineFactory.buildPipeline(&postProcessManager->getPingPongRenderPass(), 0, passAndClearShader.get());
-    auto fxaa = mkS<FXAA>(vulkanContext.device.logicalDevice, "fxaa_frag.spv",
+    auto fxaa = mkS<FXAA>(vulkanContext.device.logicalDevice, "fxaa.frag",
                           pipelineFactory, layoutCache, &postProcessManager->getPingPongRenderPass());
-    auto vignette = mkS<Vignette>(vulkanContext.device.logicalDevice, "vignette_frag.spv",
+    auto vignette = mkS<Vignette>(vulkanContext.device.logicalDevice, "vignette.frag",
                                   pipelineFactory, layoutCache, &postProcessManager->getPingPongRenderPass());
-    auto sharpen = mkS<Sharpen>(vulkanContext.device.logicalDevice, "sharpen_frag.spv",
+    auto sharpen = mkS<Sharpen>(vulkanContext.device.logicalDevice, "sharpen.frag",
                                 pipelineFactory, layoutCache, &postProcessManager->getPingPongRenderPass());
+    auto filmGrain = mkS<FilmGrain>(vulkanContext.device.logicalDevice, "filmgrain.frag",
+                                    pipelineFactory, layoutCache, &postProcessManager->getPingPongRenderPass());
     postProcessManager->addPostProcess(fxaa);
     postProcessManager->addPostProcess(vignette);
     postProcessManager->addPostProcess(sharpen);
+    postProcessManager->addPostProcess(filmGrain);
     postProcessManager->activatePostProcess(0);
-    auto reinhard = mkU<PostProcess>("Reinhard", vulkanContext.device.logicalDevice, "reinhard_frag.spv",
+    auto reinhard = mkU<PostProcess>("Reinhard", vulkanContext.device.logicalDevice, "reinhard.frag",
                                      pipelineFactory, layoutCache, &postProcessManager->getPingPongRenderPass());
-    auto neutral = mkU<PostProcess>("Khronos PBR Neutral", vulkanContext.device.logicalDevice, "pbr_neutral_frag.spv",
+    auto neutral = mkU<PostProcess>("Khronos PBR Neutral", vulkanContext.device.logicalDevice, "pbr_neutral.frag",
                                     pipelineFactory, layoutCache, &postProcessManager->getPingPongRenderPass());
-    auto aces = mkU<PostProcess>("ACES", vulkanContext.device.logicalDevice, "aces_frag.spv",
+    auto aces = mkU<PostProcess>("ACES", vulkanContext.device.logicalDevice, "aces.frag",
                                  pipelineFactory, layoutCache, &postProcessManager->getPingPongRenderPass());
     postProcessManager->addToneMapper(reinhard);
     postProcessManager->addToneMapper(neutral);
@@ -301,29 +305,6 @@ void VulkanApp::create(Window &window)
                   );
 
     createPostProcess();
-
-//    int iterations = 4;
-//    for (int i = 0; i < iterations; i++)
-//    {
-//        auto t = glm::radians((360.f / iterations) * i);
-//        auto x = glm::cos(t) * 4.f;
-//        auto y = glm::sin(t) * 4.f;
-//        auto u = (glm::vec2(x, y) + glm::vec2(4)) * 0.5f / glm::vec2(4.f);
-//        glm::vec3 col = glm::vec3(0.5) + 0.5 * glm::cos(glm::vec3(u.x, u.y, u.x) + glm::vec3(0, 2, 4));
-//        sphereLights.push_back({{x, y, 0}, col, 50.f, 0.5f});
-//    }
-    sphereLights.push_back({{0, 1, 0}, glm::vec3(1.f, 1.f, 1.f), 50.f, 0.5f});
-
-    TubeLight l;
-    l.radius = 0.2f;
-    l.length = 0.5f;
-    l.color = glm::vec3(1.f, 0.0f, 0.0f);
-    l.intensity = 10.f;
-    l.position = glm::vec3(0.f, 1.f, 0.f);
-
-    l.rotation = glm::angleAxis(glm::radians(0.f), glm::vec3(0, 1, 0));
-
-    tubeLights.push_back(l);
 }
 
 void VulkanApp::setUpCallbacks() {
@@ -530,7 +511,7 @@ void VulkanApp::recordCommandBuffer(FrameBuffer *framebuffer)
     ppr.end();
     //// END CLEAR COLOR
 
-    postProcessManager->render(1, primaryCommandBuffer, layoutCache, allocator);
+    postProcessManager->render(1, (float)glfwGetTime(), primaryCommandBuffer, layoutCache, allocator);
 
     // final post process buffer already in shader read layout from render pass
 

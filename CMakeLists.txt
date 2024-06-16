@@ -74,7 +74,7 @@ foreach(SHADER_SOURCE ${SHADER_SOURCES})
     get_filename_component(EXTENSION ${SHADER_SOURCE} EXT)
 
     # Compile the shader to SPIR-V
-    set(SPIRV_OUTPUT "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${FILENAME}.spv")
+    set(SPIRV_OUTPUT "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${FILENAME}${EXTENSION}")
     add_custom_command(
             OUTPUT ${SPIRV_OUTPUT}
             COMMAND glslc ${SHADER_SOURCE} -o ${SPIRV_OUTPUT}

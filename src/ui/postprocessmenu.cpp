@@ -3,6 +3,7 @@
 #include "../vfx/effects/fxaa.h"
 #include "../vfx/effects/sharpen.h"
 #include "../vfx/effects/vignette.h"
+#include "../vfx/effects/filmgrain.h"
 
 void PostProcessMenu::renderMenu(void *payload)
 {
@@ -169,6 +170,11 @@ void PostProcessMenu::renderPostProcessMenu(PostProcess *postProcess)
         }
         ImGui::DragFloat("Saturation", &vignette->vignetteData.saturation, 0.01f, 10.f);
         ImGui::DragFloat("Saturation Mul", &vignette->vignetteData.saturationMul, 0.01f, 10.f);
+    }
+    auto *filmGrain = dynamic_cast<FilmGrain*>(postProcess);
+    if (filmGrain)
+    {
+        ImGui::SliderFloat("Intensity", &filmGrain->filmGrainData.intensity, 0.0f, 1.0f);
     }
 }
 

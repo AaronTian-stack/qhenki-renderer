@@ -16,6 +16,7 @@ public:
     PostProcess(const char *name, vk::Device device, const char* shaderPath, PipelineBuilder &pipelineFactory,
                 DescriptorLayoutCache &layoutCache, RenderPass *renderPass);
     virtual void bindData(vk::CommandBuffer commandBuffer);
+    virtual void updateTime(float time);
     void destroy() override;
 
     friend class PostProcessManager;

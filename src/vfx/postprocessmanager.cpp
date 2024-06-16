@@ -60,7 +60,7 @@ void PostProcessManager::tonemap(vk::CommandBuffer commandBuffer,
     pingPongRenderPass->end();
 }
 
-void PostProcessManager::render(int startIndex, vk::CommandBuffer commandBuffer, DescriptorLayoutCache &layoutCache, DescriptorAllocator &allocator)
+void PostProcessManager::render(int startIndex, float time, vk::CommandBuffer commandBuffer, DescriptorLayoutCache &layoutCache, DescriptorAllocator &allocator)
 {
     currentAttachmentIndex = startIndex;
     int ping = startIndex; // start by reading from 1 and outputting to 0
@@ -83,6 +83,7 @@ void PostProcessManager::render(int startIndex, vk::CommandBuffer commandBuffer,
                 .build(inputSet, layout);
         commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, postProcess->pipeline->getPipelineLayout(),
                                                 0, {inputSet}, nullptr);
+        postProcess->updateTime(time);
         postProcess->bindData(commandBuffer);
         commandBuffer.draw(3, 1, 0, 0);
         ping = (ping + 1) % 2;

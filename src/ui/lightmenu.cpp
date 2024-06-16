@@ -1,21 +1,16 @@
 #include "lightmenu.h"
-#include <glm/gtc/matrix_transform.hpp>
 
 void LightMenu::renderMenu(void *payload)
 {
     if (open)
     {
         auto *lightsList = static_cast<LightsList*>(payload);
-
         ImGui::Begin("Lights", &open);
-
         if (lightsList)
         {
             // do a tree list for all the lights
-            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.0f, 1.0f, 0.0f, 1.0f));
-            if (ImGui::TreeNode("Sphere Lights"))
+            if (ImGui::CollapsingHeader("Sphere Lights"))
             {
-                ImGui::PopStyleColor();
                 for (int i = 0; i < lightsList->sphereLights->size(); i++)
                 {
                     auto &light = (*lightsList->sphereLights)[i];
@@ -26,19 +21,24 @@ void LightMenu::renderMenu(void *payload)
                         ImGui::ColorEdit3("Color", reinterpret_cast<float*>(&light.color));
                         ImGui::DragFloat("Intensity", &light.intensity, 0.5f, 0.f, 100.f);
                         ImGui::DragFloat("Radius", &light.radius, 0.01f, 0.f, 100.f);
+                        if (ImGui::Button("Remove Light"))
+                        {
+                            lightsList->sphereLights->erase(lightsList->sphereLights->begin() + i);
+                        }
                         ImGui::TreePop();
                     }
                     ImGui::PopID();
                 }
-                ImGui::TreePop();
+                // button to add another light
+                if (ImGui::Button("Add Sphere Light"))
+                {
+                    lightsList->sphereLights->push_back({{}, {1.f, 1.f, 1.f}, 10.f, 1.f});
+                }
             }
-            else ImGui::PopStyleColor();
 
             // do a tree list for all the tube lights
-            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.0f, 1.0f, 0.0f, 1.0f));
-            if (ImGui::TreeNode("Tube Lights"))
+            if (ImGui::CollapsingHeader("Tube Lights"))
             {
-                ImGui::PopStyleColor();
                 for (int i = 0; i < lightsList->tubeLights->size(); i++)
                 {
                     auto &light = (*lightsList->tubeLights)[i];
@@ -48,28 +48,33 @@ void LightMenu::renderMenu(void *payload)
                         ImGui::DragFloat3("Position", reinterpret_cast<float*>(&light.position), 0.01f);
                         // rotation
                         // TODO: drop down for rotation order
-                        if (ImGui::DragFloat3("Rotation", reinterpret_cast<float*>(&light.eulerAngle), 0.1f))
+                        if (ImGui::DragFloat3("Rotation", reinterpret_cast<float*>(&light.eulerAngle), 0.1f, -180.f, 180.f))
                         {
                             // TODO: this sucks change this
                             auto er = glm::radians(light.eulerAngle);
                             // rotation matrix for each
-                            auto x = glm::rotate(glm::mat4(1.0f), er.x, glm::vec3(1.f, 0.f, 0.f));
-                            auto y = glm::rotate(glm::mat4(1.0f), er.y, glm::vec3(0.f, 1.f, 0.f));
-                            auto z = glm::rotate(glm::mat4(1.0f), er.z, glm::vec3(0.f, 0.f, 1.f));
-                            auto o = z * y * x;
-                            light.rotation = glm::quat_cast(o);
+                            auto x = glm::angleAxis(er.x, glm::vec3(1.f, 0.f, 0.f));
+                            auto y = glm::angleAxis(er.y, glm::vec3(0.f, 1.f, 0.f));
+                            auto z = glm::angleAxis(er.z, glm::vec3(0.f, 0.f, 1.f));
+                            light.rotation = z * x * y;
                         }
                         ImGui::DragFloat("Length", &light.length, 0.01f, 0.f, 100.f);
                         ImGui::ColorEdit3("Color", reinterpret_cast<float*>(&light.color));
                         ImGui::DragFloat("Intensity", &light.intensity, 0.5f, 0.f, 100.f);
                         ImGui::DragFloat("Radius", &light.radius, 0.01f, 0.f, 100.f);
+                        if (ImGui::Button("Remove Light"))
+                        {
+                            lightsList->tubeLights->erase(lightsList->tubeLights->begin() + i);
+                        }
                         ImGui::TreePop();
                     }
                     ImGui::PopID();
                 }
-                ImGui::TreePop();
+                if (ImGui::Button("Add Tube Light"))
+                {
+                    lightsList->tubeLights->push_back({{}, 0.2f, {1.f, 1.f, 1.f}, 10.f, 0.2f, {}, {}});
+                }
             }
-            else ImGui::PopStyleColor();
         }
         else
         {
