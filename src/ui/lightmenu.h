@@ -8,6 +8,7 @@ struct LightsList
 {
     std::vector<SphereLight> *sphereLights;
     std::vector<TubeLight> *tubeLights;
+    std::vector<RectangleLight> *rectangleLights;
 };
 
 class LightMenu : public Menu
@@ -15,3 +16,5 @@ class LightMenu : public Menu
 public:
     void renderMenu(void *payload) override;
 };
+
+void handleRotations(glm::quat &q, glm::vec3 &euler);

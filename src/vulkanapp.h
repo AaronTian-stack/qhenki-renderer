@@ -49,9 +49,9 @@ private:
     uPtr<RenderPass> offscreenRenderPass;
     PipelineBuilder pipelineFactory;
 
-    uPtr<Pipeline> gBufferPipeline, lightingPipeline, passPipeline, passAndClearPipeline, cubeMapPipeline, lightDisplayPipeline;
+    uPtr<Pipeline> gBufferPipeline, lightingPipeline, passPipeline, passAndClearPipeline, cubeMapPipeline, lightDisplayPipeline, solidPlanePipeline;
 
-    uPtr<Shader> gBufferShader, lightingShader, passShader, passAndClearShader, cubeMapShader, lightDisplayShader;
+    uPtr<Shader> gBufferShader, lightingShader, passShader, passAndClearShader, cubeMapShader, lightDisplayShader, solidPlaneShader;
 
     std::mutex modelMutex;
     uPtr<CommandPool> graphicsCommandPool; // one pool per thread
@@ -70,7 +70,8 @@ private:
     std::vector<uPtr<Buffer>> sphereLightBuffers;
     std::vector<TubeLight> tubeLights;
     std::vector<uPtr<Buffer>> tubeLightsBuffers;
-//    std::vector<uPtr<Buffer>> rectangleLightBuffers;
+    std::vector<RectangleLight> rectangleLights;
+    std::vector<uPtr<Buffer>> rectangleLightBuffers;
 
     uPtr<PostProcessManager> postProcessManager;
 

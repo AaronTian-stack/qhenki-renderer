@@ -46,7 +46,6 @@ struct SphereLight
 {
     vec3 position;
     vec3 color;
-    float intensity;
     float radius;
 };
 
@@ -58,6 +57,15 @@ struct TubeLight
     float radius;
 };
 
+struct RectangleLight
+{
+    vec3 position;
+    vec3 up; // not normalized, takes into account size
+    vec3 right; // not normalized, takes into account size
+    vec3 color;
+    float intensity;
+};
+
 layout(scalar, set = 3, binding = 0) readonly buffer SphereLightBuffer {
     SphereLight sphereLights[];
 } sphereLightBuffer;
@@ -65,6 +73,10 @@ layout(scalar, set = 3, binding = 0) readonly buffer SphereLightBuffer {
 layout(scalar, set = 3, binding = 1) readonly buffer TubeLightBuffer {
     TubeLight tubeLights[];
 } tubeLightBuffer;
+
+layout(scalar, set = 3, binding = 2) readonly buffer RectangleLightBuffer {
+    RectangleLight rectangleLights[];
+} rectangleLightBuffer;
 
 const float PI = 3.14159;
 
@@ -146,18 +158,96 @@ vec3 closestPointSphere(SphereLight light, vec3 R, vec3 fragPos)
     return closestPoint + light.position;
 }
 
+vec3 closestPointLineSegment(vec3 a, vec3 b, vec3 p)
+{
+    vec3 ab = b - a;
+    float t = dot(p - a, ab) / dot(ab, ab);
+    return a + clamp(t, 0.0, 1.0) * ab;
+}
+
 vec3 closestPointTube(TubeLight light, vec3 R, vec3 fragPos)
 {
-    vec3 lineToPoint = fragPos - light.position1;
-    vec3 lineVector = light.position2 - light.position1;
-    float t = dot(lineToPoint, lineVector) / dot(lineVector, lineVector);
-
-    vec3 closestPointLine = light.position1 + lineVector * clamp(t, 0.0, 1.0);
+    vec3 closestPointLine = closestPointLineSegment(light.position1, light.position2, fragPos);
 
     SphereLight s;
     s.radius = light.radius;
     s.position = closestPointLine;
     return closestPointSphere(s, R, fragPos);
+}
+
+vec3 tracePlane(vec3 planeOrigin, vec3 planeNormal, vec3 fragPos, vec3 R, out bool hit)
+{
+    float denom = dot(planeNormal, R);
+    float t = dot(planeNormal, planeOrigin - fragPos) / denom;
+    vec3 planeIntersectionPoint = fragPos + R * t;
+
+    hit = t > 0.0 && denom < 0.0;
+    return planeIntersectionPoint;
+}
+
+bool traceTriangle(vec3 a, vec3 b, vec3 c, vec3 p)
+{
+    vec3 n1 = normalize(cross(b - a, p - b));
+    vec3 n2 = normalize(cross(c - b, p - c));
+    vec3 n3 = normalize(cross(a - c, p - a));
+    float d0 = dot(n1, n2);
+    float d1 = dot(n1, n3);
+    return d0 > 0.99 && d1 > 0.99;
+}
+
+vec3 closestPointRectangle(RectangleLight light, vec3 R, vec3 fragPos, out float t, out bool hit)
+{
+    // trace the two triangles that make up the rectangle
+    vec3 nRight = normalize(light.right);
+    vec3 nUp = normalize(light.up);
+    vec3 normal = normalize(cross(nRight, nUp));
+
+    vec3 topRightCorner = light.position + light.up + light.right;
+    vec3 topLeftCorner = light.position + light.up - light.right;
+    vec3 bottomRightCorner = light.position - light.up + light.right;
+    vec3 bottomLeftCorner = light.position - light.up - light.right;
+
+    vec3 p = tracePlane(light.position, normal, fragPos, R, hit);
+//    bool t0 = traceTriangle(topRightCorner, topLeftCorner, bottomRightCorner, p);
+//    bool t1 = traceTriangle(bottomLeftCorner, bottomRightCorner, topLeftCorner, p);
+//
+//    if (t0 || t1)
+//    {
+//        hit = true;
+//        return p;
+//    }
+//
+//    return vec3(0.);
+//
+//    // make array of all the points
+//    hit = false;
+//    vec3 points[4];
+//    points[0] = closestPointLineSegment(topRightCorner, topLeftCorner, p);
+//    points[1] = closestPointLineSegment(bottomRightCorner, topRightCorner, p);
+//    points[2] = closestPointLineSegment(bottomLeftCorner, bottomRightCorner, p);
+//    points[3] = closestPointLineSegment(topLeftCorner, bottomLeftCorner, p);
+////
+//    vec3 np = points[0];
+//    float minDist = distance(points[0], p);
+//    // find the closest point
+//    for (int i = 1; i < 4; i++)
+//    {
+//        float dist = distance(points[i], p);
+//        if (dist < minDist)
+//        {
+//            np = points[i];
+//            minDist = dist;
+//        }
+//    }
+//    return np;
+    vec3 intersectionVector = p - light.position;
+    vec2 intersectPlanePoint = vec2(dot(intersectionVector, nRight), dot(intersectionVector, nUp));
+    float xSize = abs(length(light.right));
+    float ySize = abs(length(light.up));
+    vec2 nearest2DPoint = vec2(clamp(intersectPlanePoint.x, -xSize, xSize), clamp(intersectPlanePoint.y, -ySize, ySize));
+    t = length(nearest2DPoint - intersectPlanePoint);
+//    hit = hit && t < 0.0001;
+    return light.position + nRight * nearest2DPoint.x + nUp * nearest2DPoint.y;
 }
 
 vec3 calculateIBL(vec3 N, vec3 V, vec3 R, vec3 F0, Material material)
@@ -225,7 +315,7 @@ void main()
     for(int i = 0; i < lightingInfo.sphereLightCount; ++i)
     {
         SphereLight sphereLight = sphereLightBuffer.sphereLights[i];
-        Light light = Light(closestPointSphere(sphereLight, R, position.xyz), sphereLight.color * sphereLight.intensity);
+        Light light = Light(closestPointSphere(sphereLight, R, position.xyz), sphereLight.color);
         calculateForLight(Lo, light, N, V, material, position.xyz);
     }
     for (int i = 0; i < lightingInfo.tubeLightCount; ++i)
@@ -234,6 +324,26 @@ void main()
         float t;
         vec3 c = closestPointTube(tubeLight, R, position.xyz);
         Light light = Light(c, tubeLight.color);
+        calculateForLight(Lo, light, N, V, material, position.xyz);
+    }
+    for (int i = 0; i < lightingInfo.rectangleLightCount; ++i)
+    {
+        RectangleLight rectangleLight = rectangleLightBuffer.rectangleLights[i];
+        bool hit; float t;
+        vec3 c = closestPointRectangle(rectangleLight, R, position.xyz, t, hit);
+        if (!hit) continue;
+        Light light = Light(c, rectangleLight.color);
+        // apply linear falloff to light intensity
+//        float f = abs(dot(planeNormal, position.xyz - c));
+//        float falloff = smoothstep(1.0, 0.0, t) * f;
+
+        vec3 pn = normalize(cross(rectangleLight.right, rectangleLight.up));
+        float f2 = abs(dot(pn, normalize(position.xyz - c)));
+
+        float dist = distance(position.xyz, c);
+        float falloff = 1.0 - clamp(0.0, 1.0, dist / 10.0);
+
+        light.color *= max(0.0, falloff * f2);
         calculateForLight(Lo, light, N, V, material, position.xyz);
     }
 //    for(int i = 0; i < 1; ++i)

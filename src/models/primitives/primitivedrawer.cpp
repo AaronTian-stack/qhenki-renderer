@@ -33,7 +33,7 @@ void PrimitiveDrawer::setPushConstants(vk::CommandBuffer commandBuffer, Pipeline
 
 void PrimitiveDrawer::drawShape(Primitive *p, vk::CommandBuffer commandBuffer, Pipeline &primitivePipeline, glm::vec4 color, glm::mat4 transform)
 {
-    commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, primitivePipeline.getGraphicsPipeline());
+//    commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, primitivePipeline.getGraphicsPipeline());
     setPushConstants(commandBuffer, primitivePipeline, &color, &transform);
     p->draw(commandBuffer);
 }

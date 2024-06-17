@@ -42,6 +42,9 @@ VulkanApp::~VulkanApp()
     passPipeline->destroy();
     passShader->destroy();
 
+    solidPlanePipeline->destroy();
+    solidPlaneShader->destroy();
+
     pipelineFactory.destroy();
 
     offscreenRenderPass->destroy();
@@ -67,6 +70,9 @@ VulkanApp::~VulkanApp()
 
     for (auto &tubeLightBuffer : tubeLightsBuffers)
         tubeLightBuffer->destroy();
+
+    for (auto &rectangleLightBuffer : rectangleLightBuffers)
+        rectangleLightBuffer->destroy();
 
     for (auto &allocator : allocators)
         allocator.destroy();
@@ -209,6 +215,12 @@ void VulkanApp::createPipelines()
     pipelineFactory.parseShader("solid.vert", "solid.frag", layoutCache, false);
     pipelineFactory.getColorBlending().attachmentCount = 1;
     lightDisplayPipeline = pipelineFactory.buildPipeline(offscreenRenderPass.get(), 3, lightDisplayShader.get());
+
+    solidPlaneShader = mkU<Shader>(device, "plane.vert", "solid.frag");
+    pipelineFactory.reset();
+    pipelineFactory.parseShader("plane.vert", "solid.frag", layoutCache, false);
+    pipelineFactory.getColorBlending().attachmentCount = 1;
+    solidPlanePipeline = pipelineFactory.buildPipeline(offscreenRenderPass.get(), 3, solidPlaneShader.get());
 }
 
 void VulkanApp::createPostProcess()
@@ -288,13 +300,17 @@ void VulkanApp::create(Window &window)
                                                               vk::BufferUsageFlagBits::eUniformBuffer,
                                                               flags));
 
-        sphereLightBuffers.emplace_back(bufferFactory.createBuffer(sizeof(SphereLight) * MAX_LIGHTS,
+        sphereLightBuffers.emplace_back(bufferFactory.createBuffer(sizeof(SphereLightShader) * MAX_LIGHTS,
                                                               vk::BufferUsageFlagBits::eStorageBuffer,
                                                               flags));
 
         tubeLightsBuffers.emplace_back(bufferFactory.createBuffer(sizeof(TubeLightShader) * MAX_LIGHTS,
                                                                    vk::BufferUsageFlagBits::eStorageBuffer,
                                                                    flags));
+
+        rectangleLightBuffers.emplace_back(bufferFactory.createBuffer(sizeof(RectangleLightShader) * MAX_LIGHTS,
+                                                                      vk::BufferUsageFlagBits::eStorageBuffer,
+                                                                      flags));
 
         allocators.emplace_back(vulkanContext.device.logicalDevice);
     }
@@ -303,6 +319,10 @@ void VulkanApp::create(Window &window)
                   "../resources/envmaps/artist_workshop/artist_workshop.dds"
 //                  "../resources/envmaps/metro_noord/metro_noord.dds"
                   );
+
+//    sphereLights.push_back({{0.f, 1.f, 0.f}, glm::vec3(1.f, 0.f, 0.f), 10.f, 0.5f});
+//    tubeLights.push_back({{-5.f, 1.f, 0.f}, 1.f, glm::vec3(0.f, 1.f, 0.f), 10.f, 0.2f, {}, {}});
+//    rectangleLights.push_back({{5.f, 1.f, 0.f}, glm::vec3(0.f, 0.f, 1.f), 10.f, {}, {}, glm::vec2(1.f)});
 
     createPostProcess();
 }
@@ -375,7 +395,7 @@ void VulkanApp::recordOffscreenBuffer(vk::CommandBuffer commandBuffer, Descripto
 
     commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, lightingPipeline->getGraphicsPipeline());
     lightingParameters.pointLightCount = 0;
-    lightingParameters.rectangleLightCount = 0;
+    lightingParameters.rectangleLightCount = static_cast<int>(rectangleLights.size());
     lightingParameters.sphereLightCount = static_cast<int>(sphereLights.size());
     lightingParameters.tubeLightCount = static_cast<int>(tubeLights.size());
 
@@ -418,10 +438,12 @@ void VulkanApp::recordOffscreenBuffer(vk::CommandBuffer commandBuffer, Descripto
 
     auto sphereLightBufferInfo = sphereLightBuffers[currentFrame]->getDescriptorInfo();
     auto tubeLightBufferInfo = tubeLightsBuffers[currentFrame]->getDescriptorInfo();
+    auto rectangleLightBufferInfo = rectangleLightBuffers[currentFrame]->getDescriptorInfo();
     vk::DescriptorSet lightSet;
     DescriptorBuilder::beginSet(&layoutCache, &allocator)
             .bindBuffer(0, &sphereLightBufferInfo, vk::DescriptorType::eStorageBuffer, vk::ShaderStageFlagBits::eFragment)
             .bindBuffer(1, &tubeLightBufferInfo, vk::DescriptorType::eStorageBuffer, vk::ShaderStageFlagBits::eFragment)
+            .bindBuffer(2, &rectangleLightBufferInfo, vk::DescriptorType::eStorageBuffer, vk::ShaderStageFlagBits::eFragment)
             .build(lightSet, layout);
 
     commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, lightingPipeline->getPipelineLayout(),
@@ -451,6 +473,8 @@ void VulkanApp::recordOffscreenBuffer(vk::CommandBuffer commandBuffer, Descripto
     commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, lightDisplayPipeline->getGraphicsPipeline());
     commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, lightDisplayPipeline->getPipelineLayout(),
                                      0, {cameraSet}, nullptr);
+
+    commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, lightDisplayPipeline->getGraphicsPipeline());
     for (auto &light : sphereLights)
     {
         auto translate = glm::translate(light.position);
@@ -463,6 +487,18 @@ void VulkanApp::recordOffscreenBuffer(vk::CommandBuffer commandBuffer, Descripto
         auto rotate = glm::mat4_cast(light.rotation);
         auto scale = glm::scale(glm::vec3(light.length + light.radius * 2, light.radius, light.radius));
         PrimitiveDrawer::drawCylinder(commandBuffer, *lightDisplayPipeline, glm::vec4(light.color * light.intensity, 1.f), translate * rotate * scale);
+    }
+    commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, solidPlanePipeline->getGraphicsPipeline());
+    for (auto &light : rectangleLights)
+    {
+        auto translate = glm::translate(light.position);
+        auto rotate = glm::mat4_cast(light.rotation);
+        auto scale = glm::scale(glm::vec3(light.size, 1.f));
+        auto model = translate * rotate * scale;
+        auto color = glm::vec4(light.color * light.intensity, 1.f);
+        solidPlanePipeline->setPushConstant(commandBuffer, &model, sizeof(glm::mat4), 0, vk::ShaderStageFlagBits::eVertex);
+        solidPlanePipeline->setPushConstant(commandBuffer, &color, sizeof(glm::vec4), sizeof(glm::mat4), vk::ShaderStageFlagBits::eFragment);
+        commandBuffer.draw(6, 1, 0, 0);
     }
 
     offscreenRenderPass->end();
@@ -628,27 +664,46 @@ void VulkanApp::handleInput()
 
 void VulkanApp::updateLightBuffers()
 {
-    auto sphereLightBuffer = static_cast<SphereLight*>(sphereLightBuffers[currentFrame]->getPointer());
+//    tubeLights[0].rotation = glm::angleAxis(glm::radians((float)glfwGetTime() * 40), glm::vec3(0.f, 1.f, 0.f));
+//    rectangleLights[0].rotation = glm::angleAxis(glm::radians((float)glfwGetTime() * 40), glm::vec3(0.f, 1.f, 0.f));
+
+    auto sphereLightBuffer = static_cast<SphereLightShader*>(sphereLightBuffers[currentFrame]->getPointer());
     for (int i = 0; i < sphereLights.size(); i++)
     {
-        sphereLightBuffer[i] = sphereLights[i];
+        auto &sl = sphereLights[i];
+        sphereLightBuffer[i] = {sl.position, sl.color * sl.intensity, sl.radius};
     }
     auto tubeLightBuffer = static_cast<TubeLightShader*>(tubeLightsBuffers[currentFrame]->getPointer());
     for (int i = 0; i < tubeLights.size(); i++)
     {
+        auto &tl = tubeLights[i];
         TubeLightShader light;
-        light.color = tubeLights[i].color * tubeLights[i].intensity;
-        light.radius = tubeLights[i].radius;
+        light.color = tl.color * tl.intensity;
+        light.radius = tl.radius;
 
-        auto rm = tubeLights[i].rotation;
-        auto tm = glm::translate(tubeLights[i].position);
+        auto &rm = tl.rotation;
+        auto tm = glm::translate(tl.position);
 
-        auto px = glm::vec3(glm::abs(tubeLights[i].length), 0.f, 0.f);
+        auto px = glm::vec3(glm::abs(tl.length), 0.f, 0.f);
 
         light.position1 = glm::vec3(tm * (rm * glm::vec4(px, 1.f)));
         light.position2 = glm::vec3(tm * (rm * glm::vec4(-px, 1.f)));
 
         tubeLightBuffer[i] = light;
+    }
+    auto rectangleLightBuffer = static_cast<RectangleLightShader*>(rectangleLightBuffers[currentFrame]->getPointer());
+    for (int i = 0; i < rectangleLights.size(); i++)
+    {
+        auto &rl = rectangleLights[i];
+        RectangleLightShader light;
+        light.position = rl.position;
+        light.color = rl.color * rl.intensity;
+
+        auto &rm = rl.rotation;
+        light.right = glm::vec3(rm * glm::vec4(glm::abs(rl.size.x), 0.f, 0.f, 0.f));
+        light.up = glm::vec3(rm * glm::vec4(0.f, glm::abs(rl.size.y), 0.f, 0.f));
+
+        rectangleLightBuffer[i] = light;
     }
 }
 
@@ -691,5 +746,6 @@ MenuPayloads VulkanApp::getPartialMenuPayload()
     m.visualMenuPayload.drawBackground = &drawBackground;
     m.lightsList.sphereLights = &sphereLights;
     m.lightsList.tubeLights = &tubeLights;
+    m.lightsList.rectangleLights = &rectangleLights;
     return m;
 }
