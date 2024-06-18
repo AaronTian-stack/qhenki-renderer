@@ -58,4 +58,6 @@ elseif (WIN32)
     target_link_libraries(${PROJECT_NAME} ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/glfw3.dll)
 endif ()
 
-add_subdirectory(resources/shaders)
+# include the code to compile shaders
+include(resources/shaders/compile_shaders.cmake)
+compile_shaders(${CMAKE_CURRENT_SOURCE_DIR}/resources/shaders ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
