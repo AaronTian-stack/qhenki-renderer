@@ -1,8 +1,7 @@
 #pragma once
 
-#include "vulkan/vulkan.h"
 #include "../destroyable.h"
-#include "vulkan/vulkan.hpp"
+#include <vulkan/vulkan.h>
 
 class Pipeline : public Destroyable
 {

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "vulkan/vulkan.h"
+#include <vulkan/vulkan.h>
 #include <vector>
 #include "pipeline.h"
 #include "shader.h"
@@ -9,7 +9,7 @@
 #include "../descriptors/descriptorlayoutcache.h"
 #include <iostream>
 #include <glm/glm.hpp>
-#include "spirv_cross/spirv_glsl.hpp"
+#include <spirv_cross/spirv_glsl.hpp>
 
 struct SetLayout
 {

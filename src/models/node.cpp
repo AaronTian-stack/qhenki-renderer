@@ -1,5 +1,5 @@
 #include "node.h"
-#include "glm/gtx/transform.hpp"
+#include <glm/gtx/transform.hpp>
 
 Node::Node() : parent(nullptr), translate(0.f), scale(1.f)
 {}

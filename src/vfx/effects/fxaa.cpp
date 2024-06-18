@@ -1,5 +1,4 @@
 #include "fxaa.h"
-#include "imgui/imgui.h"
 
 void FXAA::bindData(vk::CommandBuffer commandBuffer)
 {

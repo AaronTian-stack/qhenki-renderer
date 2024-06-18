@@ -18,22 +18,18 @@ file(GLOB_RECURSE IMGUI CONFIGURE_DEPENDS
         ${CMAKE_CURRENT_SOURCE_DIR}/dependencies/include/ImGuiFileDialog-0.6.7/*.h
 )
 
+
 add_subdirectory(dependencies/include/mikktspace)
 add_subdirectory(dependencies/include/spirv_cross)
 
 set(dir ${CMAKE_CURRENT_SOURCE_DIR})
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${dir}/build)
 
-# multi core compilation
-if (WIN32)
-    add_compile_options(/MP)
-endif ()
-
 #Include library files
 include_directories(dependencies/include)
 
 add_executable(${PROJECT_NAME} ${SOURCE_FILES} ${IMGUI} main.cpp)
-
+add_subdirectory(dependencies/include/glm)
 find_package(Vulkan REQUIRED)
 
 target_include_directories(${PROJECT_NAME} PUBLIC ${Vulkan_INCLUDE_DIRS})

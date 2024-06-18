@@ -1,5 +1,4 @@
 #include "sharpen.h"
-#include "imgui/imgui.h"
 
 Sharpen::Sharpen(vk::Device device, const char *shaderPath, PipelineBuilder &pipelineFactory,
                  DescriptorLayoutCache &layoutCache, RenderPass *renderPass)

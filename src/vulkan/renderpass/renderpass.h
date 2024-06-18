@@ -1,7 +1,7 @@
 #pragma once
 
 #include <optional>
-#include "vulkan/vulkan.hpp"
+#include <vulkan/vulkan.hpp>
 #include "../destroyable.h"
 
 class RenderPass : public Destroyable
