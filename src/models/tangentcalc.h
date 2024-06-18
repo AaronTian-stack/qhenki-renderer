@@ -1,6 +1,6 @@
 #pragma once
 
-#include "mikkTspace/mikktspace.h"
+#include "mikktspace/mikktspace.h"
 #include "gltf/tiny_gltf.h"
 #include <glm/glm.hpp>
 

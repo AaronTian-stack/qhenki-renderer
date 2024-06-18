@@ -70,5 +70,4 @@ struct RectangleLightShader
     glm::vec3 up; // not normalized, takes into account size
     glm::vec3 right; // not normalized, takes into account size
     glm::vec3 color;
-    float intensity;
 };

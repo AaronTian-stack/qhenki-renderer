@@ -94,8 +94,8 @@ SOFTWARE.
 #define PATH_SEP '/'
 #endif  // _IGFD_UNIX_
 
-#include "../imgui/imgui.h"
-#include "../imgui/imgui_internal.h"
+#include "imgui/imgui.h"
+#include "imgui/imgui_internal.h"
 
 // legacy compatibility 1.89
 #ifndef IM_TRUNC
@@ -4101,7 +4101,7 @@ void IGFD::FileDialog::m_DrawFileListView(ImVec2 vSize) {
 #endif  // USE_CUSTOM_SORTING_ICON
         ;
     auto listViewID = ImGui::GetID("##FileDialog_fileTable");
-    if (ImGui::BeginTableEx("##FileDialog_fileTable", listViewID, 4, flags, vSize, 0.0f)) { 
+    if (ImGui::BeginTableEx("##FileDialog_fileTable", listViewID, 4, flags, vSize, 0.0f)) {
         ImGui::TableSetupScrollFreeze(0, 1);  // Make header always visible
         ImGui::TableSetupColumn(fdi.headerFileName.c_str(), ImGuiTableColumnFlags_WidthStretch | (defaultSortOrderFilename ? ImGuiTableColumnFlags_PreferSortAscending : ImGuiTableColumnFlags_PreferSortDescending), -1, 0);
         ImGui::TableSetupColumn(fdi.headerFileType.c_str(),
@@ -4475,8 +4475,8 @@ void IGFD::FileDialog::m_DrawSidePane(float vHeight) {
     ImGui::BeginChild("##FileTypes", ImVec2(0, vHeight));
 
     m_FileDialogInternal.getDialogConfig().sidePane(
-        m_FileDialogInternal.filterManager.GetSelectedFilter().getFirstFilter().c_str(), 
-        m_FileDialogInternal.getDialogConfigRef().userDatas, 
+        m_FileDialogInternal.filterManager.GetSelectedFilter().getFirstFilter().c_str(),
+        m_FileDialogInternal.getDialogConfigRef().userDatas,
         &m_FileDialogInternal.canWeContinue);
     ImGui::EndChild();
 }
@@ -4661,7 +4661,7 @@ IGFD_C_API IGFD_FileDialog_Config IGFD_FileDialog_Config_Get() {
     res.countSelectionMax      = 1;
     res.userDatas              = nullptr;
     res.sidePane               = nullptr;
-    res.sidePaneWidth = 250.0f;     
+    res.sidePaneWidth = 250.0f;
     res.flags         = ImGuiFileDialogFlags_Default;
     return res;
 }
@@ -5043,7 +5043,7 @@ IGFD_C_API bool IGFD_RemovePlace(ImGuiFileDialog* vContextPtr, const char* vGrou
         }
     }
     return false;
-}     
+}
 
 #endif
 

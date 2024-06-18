@@ -63,7 +63,6 @@ struct RectangleLight
     vec3 up; // not normalized, takes into account size
     vec3 right; // not normalized, takes into account size
     vec3 color;
-    float intensity;
 };
 
 layout(scalar, set = 3, binding = 0) readonly buffer SphereLightBuffer {
@@ -341,7 +340,7 @@ void main()
         float f2 = abs(dot(pn, normalize(position.xyz - c)));
 
         float dist = distance(position.xyz, c);
-        float falloff = 1.0 - clamp(0.0, 1.0, dist / 10.0);
+        float falloff = 1.0 - clamp(0.0, 1.0, dist / length(rectangleLight.color));
 
         light.color *= max(0.0, falloff * f2);
         calculateForLight(Lo, light, N, V, material, position.xyz);
