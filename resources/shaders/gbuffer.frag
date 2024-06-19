@@ -18,6 +18,10 @@ layout(location = 3) out vec4 outEmissive;
 // since partial binding is on, indexing into undefined sampler will not show errors!
 layout(set = 1, binding = 0) uniform sampler2D texSampler[80];
 
+layout(scalar, set = 1, binding = 1) uniform DitherMatrix {
+    float dither[64];
+} ditherMatrix;
+
 // TODO: convert to singular massive ssbo for entire model
 layout(scalar, push_constant) uniform Material {
     layout(offset = 64)
@@ -37,14 +41,6 @@ layout(scalar, push_constant) uniform Material {
     int emissiveTexture;
     vec3 emissiveFactor;
 } material;
-
-const float[16] dither =
-{
-1.0 / 17.0,  9.0 / 17.0,  3.0 / 17.0, 11.0 / 17.0,
-13.0 / 17.0,  5.0 / 17.0, 15.0 / 17.0,  7.0 / 17.0,
-4.0 / 17.0, 12.0 / 17.0,  2.0 / 17.0, 10.0 / 17.0,
-16.0 / 17.0,  8.0 / 17.0, 14.0 / 17.0,  6.0 / 17.0
-};
 
 void setValues(out vec4 albedo, out vec3 normal, out vec4 metalRoughness, out float AO, out vec3 emissive)
 {
@@ -98,7 +94,7 @@ void main()
     vec3 emissive;
     setValues(albedo, normal, metalRoughness, AO, emissive);
 
-    float thres = dither[int(mod(gl_FragCoord.y, 4.0)) * 4 + int(mod(gl_FragCoord.x, 4.0))];
+    float thres = ditherMatrix.dither[int(mod(gl_FragCoord.y, 8.0)) * 8 + int(mod(gl_FragCoord.x, 8.0))];
     if (albedo.a < thres) discard;
 
     outAlbedo = vec4(albedo.rgb, 1.0);

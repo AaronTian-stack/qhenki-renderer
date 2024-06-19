@@ -65,6 +65,7 @@ public:
     void processPushConstants(spirv_cross::CompilerGLSL &glsl, spirv_cross::ShaderResources &resources,
                               vk::ShaderStageFlags stages);
 
+    void processBuffers(spirv_cross::CompilerGLSL &glsl, spirv_cross::ShaderResources &resources, vk::ShaderStageFlagBits stages);
     void updateDescriptorSetLayouts(DescriptorLayoutCache &layoutCache);
     void parseVertexShader(const char *filePath, DescriptorLayoutCache &layoutCache, bool interleaved);
 

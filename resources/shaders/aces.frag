@@ -7,6 +7,17 @@ layout(location = 0) in vec2 fragUV;
 
 layout(location = 0) out vec4 outColor; // location is index of framebuffer / attachment
 
+layout(scalar, set = 1, binding = 0) uniform DitherMatrix {
+    float dither[64];
+} ditherMatrix;
+
+void dither(inout vec3 color)
+{
+    // Apply dithering to get rid of banding
+    float dither = ditherMatrix.dither[int(mod(gl_FragCoord.y, 8.0)) * 8 + int(mod(gl_FragCoord.x, 8.0))];
+    color.rgb = color.rgb + dither / 255.0;
+}
+
 vec3 ACESFilm(vec3 x)
 {
     float a = 2.51f;
@@ -20,5 +31,7 @@ vec3 ACESFilm(vec3 x)
 void main()
 {
     vec4 color = texture(texSampler, fragUV);
-    outColor = vec4(ACESFilm(color.rgb), color.a);
+    vec3 aces = ACESFilm(color.rgb);
+    dither(aces);
+    outColor = vec4(aces, color.a);
 }

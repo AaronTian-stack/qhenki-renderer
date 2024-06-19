@@ -167,6 +167,33 @@ void PipelineBuilder::updateDescriptorSetLayouts(DescriptorLayoutCache &layoutCa
     pipelineLayoutInfo.pSetLayouts = descriptorSetLayouts.data();
 }
 
+void PipelineBuilder::processBuffers(spirv_cross::CompilerGLSL &glsl, spirv_cross::ShaderResources &resources, vk::ShaderStageFlagBits stages)
+{
+    processPushConstants(glsl, resources, stages);
+    for (const auto &uniformBuffer : resources.uniform_buffers)
+    {
+        std::cout << "Uniform Buffer: " << uniformBuffer.name << std::endl;
+        BindInfo bindInfo = getBindInfo(glsl, uniformBuffer);
+        bindingsMap[bindInfo.set].bindings.emplace_back(bindInfo.binding,
+                                                        vk::DescriptorType::eUniformBuffer,
+                                                        bindInfo.arrayLength, // number of values in array
+                                                        stages,
+                                                        nullptr // for images
+        );
+    }
+    for (const auto &storageBuffer : resources.storage_buffers)
+    {
+        std::cout << "Storage Buffer" << storageBuffer.name << std::endl;
+        BindInfo bindInfo = getBindInfo(glsl, storageBuffer);
+        bindingsMap[bindInfo.set].bindings.emplace_back(bindInfo.binding,
+                                                        vk::DescriptorType::eStorageBuffer,
+                                                        bindInfo.arrayLength, // number of values in array
+                                                        stages,
+                                                        nullptr
+        );
+    }
+}
+
 void PipelineBuilder::parseVertexShader(const char *filePath, DescriptorLayoutCache &layoutCache, bool interleaved)
 {
     auto shaderCode = Shader::readFile(filePath);
@@ -202,20 +229,21 @@ void PipelineBuilder::parseVertexShader(const char *filePath, DescriptorLayoutCa
         }
     }
 
-    processPushConstants(glsl, resources, vk::ShaderStageFlagBits::eVertex);
+//    processPushConstants(glsl, resources, vk::ShaderStageFlagBits::eVertex);
 
     //// CREATE DESCRIPTOR SET LAYOUT
-    for (const auto &uniformBuffer : resources.uniform_buffers)
-    {
-        std::cout << "Uniform Buffer: " << uniformBuffer.name << std::endl;
-        BindInfo bindInfo = getBindInfo(glsl, uniformBuffer);
-        bindingsMap[bindInfo.set].bindings.emplace_back(bindInfo.binding,
-                                            vk::DescriptorType::eUniformBuffer,
-                                            bindInfo.arrayLength, // number of values in array
-                                            vk::ShaderStageFlagBits::eVertex,
-                                            nullptr // for images
-                                            );
-    }
+//    for (const auto &uniformBuffer : resources.uniform_buffers)
+//    {
+//        std::cout << "Uniform Buffer: " << uniformBuffer.name << std::endl;
+//        BindInfo bindInfo = getBindInfo(glsl, uniformBuffer);
+//        bindingsMap[bindInfo.set].bindings.emplace_back(bindInfo.binding,
+//                                            vk::DescriptorType::eUniformBuffer,
+//                                            bindInfo.arrayLength, // number of values in array
+//                                            vk::ShaderStageFlagBits::eVertex,
+//                                            nullptr // for images
+//                                            );
+//    }
+processBuffers(glsl, resources, vk::ShaderStageFlagBits::eVertex);
     updateDescriptorSetLayouts(layoutCache);
 }
 
@@ -227,7 +255,7 @@ void PipelineBuilder::parseFragmentShader(const char *filePath, DescriptorLayout
     spirv_cross::CompilerGLSL glsl(spirvBytecode, shaderCode.size() / sizeof(uint32_t));
     spirv_cross::ShaderResources resources = glsl.get_shader_resources();
 
-    processPushConstants(glsl, resources, vk::ShaderStageFlagBits::eFragment);
+//    processPushConstants(glsl, resources, vk::ShaderStageFlagBits::eFragment);
 
     for (auto &sampledImage : resources.sampled_images)
     {
@@ -254,23 +282,23 @@ void PipelineBuilder::parseFragmentShader(const char *filePath, DescriptorLayout
                                             );
     }
 
-    for (const auto &uniformBuffer : resources.uniform_buffers)
-    {
-        throw std::runtime_error("Uniform Buffers in Fragment Shader are not yet supported");
-    }
-
-    for (const auto &storageBuffer : resources.storage_buffers)
-    {
-        std::cout << "Storage Buffer" << storageBuffer.name << std::endl;
-        BindInfo bindInfo = getBindInfo(glsl, storageBuffer);
-        bindingsMap[bindInfo.set].bindings.emplace_back(bindInfo.binding,
-                                            vk::DescriptorType::eStorageBuffer,
-                                            bindInfo.arrayLength, // number of values in array
-                                            vk::ShaderStageFlagBits::eFragment,
-                                            nullptr
-                                            );
-    }
-
+//    for (const auto &uniformBuffer : resources.uniform_buffers)
+//    {
+//        throw std::runtime_error("Uniform Buffers in Fragment Shader are not yet supported");
+//    }
+//
+//    for (const auto &storageBuffer : resources.storage_buffers)
+//    {
+//        std::cout << "Storage Buffer" << storageBuffer.name << std::endl;
+//        BindInfo bindInfo = getBindInfo(glsl, storageBuffer);
+//        bindingsMap[bindInfo.set].bindings.emplace_back(bindInfo.binding,
+//                                            vk::DescriptorType::eStorageBuffer,
+//                                            bindInfo.arrayLength, // number of values in array
+//                                            vk::ShaderStageFlagBits::eFragment,
+//                                            nullptr
+//                                            );
+//    }
+    processBuffers(glsl, resources, vk::ShaderStageFlagBits::eFragment);
     updateDescriptorSetLayouts(layoutCache);
 }
 

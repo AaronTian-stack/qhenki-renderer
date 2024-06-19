@@ -62,6 +62,7 @@ private:
     const int MAX_FRAMES_IN_FLIGHT = 2;
     std::vector<Frame> frames;
 
+    uPtr<Buffer> bayerMatrix;
     std::vector<uPtr<Buffer>> cameraBuffers;
 
     const int MAX_LIGHTS = 10;

@@ -34,7 +34,7 @@ PostProcessManager::PostProcessManager(vk::Device device, vk::Extent2D extent, B
 
 void PostProcessManager::tonemap(vk::CommandBuffer commandBuffer,
                                  DescriptorLayoutCache &layoutCache, DescriptorAllocator &allocator,
-                                 vk::DescriptorImageInfo *imageInfo)
+                                 vk::DescriptorImageInfo &imageInfo, vk::DescriptorSet &ditherSet)
 {
     // tonemap into attachment 0
     pingPongRenderPass->setFramebuffer(afb[0].framebuffer);
@@ -48,12 +48,12 @@ void PostProcessManager::tonemap(vk::CommandBuffer commandBuffer,
 
     vk::DescriptorSetLayout layout;
     vk::DescriptorSet inputSet;
-    DescriptorBuilder::beginSet(&layoutCache, &allocator).bindImage(0, {*imageInfo},
-                      1, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eFragment)
+    DescriptorBuilder::beginSet(&layoutCache, &allocator)
+            .bindImage(0, {imageInfo},1, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eFragment)
             .build(inputSet, layout);
 
     commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, activeToneMapper->pipeline->getPipelineLayout(),
-                                     0, {inputSet}, nullptr);
+                                     0, {inputSet, ditherSet}, nullptr);
 
     activeToneMapper->bindData(commandBuffer);
     commandBuffer.draw(3, 1, 0, 0);

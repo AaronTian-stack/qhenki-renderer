@@ -62,6 +62,8 @@ VulkanApp::~VulkanApp()
     for (auto &model : models)
         model->destroy();
 
+    bayerMatrix->destroy();
+
     for (auto &cameraBuffer : cameraBuffers)
         cameraBuffer->destroy();
 
@@ -290,11 +292,12 @@ void VulkanApp::create(Window &window)
     createGbuffer(vulkanContext.swapChain->getExtent(), offscreenRenderPass->getRenderPass());
 
     syncer.create(device);
+
+    const auto flags = static_cast<VmaAllocationCreateFlagBits>(VMA_ALLOCATION_CREATE_MAPPED_BIT |
+                                                                VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
     for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
     {
         frames.emplace_back(device, *graphicsCommandPool, syncer);
-        auto flags = static_cast<VmaAllocationCreateFlagBits>(VMA_ALLOCATION_CREATE_MAPPED_BIT |
-                                                                                    VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
 
         cameraBuffers.emplace_back(bufferFactory.createBuffer(sizeof(CameraMatrices),
                                                               vk::BufferUsageFlagBits::eUniformBuffer,
@@ -320,11 +323,21 @@ void VulkanApp::create(Window &window)
 //                  "../resources/envmaps/metro_noord/metro_noord.dds"
                   );
 
-//    sphereLights.push_back({{0.f, 1.f, 0.f}, glm::vec3(1.f, 0.f, 0.f), 10.f, 0.5f});
-//    tubeLights.push_back({{-5.f, 1.f, 0.f}, 1.f, glm::vec3(0.f, 1.f, 0.f), 10.f, 0.2f, {}, {}});
-//    rectangleLights.push_back({{5.f, 1.f, 0.f}, glm::vec3(0.f, 0.f, 1.f), 10.f, {}, {}, glm::vec2(1.f)});
-
     createPostProcess();
+
+    float pattern[] = {
+            0, 32,  8, 40,  2, 34, 10, 42,
+            48, 16, 56, 24, 50, 18, 58, 26,
+            12, 44,  4, 36, 14, 46,  6, 38,
+            60, 28, 52, 20, 62, 30, 54, 22,
+            3, 35, 11, 43,  1, 33,  9, 41,
+            51, 19, 59, 27, 49, 17, 57, 25,
+            15, 47,  7, 39, 13, 45,  5, 37,
+            63, 31, 55, 23, 61, 29, 53, 21 };
+    for(float & i : pattern)
+        i /= 64.0f;
+    bayerMatrix = bufferFactory.createBuffer(sizeof(pattern), vk::BufferUsageFlagBits::eUniformBuffer, flags);
+    bayerMatrix->fill(pattern);
 }
 
 void VulkanApp::setUpCallbacks() {
@@ -378,9 +391,11 @@ void VulkanApp::recordOffscreenBuffer(vk::CommandBuffer commandBuffer, Descripto
         {
             const int textureCount = 80;
             if (imageInfos.size() > textureCount) throw std::runtime_error("Too many textures");
+            auto bmi = bayerMatrix->getDescriptorInfo();
             DescriptorBuilder::beginSet(&layoutCache, &allocator)
                     .bindImage(0, imageInfos,
                                textureCount, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eFragment)
+                    .bindBuffer(1, &bmi, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eFragment)
                     .build(samplerSet, layout);
 
             commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, gBufferPipeline->getPipelineLayout(),
@@ -526,7 +541,12 @@ void VulkanApp::recordCommandBuffer(FrameBuffer *framebuffer)
     // output already transitioned by render pass
     auto &outputAttachment = gBuffer->attachments.back();
     auto outputAttachmentInfo = outputAttachment->getDescriptorInfo();
-    postProcessManager->tonemap(primaryCommandBuffer, layoutCache, allocator, &outputAttachmentInfo);
+    auto bmi = bayerMatrix->getDescriptorInfo();
+    vk::DescriptorSetLayout lt; vk::DescriptorSet ditherSet;
+    DescriptorBuilder::beginSet(&layoutCache, &allocator)
+            .bindBuffer(0, &bmi, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eFragment)
+            .build(ditherSet, lt);
+    postProcessManager->tonemap(primaryCommandBuffer, layoutCache, allocator, outputAttachmentInfo, ditherSet);
 
     //// CLEAR COLOR
     auto &ppr = postProcessManager->getPingPongRenderPass();
@@ -664,9 +684,6 @@ void VulkanApp::handleInput()
 
 void VulkanApp::updateLightBuffers()
 {
-//    tubeLights[0].rotation = glm::angleAxis(glm::radians((float)glfwGetTime() * 40), glm::vec3(0.f, 1.f, 0.f));
-//    rectangleLights[0].rotation = glm::angleAxis(glm::radians((float)glfwGetTime() * 40), glm::vec3(0.f, 1.f, 0.f));
-
     auto sphereLightBuffer = static_cast<SphereLightShader*>(sphereLightBuffers[currentFrame]->getPointer());
     for (int i = 0; i < sphereLights.size(); i++)
     {

@@ -77,32 +77,6 @@ layout(scalar, set = 3, binding = 2) readonly buffer RectangleLightBuffer {
     RectangleLight rectangleLights[];
 } rectangleLightBuffer;
 
-const float PI = 3.14159;
-
-float DistributionGGX(vec3 normal, vec3 halfway, float roughness)
-{
-    float a2 = pow(roughness, 4.0);
-    float nwh2 = pow(dot(normal, halfway), 2.0);
-    return a2 / (PI * pow(nwh2 * (a2 - 1.0) + 1, 2.0));
-}
-float GeometrySchlickGGX(float cosw, float roughness)
-{
-    float k = pow((roughness + 1.0), 2.0) / 8.0;
-    return cosw / (cosw * (1.0 - k) + k);
-}
-float GeometrySmith(vec3 N, vec3 V, vec3 L, float roughness)
-{
-    float NdotV = max(dot(N, V), 0.0);
-    float NdotL = max(dot(N, L), 0.0);
-    float ggx2  = GeometrySchlickGGX(NdotV, roughness);
-    float ggx1  = GeometrySchlickGGX(NdotL, roughness);
-
-    return ggx1 * ggx2;
-}
-vec3 fresnelSchlickRoughness(float cosTheta, vec3 F0, float roughness)
-{
-    return F0 + (max(vec3(1.0 - roughness), F0) - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
-}
 vec4 reconstructPosition(float depth)
 {
     // vulkan depth is 0 to 1
@@ -118,141 +92,258 @@ struct Material
     float metallic;
     float roughness;
     float ao;
+    vec3 f0;
 };
 
-void calculateForLight(inout vec3 Lo, Light light, vec3 N, vec3 V, Material material, vec3 fragPos)
+struct LightingResult
 {
-    vec3 F0 = mix(vec3(0.04), material.albedo, material.metallic);
+    vec3 diffuse;
+    vec3 specular;
+};
 
-    vec3 L = normalize(light.position - fragPos);
-    vec3 H = normalize(V + L);
-    float distance = distance(light.position, fragPos);
-    float attenuation = 1.0 / (distance * distance);
+// https://seblagarde.wordpress.com/wp-content/uploads/2015/07/course_notes_moving_frostbite_to_pbr_v32.pdf
 
-    vec3 radiance = light.color * attenuation;
+#define PI 3.14159265359
 
-    // cook-torrance brdf
-    float NDF = DistributionGGX(N, H, material.roughness);
-    float G   = GeometrySmith(N, V, L, material.roughness);
-    vec3 F    = fresnelSchlickRoughness(max(dot(H, V), 0.0), F0, material.roughness);
+vec3 F_Schlick(vec3 f0, float f90, float u)
+{
+    return f0 + (f90 - f0) * pow(1.f - u, 5.f);
+}
+vec3 F_Fresnel(vec3 SpecularColor, float VoH)
+{
+    vec3 SpecularColorSqrt = sqrt(min(SpecularColor, vec3(0.99, 0.99, 0.99)));
+    vec3 n = (1 + SpecularColorSqrt) / (1 - SpecularColorSqrt);
+    vec3 g = sqrt(n*n + VoH*VoH - 1);
+    return 0.5 * sqrt((g - VoH) / (g + VoH)) * (1 + sqrt(((g + VoH)*VoH - 1) / ((g - VoH)*VoH + 1)));
+}
 
-    vec3 kS = F;
-    vec3 kD = vec3(1.0) - kS;
+float Fr_DisneyDiffuse(float NdotV, float NdotL, float LdotH, float linearRoughness)
+{
+    float energyBias = mix(0, 0.5, linearRoughness);
+    float energyFactor = mix(1.0, 1.0 / 1.51, linearRoughness);
+    float fd90 = energyBias + 2.0 * LdotH*LdotH * linearRoughness;
+    vec3 f0 = vec3(1.0);
+    float lightScatter = F_Schlick(f0, fd90, NdotL).r;
+    float viewScatter = F_Schlick(f0, fd90, NdotV).r;
+
+    return lightScatter * viewScatter * energyFactor;
+}
+
+float V_SmithGGXCorrelated(float NdotL, float NdotV, float alphaG)
+{
+    float alphaG2 = alphaG * alphaG;
+    alphaG2 = alphaG2 + 0.0000001;
+    float Lambda_GGXV = NdotL * sqrt((-NdotV * alphaG2 + NdotV) * NdotV + alphaG2);
+    float Lambda_GGXL = NdotV * sqrt((-NdotL * alphaG2 + NdotL) * NdotL + alphaG2);
+
+    return 0.5f / (Lambda_GGXV + Lambda_GGXL);
+}
+
+float D_GGX(float NdotH, float m)
+{
+    // Divide by PI is apply later 
+    float m2 = m * m;
+    float f = (NdotH * m2 - NdotH) * NdotH + 1;
+    return m2 / (f * f);
+}
+
+vec3 GetF(float LdotH, vec3 f0)
+{
+    float f90 = clamp(50.0 * dot(f0, vec3(0.33)), 0.0, 1.0);
+    return F_Schlick(f0, f90, LdotH);
+}
+vec3 GetSpecular(float NdotV, float NdotL, float LdotH, float NdotH, float roughness, vec3 f0, out vec3 F)
+{
+    F = GetF(LdotH, f0);
+    float Vis = V_SmithGGXCorrelated(NdotV, NdotL, roughness);
+    float D = D_GGX(NdotH, roughness);
+    vec3 Fr = D * F * Vis / PI;
+    return Fr;
+}
+float GetDiffuse(float NdotV, float NdotL, float LdotH, float linearRoughness)
+{
+    float Fd = Fr_DisneyDiffuse(NdotV, NdotL, LdotH, linearRoughness) / PI;
+    return Fd;
+}
+
+float RectangleSolidAngle(vec3 worldPos, vec3 p0, vec3 p1, vec3 p2, vec3 p3)
+{
+    vec3 v0 = p0 - worldPos;
+    vec3 v1 = p1 - worldPos;
+    vec3 v2 = p2 - worldPos;
+    vec3 v3 = p3 - worldPos;
+
+    vec3 n0 = normalize(cross(v0, v1));
+    vec3 n1 = normalize(cross(v1, v2));
+    vec3 n2 = normalize(cross(v2, v3));
+    vec3 n3 = normalize(cross(v3, v0));
+
+    float g0 = acos(dot(-n0, n1));
+    float g1 = acos(dot(-n1, n2));
+    float g2 = acos(dot(-n2, n3));
+    float g3 = acos(dot(-n3, n0));
+
+    return g0 + g1 + g2 + g3 - 2.0 * PI;
+}
+
+// https://wickedengine.net/2017/09/area-lights/
+
+// N:	float3 normal
+// L:	float3 light vector
+// V:	float3 view vector
+#define BRDF_MAKE( N, L, V )								\
+	const vec3	    H = normalize(L + V);			  		\
+	const float		VdotN = abs(dot(N, V)) + 1e-5f;			\
+	const float		LdotN = max(0.0, dot(L, N));  			\
+	const float		HdotV = max(0.0, dot(H, V));			\
+	const float		HdotN = max(0.0, dot(H, N)); 			\
+	const float		NdotV = VdotN;					  		\
+	const float		NdotL = LdotN;					  		\
+	const float		VdotH = HdotV;					  		\
+	const float		NdotH = HdotN;					  		\
+	const float		LdotH = HdotV;					  		\
+	const float		HdotL = LdotH;
+
+// ROUGHNESS:	float surface roughness
+// F0:			float3 surface specular color (fresnel f0)
+#define BRDF_SPECULAR( ROUGHNESS, F0, F )					\
+	GetSpecular(NdotV, NdotL, LdotH, NdotH, ROUGHNESS, F0, F)
+
+// ROUGHNESS:		float surface roughness
+#define BRDF_DIFFUSE( ROUGHNESS )							\
+	GetDiffuse(NdotV, NdotL, LdotH, ROUGHNESS)
+
+vec3 BRDF_CALCULATE(Material material, float illumuinace, vec3 lightColor, vec3 N, vec3 L, vec3 V)
+{
+    float roughness = material.roughness;
+    vec3 f0 = material.f0;
+    BRDF_MAKE(N, L, V);
+    // illuminace accounts for NdotL term
+    vec3 F;
+    vec3 specular = BRDF_SPECULAR(roughness, f0, F) ;
+
+    vec3 kD = vec3(1.0) - F;
     kD *= 1.0 - material.metallic;
 
-    vec3 numerator    = NDF * G * F;
-    float denominator = 4.0 * max(dot(N, V), 0.0) * max(dot(N, L), 0.0) + 0.0001;
-    vec3 specular     = numerator / denominator;
+    vec3 diffuse = kD * material.albedo / PI;
 
-    // add to outgoing radiance Lo
-    float NdotL = max(dot(N, L), 0.0);
-    Lo += (kD * material.albedo / PI + specular) * radiance * NdotL;
+    diffuse = max(vec3(0.0), diffuse);
+    specular = max(vec3(0.0), specular);
+
+    return (diffuse + specular) * lightColor * illumuinace;
 }
 
-vec3 closestPointSphere(SphereLight light, vec3 R, vec3 fragPos)
+vec3 getSpecularDominantDirArea(vec3 N, vec3 R, float roughness)
 {
-    vec3 L = light.position - fragPos;
+    float lerpFactor = (1.0 - roughness);
+    return normalize(mix(N, R, lerpFactor));
+}
+// horizon handling for sphere and disk
+float illuminanceSphereOrDisk(float cosTheta, float sinSigmaSqr)
+{
+    float sinTheta = sqrt(1.0f - cosTheta * cosTheta);
+    float illuminance = 0.0f;
+    if (cosTheta * cosTheta > sinSigmaSqr)
+    {
+        illuminance = PI * sinSigmaSqr * clamp(cosTheta, 0.0, 1.0);
+    }
+    else
+    {
+        float x = sqrt(1.0f / sinSigmaSqr - 1.0f);
+        float y = -x * (cosTheta / sinTheta);
+        float sinThetaSqrtY = sinTheta * sqrt(1.0f - y * y);
+        illuminance = (cosTheta * acos(y) - x * sinThetaSqrtY) * sinSigmaSqr + atan(sinThetaSqrtY / x);
+    }
+    return max(illuminance, 0.0f);
+}
+vec3 closestPointSphere(float radius, vec3 L, vec3 R, vec3 fragPos)
+{
     vec3 centerToRay = (dot(L, R) * R) - L;
-    vec3 closestPoint = L + centerToRay * clamp(light.radius / length(centerToRay), 0.0, 1.0);
-    return closestPoint + light.position;
+    vec3 closestPoint = L + centerToRay * clamp(radius / length(centerToRay), 0.0, 1.0);
+    return normalize(closestPoint);
+}
+vec3 calculateSphereLight(SphereLight light, vec3 N, vec3 V, vec3 R, vec3 fragPos, Material material)
+{
+    vec3 Lunormalized = light.position - fragPos;
+    float dist = length(Lunormalized);
+    vec3 L = normalize(Lunormalized);
+
+    float sqrDist = dist * dist;
+
+    float cosTheta = clamp(dot(N, L), -0.999, 0.999);   // Clamp to avoid edge case
+                                                        // We need to prevent the object penetrating into the surface
+                                                        // and we must avoid divide by 0, thus the 0.9999f
+    float sqrLightRadius = light.radius * light.radius;
+    float sinSigmaSqr = min(sqrLightRadius / sqrDist, 0.9999);
+    float illumuinace = illuminanceSphereOrDisk(cosTheta, sinSigmaSqr);
+
+    L = closestPointSphere(light.radius, L, R, fragPos); // MPR calculation
+
+    return BRDF_CALCULATE(material, illumuinace, light.color, N, L, V);
 }
 
-vec3 closestPointLineSegment(vec3 a, vec3 b, vec3 p)
+vec3 closestPointOnLine(vec3 a, vec3 b, vec3 c)
 {
     vec3 ab = b - a;
-    float t = dot(p - a, ab) / dot(ab, ab);
-    return a + clamp(t, 0.0, 1.0) * ab;
+    float t = dot(c - a , ab) / dot(ab, ab);
+    return a + t * ab ;
 }
-
-vec3 closestPointTube(TubeLight light, vec3 R, vec3 fragPos)
+vec3 closestPointOnSegment(vec3 a, vec3 b, vec3 c)
 {
-    vec3 closestPointLine = closestPointLineSegment(light.position1, light.position2, fragPos);
-
-    SphereLight s;
-    s.radius = light.radius;
-    s.position = closestPointLine;
-    return closestPointSphere(s, R, fragPos);
+    vec3 ab = b - a;
+    float t = dot(c - a, ab) / dot(ab, ab);
+    return a + clamp (t, 0.0, 1.0) * ab;
 }
-
-vec3 tracePlane(vec3 planeOrigin, vec3 planeNormal, vec3 fragPos, vec3 R, out bool hit)
+vec3 calculateTubeLight(TubeLight light, vec3 N, vec3 V, vec3 R, vec3 fragPos, Material material)
 {
-    float denom = dot(planeNormal, R);
-    float t = dot(planeNormal, planeOrigin - fragPos) / denom;
-    vec3 planeIntersectionPoint = fragPos + R * t;
+    float lightWidth = distance(light.position1, light.position2);
+    // The sphere is placed at the nearest point on the segment .
+    // The rectangular plane is define by the following orthonormal frame :
+    vec3 forward = normalize ( closestPointOnLine (light.position1 , light.position2 , fragPos) - fragPos );
+    vec3 left = normalize( light.position2 - light.position1 ); // light left
+    vec3 up = cross (left, forward);
 
-    hit = t > 0.0 && denom < 0.0;
-    return planeIntersectionPoint;
+    vec3 lightPos = mix(light.position1, light.position2, 0.5); // the center point of tube
+
+    vec3 p0 = lightPos - left * (0.5 * lightWidth ) + light.radius * up;
+    vec3 p1 = lightPos - left * (0.5 * lightWidth ) - light.radius * up;
+    vec3 p2 = lightPos + left * (0.5 * lightWidth ) - light.radius * up;
+    vec3 p3 = lightPos + left * (0.5 * lightWidth ) + light.radius * up;
+
+    float solidAngle = RectangleSolidAngle ( fragPos , p0 , p1 , p2 , p3 );
+
+    float illuminance = solidAngle * 0.2 * (
+        clamp ( dot ( normalize ( p0 - fragPos ) , N ), 0.0 , 1.0) +
+        clamp ( dot ( normalize ( p1 - fragPos ) , N ), 0.0 , 1.0) +
+        clamp ( dot ( normalize ( p2 - fragPos ) , N ), 0.0 , 1.0) +
+        clamp ( dot ( normalize ( p3 - fragPos ) , N ), 0.0 , 1.0) +
+        clamp ( dot ( normalize ( lightPos - fragPos ) , N ), 0.0 , 1.0));
+
+    // We then add the contribution of the sphere
+    vec3 spherePosition = closestPointOnSegment (light.position1 , light.position2 , fragPos );
+    vec3 sphereUnormL = spherePosition - fragPos ;
+    vec3 sphereL = normalize ( sphereUnormL );
+    float sqrSphereDistance = dot ( sphereUnormL , sphereUnormL );
+
+    float illuminanceSphere = PI * clamp ( dot ( sphereL , N ), 0.0 , 1.0) *
+        (  ( light.radius * light.radius ) / sqrSphereDistance );
+
+    illuminance += illuminanceSphere;
+
+    vec3 L = lightPos - fragPos;
+    L = closestPointSphere(light.radius, L, R, fragPos); // MPR calculation
+
+    return BRDF_CALCULATE(material, illuminance, light.color, N, L, V);
 }
 
-bool traceTriangle(vec3 a, vec3 b, vec3 c, vec3 p)
-{
-    vec3 n1 = normalize(cross(b - a, p - b));
-    vec3 n2 = normalize(cross(c - b, p - c));
-    vec3 n3 = normalize(cross(a - c, p - a));
-    float d0 = dot(n1, n2);
-    float d1 = dot(n1, n3);
-    return d0 > 0.99 && d1 > 0.99;
-}
-
-vec3 closestPointRectangle(RectangleLight light, vec3 R, vec3 fragPos, out float t, out bool hit)
-{
-    // trace the two triangles that make up the rectangle
-    vec3 nRight = normalize(light.right);
-    vec3 nUp = normalize(light.up);
-    vec3 normal = normalize(cross(nRight, nUp));
-
-    vec3 topRightCorner = light.position + light.up + light.right;
-    vec3 topLeftCorner = light.position + light.up - light.right;
-    vec3 bottomRightCorner = light.position - light.up + light.right;
-    vec3 bottomLeftCorner = light.position - light.up - light.right;
-
-    vec3 p = tracePlane(light.position, normal, fragPos, R, hit);
-//    bool t0 = traceTriangle(topRightCorner, topLeftCorner, bottomRightCorner, p);
-//    bool t1 = traceTriangle(bottomLeftCorner, bottomRightCorner, topLeftCorner, p);
-//
-//    if (t0 || t1)
-//    {
-//        hit = true;
-//        return p;
-//    }
-//
-//    return vec3(0.);
-//
-//    // make array of all the points
-//    hit = false;
-//    vec3 points[4];
-//    points[0] = closestPointLineSegment(topRightCorner, topLeftCorner, p);
-//    points[1] = closestPointLineSegment(bottomRightCorner, topRightCorner, p);
-//    points[2] = closestPointLineSegment(bottomLeftCorner, bottomRightCorner, p);
-//    points[3] = closestPointLineSegment(topLeftCorner, bottomLeftCorner, p);
-////
-//    vec3 np = points[0];
-//    float minDist = distance(points[0], p);
-//    // find the closest point
-//    for (int i = 1; i < 4; i++)
-//    {
-//        float dist = distance(points[i], p);
-//        if (dist < minDist)
-//        {
-//            np = points[i];
-//            minDist = dist;
-//        }
-//    }
-//    return np;
-    vec3 intersectionVector = p - light.position;
-    vec2 intersectPlanePoint = vec2(dot(intersectionVector, nRight), dot(intersectionVector, nUp));
-    float xSize = abs(length(light.right));
-    float ySize = abs(length(light.up));
-    vec2 nearest2DPoint = vec2(clamp(intersectPlanePoint.x, -xSize, xSize), clamp(intersectPlanePoint.y, -ySize, ySize));
-    t = length(nearest2DPoint - intersectPlanePoint);
-//    hit = hit && t < 0.0001;
-    return light.position + nRight * nearest2DPoint.x + nUp * nearest2DPoint.y;
-}
 
 vec3 calculateIBL(vec3 N, vec3 V, vec3 R, vec3 F0, Material material)
 {
     float nvDOT = max(dot(N, V), 0.0);
-    vec3 F = fresnelSchlickRoughness(nvDOT, F0, material.roughness);
+
+    // assume L = R
+    const vec3 H = normalize(V + R);
+    vec3 F = GetF(max(dot(R, H), 0.0), F0); // fresnesl schlick
 
     vec3 kD = 1.0 - F;
     kD *= 1.0 - material.metallic;
@@ -273,14 +364,6 @@ vec3 calculateIBL(vec3 N, vec3 V, vec3 R, vec3 F0, Material material)
     vec3 ambient = (kD * diffuse + specular) * material.ao;
     return ambient;
 }
-
-const float[16] dither =
-{
-1.0 / 17.0,  9.0 / 17.0,  3.0 / 17.0, 11.0 / 17.0,
-13.0 / 17.0,  5.0 / 17.0, 15.0 / 17.0,  7.0 / 17.0,
-4.0 / 17.0, 12.0 / 17.0,  2.0 / 17.0, 10.0 / 17.0,
-16.0 / 17.0,  8.0 / 17.0, 14.0 / 17.0,  6.0 / 17.0
-};
 
 void main()
 {
@@ -305,51 +388,30 @@ void main()
     vec3 N = normalize(normal);
     vec3 V = normalize(cameraPos.xyz - position.xyz);
     vec3 R = reflect(-V, N); // reflection vector
+    R = getSpecularDominantDirArea(N, R, roughness);
 
     vec3 F0 = mix(vec3(0.04), albedo.rgb, metallic);
 
-    Material material = Material(albedo.rgb, metallic, roughness, ao);
+    Material material = Material(albedo.rgb, metallic, roughness, ao, F0);
 
     vec3 Lo = vec3(0.0);
+
     for(int i = 0; i < lightingInfo.sphereLightCount; ++i)
     {
         SphereLight sphereLight = sphereLightBuffer.sphereLights[i];
-        Light light = Light(closestPointSphere(sphereLight, R, position.xyz), sphereLight.color);
-        calculateForLight(Lo, light, N, V, material, position.xyz);
+        sphereLight.color += vec3(0.0000001); // get rid of odd floating point error
+        Lo += calculateSphereLight(sphereLight, N, V, R, position.xyz, material);
     }
     for (int i = 0; i < lightingInfo.tubeLightCount; ++i)
     {
         TubeLight tubeLight = tubeLightBuffer.tubeLights[i];
-        float t;
-        vec3 c = closestPointTube(tubeLight, R, position.xyz);
-        Light light = Light(c, tubeLight.color);
-        calculateForLight(Lo, light, N, V, material, position.xyz);
+        Lo += calculateTubeLight(tubeLight, N, V, R, position.xyz, material);
     }
     for (int i = 0; i < lightingInfo.rectangleLightCount; ++i)
     {
         RectangleLight rectangleLight = rectangleLightBuffer.rectangleLights[i];
-        bool hit; float t;
-        vec3 c = closestPointRectangle(rectangleLight, R, position.xyz, t, hit);
-        if (!hit) continue;
-        Light light = Light(c, rectangleLight.color);
-        // apply linear falloff to light intensity
-//        float f = abs(dot(planeNormal, position.xyz - c));
-//        float falloff = smoothstep(1.0, 0.0, t) * f;
 
-        vec3 pn = normalize(cross(rectangleLight.right, rectangleLight.up));
-        float f2 = abs(dot(pn, normalize(position.xyz - c)));
-
-        float dist = distance(position.xyz, c);
-        float falloff = 1.0 - clamp(0.0, 1.0, dist / length(rectangleLight.color));
-
-        light.color *= max(0.0, falloff * f2);
-        calculateForLight(Lo, light, N, V, material, position.xyz);
     }
-//    for(int i = 0; i < 1; ++i)
-//    {
-//        Light light = Light(pointLights[i].position.xyz, pointLights[i].color.rgb, pointLights[i].color.a);
-//        calculateForLight(Lo, light, N, V, material, position.xyz);
-//    }
 
     vec3 ambient = calculateIBL(N, V, R, F0, material) * lightingInfo.iblIntensity;
     vec3 color = ambient + Lo + emissive.rgb * lightingInfo.emissionMultiplier;
