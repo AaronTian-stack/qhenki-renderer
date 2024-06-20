@@ -95,12 +95,6 @@ struct Material
     vec3 f0;
 };
 
-struct LightingResult
-{
-    vec3 diffuse;
-    vec3 specular;
-};
-
 // https://seblagarde.wordpress.com/wp-content/uploads/2015/07/course_notes_moving_frostbite_to_pbr_v32.pdf
 
 #define PI 3.14159265359
@@ -305,10 +299,10 @@ vec3 calculateTubeLight(TubeLight light, vec3 N, vec3 V, vec3 R, vec3 fragPos, M
 
     vec3 lightPos = mix(light.position1, light.position2, 0.5); // the center point of tube
 
-    vec3 p0 = lightPos - left * (0.5 * lightWidth ) + light.radius * up;
-    vec3 p1 = lightPos - left * (0.5 * lightWidth ) - light.radius * up;
-    vec3 p2 = lightPos + left * (0.5 * lightWidth ) - light.radius * up;
-    vec3 p3 = lightPos + left * (0.5 * lightWidth ) + light.radius * up;
+    vec3 p0 = lightPos - left * (0.5 * lightWidth) + light.radius * up;
+    vec3 p1 = lightPos - left * (0.5 * lightWidth) - light.radius * up;
+    vec3 p2 = lightPos + left * (0.5 * lightWidth) - light.radius * up;
+    vec3 p3 = lightPos + left * (0.5 * lightWidth) + light.radius * up;
 
     float solidAngle = RectangleSolidAngle ( fragPos , p0 , p1 , p2 , p3 );
 
@@ -336,9 +330,55 @@ vec3 calculateTubeLight(TubeLight light, vec3 N, vec3 V, vec3 R, vec3 fragPos, M
     return BRDF_CALCULATE(material, illuminance, light.color, N, L, V);
 }
 
+vec3 tracePlane(vec3 planeOrigin, vec3 planeNormal, vec3 fragPos, vec3 R)
+{
+    float denom = dot(planeNormal, R);
+    float t = dot(planeNormal, planeOrigin - fragPos) / denom;
+    vec3 planeIntersectionPoint = fragPos + R * t;
+    return planeIntersectionPoint;
+}
+vec3 closestPointOnRectangle(vec3 fragPos, vec3 planeOrigin, vec3 planeright, vec3 planeUp, vec2 halfSize)
+{
+    vec3 dir = fragPos - planeOrigin;
+    vec2 dist2D = vec2(dot(dir, -planeright), dot(dir, planeUp));
+    dist2D = clamp(dist2D, -halfSize, halfSize);
+    return planeOrigin + planeright * dist2D.x + planeUp * dist2D.y;
+}
+vec3 calculateRectangle(RectangleLight light, vec3 N, vec3 V, vec3 R, vec3 fragPos, Material material)
+{
+    vec3 nRight = normalize(light.right);
+    vec3 nUp = normalize(light.up);
+    vec3 normal = normalize(cross(nRight, nUp));
+
+    vec3 p0 = light.position + light.right + light.up;
+    vec3 p1 = light.position + light.right - light.up;
+    vec3 p2 = light.position - light.right - light.up;
+    vec3 p3 = light.position - light.right + light.up;
+
+    float illuminance = 0;
+    float solidAngle = RectangleSolidAngle(fragPos, p0, p1, p2, p3);
+    if (dot(fragPos - light.position, normal) > 0) // Same side as plane normal
+    {
+        illuminance = solidAngle * 0.2 * (
+        clamp(dot(normalize(p0 - fragPos), N), 0.0 , 1.0) +
+        clamp(dot(normalize(p1 - fragPos), N), 0.0 , 1.0) +
+        clamp(dot(normalize(p2 - fragPos), N), 0.0 , 1.0) +
+        clamp(dot(normalize(p3 - fragPos), N), 0.0 , 1.0) +
+        clamp(dot(normalize(light.position - fragPos), N), 0.0 , 1.0));
+    }
+    illuminance = max(0, illuminance);
+
+    vec2 halfSize = vec2(length(light.right), length(light.up));
+    vec3 nearest3DPoint = closestPointOnRectangle(fragPos, light.position, nRight, nUp, halfSize);
+
+    vec3 L = normalize(nearest3DPoint - fragPos);
+
+    return BRDF_CALCULATE(material, illuminance, light.color, N, L, V);
+}
 
 vec3 calculateIBL(vec3 N, vec3 V, vec3 R, vec3 F0, Material material)
 {
+    R = getSpecularDominantDirArea(N, R, material.roughness);
     float nvDOT = max(dot(N, V), 0.0);
 
     // assume L = R
@@ -410,7 +450,7 @@ void main()
     for (int i = 0; i < lightingInfo.rectangleLightCount; ++i)
     {
         RectangleLight rectangleLight = rectangleLightBuffer.rectangleLights[i];
-
+        Lo += calculateRectangle(rectangleLight, N, V, R, position.xyz, material);
     }
 
     vec3 ambient = calculateIBL(N, V, R, F0, material) * lightingInfo.iblIntensity;

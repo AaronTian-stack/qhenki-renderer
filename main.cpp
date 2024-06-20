@@ -2,13 +2,12 @@
 #include <GLFW/glfw3.h>
 
 #define VMA_IMPLEMENTATION
-#include "vma/vk_mem_alloc.h"
 
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
 
 #include "src/vulkanapp.h"
 
-Window window(1728, 768);
+Window window(1024, 768);
 
 int main()
 {

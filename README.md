@@ -15,6 +15,11 @@ My personal hobby renderer written in C++ using Vulkan. It is intended as a plac
 ## Showcase
 
 ![helmet](screenshots/helmet.png)
+
+|          Dynamic Lighting            |
+|:------------------------------------:|
+|  ![lights](screenshots/lights.png)   |
+
 ![applevr](screenshots/applevr.png)
 
 |   |  |
@@ -35,6 +40,8 @@ My personal hobby renderer written in C++ using Vulkan. It is intended as a plac
   * Supports transparency
 * PBR Pipeline
   * Metallic/Roughness Cook-Torrance BRDF
+  * Dynamic Area Lights
+    * Sphere, tube, rectangle lights
   * Image-based lighting using environment maps
     * Generated offline and loaded as `dds` files
 * Bindless Textures
@@ -61,8 +68,8 @@ My personal hobby renderer written in C++ using Vulkan. It is intended as a plac
 
 ## Future Features
 In the order I will most likely implement them:
-- [ ] Dynamic Lights
-  - Sphere, tube, and rectangle lights along with 3D previews and gizmo manipulation
+- [x] ~~Dynamic Lights~~ [#16](https://github.com/AaronTian-stack/qhenki-renderer/pull/16)
+  - Sphere, tube, and rectangle lights
 - [ ] Compute Skinning and Skeletal + Morph Animation
 - [ ] High Quality Bokeh Depth of Field (physically based)
 - [ ] Physically Based Bloom
@@ -98,14 +105,17 @@ Several tools such as [glslc](https://github.com/google/shaderc/tree/main/glslc)
 
 | Asset            | Link                                                                                                                   | License                         |
 |------------------|------------------------------------------------------------------------------------------------------------------------|---------------------------------|
+| Box Textured     | [Github](https://github.com/KhronosGroup/glTF-Sample-Models/tree/main/2.0/BoxTextured)                                 | CC BY 4.0                       |
 | Damaged Helmet   | [Github](https://github.com/KhronosGroup/glTF-Sample-Models/tree/main/2.0/DamagedHelmet)                               | CC Attribution - Non-commercial |
 | Apple Vision Pro | [Sketchfab](https://sketchfab.com/3d-models/free-apple-vision-pro-ultra-high-quality-8bd7123015ee4509b1c312f54a877597) | CC Attribution - Non-commercial |
 | Salty Snack      | [Sketchfab](https://sketchfab.com/3d-models/salty-snack-firearm-game-ready-702411980d904abc974efef9ba4e47d5)           | CC Attribution                  |
 | Copper Tea Pot   | [Sketchfab](https://sketchfab.com/3d-models/copper-tea-pot-27f2ac58f7614f2796630bdc6f18ee2f)                           | CC Attribution                  |
 | Cyber Samurai    | [Sketchfab](https://sketchfab.com/3d-models/cyber-samurai-26ccafaddb2745ceb56ae5cfc65bfed5)                            | CC Attribution                  |
 
+and of course the famous Crytek Sponza model (don't think there is a license on this model).
+
 ## Technical Details
-Uses Vulkan 1.2 (SDK 1.3.268.1) with only core features. Built using CMake and C++17. Runs on Windows and macOS (MoltenVK).
+Uses Vulkan 1.2 (SDK 1.3.283) with only core features. Built using CMake and C++17. Runs on Windows and macOS (MoltenVK).
 
 # References
 - https://vulkan-tutorial.com/
@@ -114,3 +124,4 @@ Uses Vulkan 1.2 (SDK 1.3.268.1) with only core features. Built using CMake and C
 - https://learnopengl.com/
 - https://kylehalladay.com/blog/tutorial/vulkan/2018/01/28/Textue-Arrays-Vulkan.html
 - https://blog.selfshadow.com/publications/s2013-shading-course/karis/s2013_pbs_epic_notes_v2.pdf
+- https://seblagarde.wordpress.com/wp-content/uploads/2015/07/course_notes_moving_frostbite_to_pbr_v32.pdf
