@@ -5,7 +5,9 @@ PostProcessManager::PostProcessManager(vk::Device device, vk::Extent2D extent, B
 : Destroyable(device), activeToneMapperIndex(0), currentAttachmentIndex(1)
 {
     renderPassBuilder.reset();
-    renderPassBuilder.addColorAttachment(vk::Format::eR8G8B8A8Unorm);
+    renderPassBuilder.addColorAttachment(vk::Format::eR8G8B8A8Unorm,
+                                         vk::AttachmentLoadOp::eClear,
+                                         vk::ImageLayout::eShaderReadOnlyOptimal);
     renderPassBuilder.addSubPass({}, {}, {0}, {});
     pingPongRenderPass = renderPassBuilder.buildRenderPass();
 
@@ -32,7 +34,7 @@ PostProcessManager::PostProcessManager(vk::Device device, vk::Extent2D extent, B
 
 void PostProcessManager::tonemap(vk::CommandBuffer commandBuffer,
                                  DescriptorLayoutCache &layoutCache, DescriptorAllocator &allocator,
-                                 vk::DescriptorImageInfo *imageInfo)
+                                 vk::DescriptorImageInfo &imageInfo, vk::DescriptorSet &ditherSet)
 {
     // tonemap into attachment 0
     pingPongRenderPass->setFramebuffer(afb[0].framebuffer);
@@ -46,27 +48,26 @@ void PostProcessManager::tonemap(vk::CommandBuffer commandBuffer,
 
     vk::DescriptorSetLayout layout;
     vk::DescriptorSet inputSet;
-    DescriptorBuilder::beginSet(&layoutCache, &allocator).bindImage(0, {*imageInfo},
-                      1, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eFragment)
+    DescriptorBuilder::beginSet(&layoutCache, &allocator)
+            .bindImage(0, {imageInfo},1, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eFragment)
             .build(inputSet, layout);
 
     commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, activeToneMapper->pipeline->getPipelineLayout(),
-                                     0, {inputSet}, nullptr);
+                                     0, {inputSet, ditherSet}, nullptr);
 
     activeToneMapper->bindData(commandBuffer);
     commandBuffer.draw(3, 1, 0, 0);
     pingPongRenderPass->end();
 }
 
-void PostProcessManager::render(vk::CommandBuffer commandBuffer, DescriptorLayoutCache &layoutCache, DescriptorAllocator &allocator)
+void PostProcessManager::render(int startIndex, float time, vk::CommandBuffer commandBuffer, DescriptorLayoutCache &layoutCache, DescriptorAllocator &allocator)
 {
-    int ping = 1; // start by reading from 1 and outputting to 0
+    currentAttachmentIndex = startIndex;
+    int ping = startIndex; // start by reading from 1 and outputting to 0
     vk::DescriptorSetLayout layout;
     for (const auto &postProcess : activePostProcesses)
     {
-        Image::recordTransitionImageLayout(vk::ImageLayout::eUndefined, vk::ImageLayout::eShaderReadOnlyOptimal,
-                                           afb[ping].attachment->image, commandBuffer, 1, 1);
-
+        // previous pass should already in shader read layout from render pass
         pingPongRenderPass->setFramebuffer(afb[1 - ping].framebuffer);
         auto extent = afb[ping].attachment->extent;
         pingPongRenderPass->setRenderAreaExtent({extent.width, extent.height});
@@ -82,6 +83,7 @@ void PostProcessManager::render(vk::CommandBuffer commandBuffer, DescriptorLayou
                 .build(inputSet, layout);
         commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, postProcess->pipeline->getPipelineLayout(),
                                                 0, {inputSet}, nullptr);
+        postProcess->updateTime(time);
         postProcess->bindData(commandBuffer);
         commandBuffer.draw(3, 1, 0, 0);
         ping = (ping + 1) % 2;
@@ -168,7 +170,6 @@ void PostProcessManager::activatePostProcess(int index)
 
 void PostProcessManager::deactivatePostProcess(int index)
 {
-    currentAttachmentIndex = 0;
     activePostProcesses.erase(activePostProcesses.begin() + index);
 }
 

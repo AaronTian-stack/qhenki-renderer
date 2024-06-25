@@ -1,5 +1,5 @@
 #include "vulkancontext.h"
-#include "VkBootstrap.h"
+#include <VkBootstrap.h>
 #include <iostream>
 
 QueuesIndices VulkanContext::selectQueues(vkb::Device &vkb_device, vk::Device device)
@@ -142,7 +142,7 @@ bool VulkanContext::create(Window &window)
     vkb::SwapchainBuilder swapchain_builder{ vkb_device };
     auto swap_ret = swapchain_builder
             .set_desired_format(format)
-            .set_desired_present_mode(VK_PRESENT_MODE_MAILBOX_KHR)
+            .set_desired_present_mode(VK_PRESENT_MODE_FIFO_RELAXED_KHR)
             .add_image_usage_flags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT)
             .build();
     if (!swap_ret){

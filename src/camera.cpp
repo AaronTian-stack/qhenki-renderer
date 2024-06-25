@@ -1,7 +1,6 @@
 #include "camera.h"
-#include "glm/gtc/matrix_transform.hpp"
+#include <glm/gtc/matrix_transform.hpp>
 #include "inputprocesser.h"
-#include <iostream>
 
 glm::mat4 Camera::getViewMatrix() const
 {

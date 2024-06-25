@@ -4,10 +4,10 @@ PostProcess::PostProcess(const char *name, vk::Device device, const char *shader
                          DescriptorLayoutCache &layoutCache, RenderPass *renderPass)
 : Destroyable(device), name(name)
 {
-    shader = mkU<Shader>(device, "passthrough_vert.spv", shaderPath);
+    shader = mkU<Shader>(device, "passthrough.vert", shaderPath);
     pipelineFactory.reset();
     pipelineFactory.getColorBlending().attachmentCount = 1; // TODO: get rid of this eventually
-    pipelineFactory.parseShader("passthrough_vert.spv", shaderPath, layoutCache, false);
+    pipelineFactory.parseShader("passthrough.vert", shaderPath, layoutCache, false);
     pipeline = pipelineFactory.buildPipeline(renderPass, 0, shader.get());
 }
 
@@ -18,4 +18,7 @@ void PostProcess::destroy()
 }
 
 void PostProcess::bindData(vk::CommandBuffer commandBuffer)
+{}
+
+void PostProcess::updateTime(float time)
 {}

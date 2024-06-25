@@ -56,6 +56,12 @@ void RenderPass::clear(float r, float g, float b, float a)
     renderPassBeginInfo.pClearValues = clearValues.data();
 }
 
+void RenderPass::doNotClear()
+{
+    renderPassBeginInfo.clearValueCount = 0;
+    renderPassBeginInfo.pClearValues = nullptr;
+}
+
 void RenderPass::setFramebuffer(vk::Framebuffer buffer)
 {
     renderPassBeginInfo.framebuffer = buffer;

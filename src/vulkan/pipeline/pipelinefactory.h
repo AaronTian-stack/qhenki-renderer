@@ -1,20 +1,27 @@
 #pragma once
 
-#include "vulkan/vulkan.h"
+#include <vulkan/vulkan.h>
 #include <vector>
 #include "pipeline.h"
 #include "shader.h"
 #include "../renderpass/renderpass.h"
 #include "../../smartpointer.h"
-#include "spirv_cross/spirv_glsl.hpp"
 #include "../descriptors/descriptorlayoutcache.h"
 #include <iostream>
-#include "glm/glm.hpp"
+#include <glm/glm.hpp>
+#include <spirv_cross/spirv_glsl.hpp>
 
 struct SetLayout
 {
     std::vector<vk::DescriptorSetLayoutBinding> bindings;
     bool added;
+};
+
+struct BindInfo
+{
+    uint32_t binding;
+    uint32_t set;
+    uint32_t arrayLength;
 };
 
 class PipelineBuilder : public Destroyable
@@ -25,6 +32,8 @@ private:
         vk::DynamicState::eViewport,
         vk::DynamicState::eScissor
     };
+
+    BindInfo getBindInfo(const spirv_cross::CompilerGLSL &glsl, const spirv_cross::Resource &resource);
 
     vk::PipelineDynamicStateCreateInfo dynamicState{};
     vk::PipelineVertexInputStateCreateInfo vertexInputInfo{};
@@ -56,6 +65,7 @@ public:
     void processPushConstants(spirv_cross::CompilerGLSL &glsl, spirv_cross::ShaderResources &resources,
                               vk::ShaderStageFlags stages);
 
+    void processBuffers(spirv_cross::CompilerGLSL &glsl, spirv_cross::ShaderResources &resources, vk::ShaderStageFlagBits stages);
     void updateDescriptorSetLayouts(DescriptorLayoutCache &layoutCache);
     void parseVertexShader(const char *filePath, DescriptorLayoutCache &layoutCache, bool interleaved);
 

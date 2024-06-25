@@ -1,7 +1,7 @@
 #pragma once
 
-#include "vulkan/vulkan.h"
-#include "vma/vk_mem_alloc.h"
+#include <vulkan/vulkan.h>
+#include <vma/vk_mem_alloc.h>
 #include "../destroyable.h"
 #include "../commandpool.h"
 
@@ -14,6 +14,8 @@ private:
     void* mappedData;
     const bool persistent;
 
+    bool pointerMapped; // for raw pointer modification tracking
+
     std::optional<vk::IndexType> indexType;
 
 public:
@@ -24,6 +26,10 @@ public:
 
     void fill(const void *data);
     void fill(const void *data, unsigned int offset, vk::DeviceSize size);
+
+    void* getPointer();
+    void unmap();
+
     void copyTo(Buffer &destination, QueueManager &queueManager, CommandPool &commandPool);
 
     void bind(vk::CommandBuffer commandBuffer, int binding = 0);

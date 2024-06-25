@@ -1,8 +1,9 @@
 #include "buffer.h"
 #include "bufferfactory.h"
+#include <iostream>
 
 Buffer::Buffer(vk::Buffer buffer, vk::BufferCreateInfo info, VmaAllocation allocation, VmaAllocator allocator, bool persistent)
-: buffer(buffer), info(info), allocation(allocation), allocator(allocator), persistent(persistent)
+: buffer(buffer), info(info), allocation(allocation), allocator(allocator), persistent(persistent), pointerMapped(false)
 {
     if (persistent)
     {
@@ -19,12 +20,11 @@ void Buffer::fill(const void *data, unsigned int offset, vk::DeviceSize size)
 {
     if (persistent)
     {
-        char *p = static_cast<char *>(mappedData);
+        char *p = static_cast<char *>(mappedData) + offset;
         memcpy(p + offset, data, size);
     }
     else
     {
-        void* mappedData;
         vmaMapMemory(allocator, allocation, &mappedData);
         char *p = static_cast<char *>(mappedData);
         memcpy(p + offset, data, size);
@@ -83,6 +83,31 @@ std::optional<vk::IndexType> Buffer::getIndexType()
 vk::DescriptorBufferInfo Buffer::getDescriptorInfo()
 {
     return {buffer, 0, info.size};
+}
+
+void *Buffer::getPointer()
+{
+    if (pointerMapped)
+        throw std::runtime_error("Buffer already mapped");
+    if (!persistent)
+    {
+        vmaMapMemory(allocator, allocation, &mappedData);
+        pointerMapped = true;
+    }
+    return mappedData;
+}
+
+void Buffer::unmap()
+{
+    if (!persistent)
+    {
+        if (!pointerMapped)
+            throw std::runtime_error("Buffer not mapped");
+        vmaUnmapMemory(allocator, allocation);
+        pointerMapped = false;
+    }
+    else
+        std::cerr << "unmapping persistent buffer" << std::endl;
 }
 
 void bind(vk::CommandBuffer commandBuffer, const std::vector<Buffer*> &buffers)

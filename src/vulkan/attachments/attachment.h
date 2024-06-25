@@ -1,8 +1,8 @@
 #pragma once
 
-#include "vulkan/vulkan.hpp"
+#include <vulkan/vulkan.hpp>
 #include "../destroyable.h"
-#include "vma/vk_mem_alloc.h"
+#include <vma/vk_mem_alloc.h>
 
 class Attachment : public Destroyable
 {

@@ -1,5 +1,5 @@
 #include "envmap.h"
-#include "gltf/stb_image.h"
+#include <gltf/stb_image.h>
 
 #include <fstream>
 #include <vector>

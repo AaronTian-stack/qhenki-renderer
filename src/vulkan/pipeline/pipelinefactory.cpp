@@ -51,7 +51,6 @@ void PipelineBuilder::reset()
     depthStencil.depthWriteEnable = VK_TRUE;
     depthStencil.depthCompareOp = vk::CompareOp::eLess;
     depthStencil.depthBoundsTestEnable = VK_FALSE;
-    depthStencil.depthBoundsTestEnable = VK_FALSE;
     depthStencil.stencilTestEnable = VK_FALSE;
 
     colorBlendAttachments.clear();
@@ -168,6 +167,33 @@ void PipelineBuilder::updateDescriptorSetLayouts(DescriptorLayoutCache &layoutCa
     pipelineLayoutInfo.pSetLayouts = descriptorSetLayouts.data();
 }
 
+void PipelineBuilder::processBuffers(spirv_cross::CompilerGLSL &glsl, spirv_cross::ShaderResources &resources, vk::ShaderStageFlagBits stages)
+{
+    processPushConstants(glsl, resources, stages);
+    for (const auto &uniformBuffer : resources.uniform_buffers)
+    {
+        std::cout << "Uniform Buffer: " << uniformBuffer.name << std::endl;
+        BindInfo bindInfo = getBindInfo(glsl, uniformBuffer);
+        bindingsMap[bindInfo.set].bindings.emplace_back(bindInfo.binding,
+                                                        vk::DescriptorType::eUniformBuffer,
+                                                        bindInfo.arrayLength, // number of values in array
+                                                        stages,
+                                                        nullptr // for images
+        );
+    }
+    for (const auto &storageBuffer : resources.storage_buffers)
+    {
+        std::cout << "Storage Buffer" << storageBuffer.name << std::endl;
+        BindInfo bindInfo = getBindInfo(glsl, storageBuffer);
+        bindingsMap[bindInfo.set].bindings.emplace_back(bindInfo.binding,
+                                                        vk::DescriptorType::eStorageBuffer,
+                                                        bindInfo.arrayLength, // number of values in array
+                                                        stages,
+                                                        nullptr
+        );
+    }
+}
+
 void PipelineBuilder::parseVertexShader(const char *filePath, DescriptorLayoutCache &layoutCache, bool interleaved)
 {
     auto shaderCode = Shader::readFile(filePath);
@@ -203,23 +229,21 @@ void PipelineBuilder::parseVertexShader(const char *filePath, DescriptorLayoutCa
         }
     }
 
-    processPushConstants(glsl, resources, vk::ShaderStageFlagBits::eVertex);
+//    processPushConstants(glsl, resources, vk::ShaderStageFlagBits::eVertex);
 
     //// CREATE DESCRIPTOR SET LAYOUT
-    for (const auto &uniformBuffer : resources.uniform_buffers)
-    {
-        // the descriptors for the uniform buffers
-        uint32_t bindingNum = glsl.get_decoration(uniformBuffer.id, spv::DecorationBinding);
-        uint32_t set = glsl.get_decoration(uniformBuffer.id, spv::DecorationDescriptorSet);
-
-        bindingsMap[set].bindings.emplace_back(bindingNum,
-                                            vk::DescriptorType::eUniformBuffer,
-                                            1, // number of values in array // TODO: get this via reflection
-                                            vk::ShaderStageFlagBits::eVertex,
-                                            nullptr // for images
-                                            );
-    }
-    // TODO: might want to do something eventually for storage buffers
+//    for (const auto &uniformBuffer : resources.uniform_buffers)
+//    {
+//        std::cout << "Uniform Buffer: " << uniformBuffer.name << std::endl;
+//        BindInfo bindInfo = getBindInfo(glsl, uniformBuffer);
+//        bindingsMap[bindInfo.set].bindings.emplace_back(bindInfo.binding,
+//                                            vk::DescriptorType::eUniformBuffer,
+//                                            bindInfo.arrayLength, // number of values in array
+//                                            vk::ShaderStageFlagBits::eVertex,
+//                                            nullptr // for images
+//                                            );
+//    }
+processBuffers(glsl, resources, vk::ShaderStageFlagBits::eVertex);
     updateDescriptorSetLayouts(layoutCache);
 }
 
@@ -231,24 +255,15 @@ void PipelineBuilder::parseFragmentShader(const char *filePath, DescriptorLayout
     spirv_cross::CompilerGLSL glsl(spirvBytecode, shaderCode.size() / sizeof(uint32_t));
     spirv_cross::ShaderResources resources = glsl.get_shader_resources();
 
-    processPushConstants(glsl, resources, vk::ShaderStageFlagBits::eFragment);
+//    processPushConstants(glsl, resources, vk::ShaderStageFlagBits::eFragment);
 
     for (auto &sampledImage : resources.sampled_images)
     {
         std::cout << "Sampled Image: " << sampledImage.name << std::endl;
-
-        uint32_t bindingNum = glsl.get_decoration(sampledImage.id, spv::DecorationBinding);
-        uint32_t set = glsl.get_decoration(sampledImage.id, spv::DecorationDescriptorSet);
-        uint32_t arrayLength = 1;
-        auto sizes = glsl.get_type(sampledImage.type_id).array;
-        if (!sizes.empty()) // array
-        {
-            arrayLength = sizes[0];
-        }
-
-        bindingsMap[set].bindings.emplace_back(bindingNum,
+        BindInfo bindInfo = getBindInfo(glsl, sampledImage);
+        bindingsMap[bindInfo.set].bindings.emplace_back(bindInfo.binding,
                                             vk::DescriptorType::eCombinedImageSampler,
-                                            arrayLength, // number of values in array
+                                            bindInfo.arrayLength, // number of values in array
                                             vk::ShaderStageFlagBits::eFragment,
                                             nullptr
                                             );
@@ -258,24 +273,32 @@ void PipelineBuilder::parseFragmentShader(const char *filePath, DescriptorLayout
     for (auto &subpassInput : resources.subpass_inputs)
     {
         std::cout << "Subpass Input: " << subpassInput.name << std::endl;
-
-        uint32_t bindingNum = glsl.get_decoration(subpassInput.id, spv::DecorationBinding);
-        uint32_t set = glsl.get_decoration(subpassInput.id, spv::DecorationDescriptorSet);
-        uint32_t arrayLength = 1;
-        auto sizes = glsl.get_type(subpassInput.type_id).array;
-        if (!sizes.empty()) // array
-        {
-            arrayLength = sizes[0];
-        }
-
-        bindingsMap[set].bindings.emplace_back(bindingNum,
+        BindInfo bindInfo = getBindInfo(glsl, subpassInput);
+        bindingsMap[bindInfo.set].bindings.emplace_back(bindInfo.binding,
                                             vk::DescriptorType::eInputAttachment,
-                                            arrayLength, // number of values in array
+                                                        bindInfo.arrayLength, // number of values in array
                                             vk::ShaderStageFlagBits::eFragment,
                                             nullptr
                                             );
     }
 
+//    for (const auto &uniformBuffer : resources.uniform_buffers)
+//    {
+//        throw std::runtime_error("Uniform Buffers in Fragment Shader are not yet supported");
+//    }
+//
+//    for (const auto &storageBuffer : resources.storage_buffers)
+//    {
+//        std::cout << "Storage Buffer" << storageBuffer.name << std::endl;
+//        BindInfo bindInfo = getBindInfo(glsl, storageBuffer);
+//        bindingsMap[bindInfo.set].bindings.emplace_back(bindInfo.binding,
+//                                            vk::DescriptorType::eStorageBuffer,
+//                                            bindInfo.arrayLength, // number of values in array
+//                                            vk::ShaderStageFlagBits::eFragment,
+//                                            nullptr
+//                                            );
+//    }
+    processBuffers(glsl, resources, vk::ShaderStageFlagBits::eFragment);
     updateDescriptorSetLayouts(layoutCache);
 }
 
@@ -380,4 +403,17 @@ void PipelineBuilder::addDefaultColorBlendAttachment(int count)
     }
     colorBlending.attachmentCount = colorBlendAttachments.size();
     colorBlending.pAttachments = colorBlendAttachments.data();
+}
+
+BindInfo PipelineBuilder::getBindInfo(const spirv_cross::CompilerGLSL &glsl, const spirv_cross::Resource &resource)
+{
+    uint32_t bindingNum = glsl.get_decoration(resource.id, spv::DecorationBinding);
+    uint32_t set = glsl.get_decoration(resource.id, spv::DecorationDescriptorSet);
+    uint32_t arrayLength = 1;
+    auto sizes = glsl.get_type(resource.type_id).array;
+    if (!sizes.empty()) // array
+    {
+        arrayLength = sizes[0];
+    }
+    return {bindingNum, set, arrayLength};
 }

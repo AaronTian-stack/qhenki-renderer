@@ -1,5 +1,4 @@
 #include "sharpen.h"
-#include "imgui/imgui.h"
 
 Sharpen::Sharpen(vk::Device device, const char *shaderPath, PipelineBuilder &pipelineFactory,
                  DescriptorLayoutCache &layoutCache, RenderPass *renderPass)
@@ -9,9 +8,4 @@ Sharpen::Sharpen(vk::Device device, const char *shaderPath, PipelineBuilder &pip
 void Sharpen::bindData(vk::CommandBuffer commandBuffer)
 {
     pipeline->setPushConstant(commandBuffer, &intensity, sizeof(float), 0, vk::ShaderStageFlagBits::eFragment);
-}
-
-void Sharpen::renderMenu()
-{
-    ImGui::SliderFloat("Intensity", &intensity, 0.0f, 2.0f);
 }

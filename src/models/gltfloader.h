@@ -1,7 +1,7 @@
 #pragma once
 
 #include <atomic>
-#include "gltf/tiny_gltf.h"
+#include <gltf/tiny_gltf.h>
 #include "model.h"
 #include "../smartpointer.h"
 #include "../vulkan/buffer/bufferfactory.h"

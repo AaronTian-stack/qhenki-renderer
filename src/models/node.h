@@ -2,11 +2,11 @@
 
 #include <vector>
 #include "../smartpointer.h"
-#include "glm/detail/type_mat.hpp"
+#include <glm/detail/type_mat.hpp>
 #include "mesh.h"
-#include "glm/detail/type_mat4x4.hpp"
+#include <glm/detail/type_mat4x4.hpp>
 #include "../vulkan/pipeline/pipeline.h"
-#include "glm/gtc/quaternion.hpp"
+#include <glm/gtc/quaternion.hpp>
 
 class Node
 {

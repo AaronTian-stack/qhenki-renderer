@@ -1,6 +1,6 @@
 #pragma once
 
-#include "vulkan/vulkan.h"
+#include <vulkan/vulkan.h>
 #include "../destroyable.h"
 #include <vector>
 
@@ -14,8 +14,8 @@ private:
     // vulkan wrapper for shader code
     vk::ShaderModule createShaderModule(const std::string &filePath);
 
-    static vk::PipelineShaderStageCreateInfo vertexStageInfo(const vk::ShaderModule &vertShaderModule);
-    static vk::PipelineShaderStageCreateInfo fragmentStageInfo(const vk::ShaderModule &fragShaderModule);
+    inline static vk::PipelineShaderStageCreateInfo vertexStageInfo(const vk::ShaderModule &vertShaderModule);
+    inline static vk::PipelineShaderStageCreateInfo fragmentStageInfo(const vk::ShaderModule &fragShaderModule);
 
 public:
     static std::vector<char> readFile(const std::string &filename);

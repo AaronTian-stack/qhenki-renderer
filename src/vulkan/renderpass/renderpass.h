@@ -1,7 +1,7 @@
 #pragma once
 
 #include <optional>
-#include "vulkan/vulkan.hpp"
+#include <vulkan/vulkan.hpp>
 #include "../destroyable.h"
 
 class RenderPass : public Destroyable
@@ -22,6 +22,7 @@ public:
     vk::RenderPass getRenderPass() { return renderPass; }
 
     void clear(float r, float g, float b, float a);
+    void doNotClear();
     void begin(vk::CommandBuffer commandBuffer);
     void nextSubpass();
     void end();

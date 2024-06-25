@@ -8,19 +8,8 @@
 #include <iostream>
 #include "ImGuiFileDialog-0.6.7/ImGuiFileDialog.h"
 #include "../models/gltfloader.h"
-#include "menu.h"
-#include <cstdlib>
 
 UserInterface::UserInterface() {}
-
-UserInterface::~UserInterface()
-{
-    vkDeviceWaitIdle(device); // wait for operations to finish before disposing
-    ImGui_ImplVulkan_Shutdown();
-    vkDestroyDescriptorPool(device, imguiPool, nullptr); // must happen after ImGui_ImplVulkan_Shutdown
-    ImGui_ImplGlfw_Shutdown();
-    ImGui::DestroyContext();
-}
 
 void UserInterface::create(ImGuiCreateParameters param, CommandPool &commandPool)
 {
@@ -97,7 +86,7 @@ void UserInterface::destroy()
     ImGui::DestroyContext();
 }
 
-void UserInterface::render(void *postProcessManager)
+void UserInterface::render(MenuPayloads menuPayloads)
 {
     ImGuiStyle& style = ImGui::GetStyle();
     style.FrameRounding = 5.0f;
@@ -123,49 +112,20 @@ void UserInterface::render(void *postProcessManager)
     ImGui::Separator();
     if (ImGui::Button("Visual Options"))
     {
-        optionsOpen = true;
+        visualMenu.open = true;
     }
     ImGui::SameLine();
     if (ImGui::Button("Camera Options"))
     {
-        cameraOptionsOpen = true;
+        cameraMenu.open = true;
     }
 
-    if (optionsOpen)
-    {
-        ImGui::Begin("Options", &optionsOpen, ImGuiWindowFlags_AlwaysAutoResize);
-        ImGui::Checkbox("Draw Background", &drawBackground);
-        ImGui::BeginDisabled(drawBackground);
-        ImGui::ColorEdit3("Clear Color", clearColor);
-        ImGui::EndDisabled();
-        ImGui::Separator();
-        ImGui::DragFloat("IBL Intensity", &iblIntensity, 0.01f, 0.f, 100.f);
-        ImGui::Separator();
-        if (ImGui::Button("Post-Processing Stack"))
-            postProcessOpen = true;
-        ImGui::End();
-    }
-
-    if (postProcessOpen)
-    {
-        auto *postProcessManagerPtr = static_cast<PostProcessManager *>(postProcessManager);
-        renderPostProcessStack(postProcessManagerPtr);
-    }
-
-    if (cameraOptionsOpen)
-    {
-        ImGui::Begin("Camera Options", &cameraOptionsOpen, ImGuiWindowFlags_AlwaysAutoResize);
-        ImGui::Text("Sensitivity");
-        ImGui::Separator();
-        ImGui::SliderFloat("Rotate Sensitivity", &InputProcesser::SENSITIVITY_ROTATE, 0.0f, 0.2f);
-        ImGui::SliderFloat("Translate Sensitivity", &InputProcesser::SENSITIVITY_TRANSLATE, 0.0f, 0.2f);
-        ImGui::SliderFloat("Zoom Sensitivity", &InputProcesser::SENSITIVITY_ZOOM, 0.0f, 0.2f);
-        ImGui::SliderFloat("FOV Sensitivity", &InputProcesser::SENSITIVITY_FOV, 0.0f, 20.0f);
-        // TODO: change FOV
-//        ImGui::Text("Viewing");
-//        ImGui::Separator();
-        ImGui::End();
-    }
+    menuPayloads.visualMenuPayload.postProcessOpen = &postProcessMenu.open;
+    menuPayloads.visualMenuPayload.lightsOpen = &lightMenu.open;
+    visualMenu.renderMenu(&menuPayloads.visualMenuPayload);
+    postProcessMenu.renderMenu(menuPayloads.postProcessManager);
+    cameraMenu.renderMenu(menuPayloads.camera);
+    lightMenu.renderMenu(&menuPayloads.lightsList);
 
     renderMenuBar();
 }
@@ -197,14 +157,16 @@ void UserInterface::renderMenuBar()
         if (ImGui::MenuItem("About"))
             about = true;
 
+        float status = GLTFLoader::getLoadPercent();
+        ImGui::BeginDisabled(status < 1.f);
         if (ImGui::MenuItem("Load Model"))
         {
             IGFD::FileDialogConfig config;
             config.path = "../resources/gltf/";
             ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose File", ".gltf,.glb", config);
         }
+        ImGui::EndDisabled();
 
-        float status = GLTFLoader::getLoadPercent();
         static float smoothPercent = 1.f;
         smoothPercent = glm::mix(smoothPercent, status, 0.2f);
 
@@ -222,6 +184,7 @@ void UserInterface::renderMenuBar()
 
         const char* name = "Aaron Tian 2024";
         ImGui::SameLine(ImGui::GetWindowWidth() - ImGui::CalcTextSize(name).x - 15);
+        ImGui::Text("%s", name);
         ImGui::Text("%s", name);
         ImGui::EndMainMenuBar();
     }
@@ -253,132 +216,5 @@ void UserInterface::renderMenuBar()
         ImGui::BulletText("ESC: Quit");
         ImGui::EndPopup();
     }
-    ImGui::End();
-}
-
-void UserInterface::renderPostProcessStack(PostProcessManager *postProcessManager)
-{
-    ImGui::Begin("Post-Processing Stack", &postProcessOpen, ImGuiWindowFlags_AlwaysAutoResize);
-
-    ImGui::TextDisabled("(?)");
-    if (ImGui::BeginItemTooltip())
-    {
-        ImGui::PushTextWrapPos(200.0f);
-        ImGui::Text("Drag and drop effects to apply. Note that order matters, and that duplicates of the same effect will share the same parameters.");
-        ImGui::EndTooltip();
-    }
-
-    if (ImGui::BeginTable("table1", 2))
-    {
-        float columnWidth = 120.f;
-        ImGui::TableSetupColumn("Available Effects", ImGuiTableColumnFlags_WidthFixed, columnWidth);
-        ImGui::TableSetupColumn("Active Effects", ImGuiTableColumnFlags_WidthFixed, columnWidth);
-
-        ImGui::TableHeadersRow();
-        ImGui::TableNextRow();
-        ImGui::TableSetColumnIndex(0);
-
-        // list box
-        auto &postProcesses = postProcessManager->getPostProcesses();
-
-        static int item_current_idx = 0;
-        float listboxHeight = ImGui::GetTextLineHeightWithSpacing() * 10;
-        if (ImGui::BeginListBox("##listbox 1", ImVec2(-FLT_MIN, listboxHeight)))
-        {
-            for (int i = 0; i < postProcesses.size(); i++)
-            {
-                ImGui::PushID(i);
-                ImGui::Selectable(postProcesses[i]->name);
-
-                if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_None))
-                {
-                    ImGui::SetDragDropPayload("DND", &i, sizeof(int)); // post process index
-
-                    ImGui::Text("%s", postProcesses[i]->name);
-                    ImGui::EndDragDropSource();
-                }
-
-                ImGui::PopID();
-            }
-            ImGui::EndListBox();
-        }
-        ImGui::TableNextColumn();
-
-        auto &toneMappers = postProcessManager->getToneMappers();
-        auto activePostProcesses = postProcessManager->getActivePostProcesses();
-        if (ImGui::BeginListBox("##listbox 2", ImVec2(-FLT_MIN, listboxHeight)))
-        {
-            ImGui::SetNextItemWidth(columnWidth * 0.95f);
-            const auto activeTM = postProcessManager->getActiveToneMapper();
-
-            if (ImGui::BeginCombo("##combo", activeTM->name))
-            {
-                for (int i = 0; i < toneMappers.size(); i++)
-                {
-                    bool is_selected = (activeTM == toneMappers[i].get());
-                    if (ImGui::Selectable(toneMappers[i]->name, is_selected))
-                    {
-                        postProcessManager->setToneMapper(i);
-                    }
-                }
-                ImGui::EndCombo();
-            }
-            if (ImGui::BeginItemTooltip())
-            {
-                ImGui::Text("Tonemapper to use");
-                ImGui::EndTooltip();
-            }
-
-            int indexToRemove = -1;
-            for (int i = 0; i < activePostProcesses.size(); i++)
-            {
-                ImGui::PushID(i);
-                if (ImGui::Selectable(activePostProcesses[i]->name))
-                {
-                    auto *menu = dynamic_cast<Menu*>(activePostProcesses[i]);
-                    if (menu)
-                    {
-                        menu->open = true;
-                    }
-                }
-                ImGui::PopID();
-            }
-            for (int i = 0; i < activePostProcesses.size(); i++)
-            {
-                auto *menu = dynamic_cast<Menu*>(activePostProcesses[i]);
-                ImGui::PushID(i);
-                if (menu && menu->open)
-                {
-                    ImGui::Begin(activePostProcesses[i]->name, &menu->open, ImGuiWindowFlags_AlwaysAutoResize);
-                    menu->renderMenu();
-                    if (ImGui::Button("Remove"))
-                    {
-                        indexToRemove = i;
-                        menu->open = false;
-                    }
-                    ImGui::End();
-                }
-                ImGui::PopID();
-            }
-            if (indexToRemove != -1)
-            {
-                postProcessManager->deactivatePostProcess(indexToRemove);
-            }
-            ImGui::EndListBox();
-        }
-        if (ImGui::BeginDragDropTarget())
-        {
-            if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("DND"))
-            {
-                IM_ASSERT(payload->DataSize == sizeof(int));
-                int index = *(const int*)payload->Data;
-                postProcessManager->activatePostProcess(index);
-            }
-            ImGui::EndDragDropTarget();
-        }
-
-        ImGui::EndTable();
-    }
-
     ImGui::End();
 }

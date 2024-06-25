@@ -23,13 +23,15 @@
 #include "vulkan/attachments/gbuffer.h"
 #include "vfx/postprocessmanager.h"
 #include "vfx/effects/fxaa.h"
-#include "lights.h"
+#include "lights/lights.h"
 #include <atomic>
 #include <mutex>
 
 class VulkanApp
 {
 private:
+    bool drawBackground;
+    glm::vec3 clearColor;
     EnvironmentMap envMap;
     std::vector<uPtr<Model>> models;
 
@@ -47,9 +49,9 @@ private:
     uPtr<RenderPass> offscreenRenderPass;
     PipelineBuilder pipelineFactory;
 
-    uPtr<Pipeline> gBufferPipeline, lightingPipeline, passPipeline, passAndClearPipeline, cubeMapPipeline;
+    uPtr<Pipeline> gBufferPipeline, lightingPipeline, passPipeline, passAndClearPipeline, cubeMapPipeline, lightDisplayPipeline, solidPlanePipeline;
 
-    uPtr<Shader> gBufferShader, lightingShader, passShader, passAndClearShader, cubeMapShader;
+    uPtr<Shader> gBufferShader, lightingShader, passShader, passAndClearShader, cubeMapShader, lightDisplayShader, solidPlaneShader;
 
     std::mutex modelMutex;
     uPtr<CommandPool> graphicsCommandPool; // one pool per thread
@@ -59,7 +61,20 @@ private:
     int currentFrame = 0;
     const int MAX_FRAMES_IN_FLIGHT = 2;
     std::vector<Frame> frames;
+
+    uPtr<Buffer> bayerMatrix;
     std::vector<uPtr<Buffer>> cameraBuffers;
+
+    const int MAX_LIGHTS = 10;
+//    std::vector<uPtr<Buffer>> pointLightBuffers;
+    std::vector<SphereLight> sphereLights;
+    std::vector<uPtr<Buffer>> sphereLightBuffers;
+    std::vector<TubeLight> tubeLights;
+    std::vector<uPtr<Buffer>> tubeLightsBuffers;
+    std::vector<RectangleLight> rectangleLights;
+    std::vector<uPtr<Buffer>> rectangleLightBuffers;
+
+    uPtr<PostProcessManager> postProcessManager;
 
     Camera camera;
     CameraMatrices cameraMatrices;
@@ -71,18 +86,25 @@ public:
     ~VulkanApp();
 
     void createGbuffer(vk::Extent2D extent, vk::RenderPass renderPass);
+    void createRenderPasses();
+    void createPipelines();
+    void createPostProcess();
     void create(Window &window);
     void render();
     void resize();
 
     void handleInput();
+    void updateLightBuffers();
     void updateCameraBuffer();
+
+    void attemptToDeleteOldModel();
+
     void recordOffscreenBuffer(vk::CommandBuffer buffer, DescriptorAllocator &allocator);
     void recordCommandBuffer(FrameBuffer *framebuffer);
 
-    uPtr<PostProcessManager> postProcessManager;
     UserInterface *ui;
     ImGuiCreateParameters getImGuiCreateParameters();
+    MenuPayloads getPartialMenuPayload();
 
     CommandPool& getGraphicsCommandPool();
 

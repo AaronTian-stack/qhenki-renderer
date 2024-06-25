@@ -1,6 +1,6 @@
 #pragma once
 
-#include "vulkan/vulkan_core.h"
+#include <vulkan/vulkan_core.h>
 #include "../window.h"
 #include "../vulkan/renderpass/renderpass.h"
 #include "../vulkan/queuemanager.h"
@@ -8,6 +8,10 @@
 #include "../vulkan/context/vulkancontext.h"
 #include "../camera.h"
 #include "../vfx/postprocessmanager.h"
+#include "cameramenu.h"
+#include "visualmenu.h"
+#include "postprocessmenu.h"
+#include "lightmenu.h"
 #include <functional>
 
 struct ImGuiCreateParameters
@@ -18,35 +22,39 @@ struct ImGuiCreateParameters
     int framesInFlight;
 };
 
+struct MenuPayloads
+{
+    void *camera;
+    void *postProcessManager;
+    VisualMenuPayload visualMenuPayload;
+    LightsList lightsList;
+};
+
 class UserInterface : Destroyable
 {
 private:
     Window *window;
     VkDescriptorPool imguiPool;
     void renderMenuBar();
-    void renderPostProcessStack(PostProcessManager *postProcessManager);
-    bool optionsOpen = false;
-    bool cameraOptionsOpen = false;
-    bool drawBackground = true;
-    bool postProcessOpen = false;
 
-    float iblIntensity = 1.0f;
-    float clearColor[3] = {0.25f, 0.25f, 0.25f};
+    VisualMenu visualMenu;
+    CameraMenu cameraMenu;
+    PostProcessMenu postProcessMenu;
+    LightMenu lightMenu;
+
+    std::vector<float> frameTimes;
 
 public:
     UserInterface();
-    ~UserInterface();
 
     void create(ImGuiCreateParameters param, CommandPool &commandPool);
-    void render(void *postProcessManager);
+    void render(MenuPayloads menuPayloads);
     void destroy() override;
 
     void begin();
     void end(VkCommandBuffer commandBuffer);
 
     std::function<void(std::string)> modelSelectCallback;
-
-    std::vector<float> frameTimes;
 
     friend class VulkanApp;
 };
