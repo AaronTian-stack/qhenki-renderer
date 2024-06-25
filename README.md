@@ -16,9 +16,9 @@ My personal hobby renderer written in C++ using Vulkan. It is intended as a plac
 
 ![helmet](screenshots/helmet.png)
 
-|          Dynamic Lighting            |
-|:------------------------------------:|
-|  ![lights](screenshots/lights.png)   |
+|        Dynamic Area Lights        |
+|:---------------------------------:|
+| ![lights](screenshots/lights.png) |
 
 ![applevr](screenshots/applevr.png)
 
