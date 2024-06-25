@@ -3,6 +3,7 @@
 PostProcessManager::PostProcessManager(vk::Device device, vk::Extent2D extent, BufferFactory &bufferFactory,
                                        RenderPassBuilder &renderPassBuilder)
 : Destroyable(device), activeToneMapperIndex(0), currentAttachmentIndex(1)
+: Destroyable(device), activeToneMapperIndex(0), currentAttachmentIndex(1)
 {
     renderPassBuilder.reset();
     renderPassBuilder.addColorAttachment(vk::Format::eR8G8B8A8Unorm,
@@ -138,8 +139,14 @@ Attachment* PostProcessManager::getAttachment(int index)
     return afb[index].attachment.get();
 }
 
+Attachment* PostProcessManager::getAttachment(int index)
+{
+    return afb[index].attachment.get();
+}
+
 Attachment* PostProcessManager::getCurrentAttachment()
 {
+    return getAttachment(currentAttachmentIndex);
     return getAttachment(currentAttachmentIndex);
 }
 
@@ -176,6 +183,11 @@ void PostProcessManager::deactivatePostProcess(int index)
 void PostProcessManager::setToneMapper(int index)
 {
     activeToneMapperIndex = index;
+}
+
+vk::Framebuffer PostProcessManager::getFramebuffer(int index)
+{
+    return afb[index].framebuffer;
 }
 
 vk::Framebuffer PostProcessManager::getFramebuffer(int index)

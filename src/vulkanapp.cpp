@@ -131,6 +131,7 @@ void VulkanApp::createRenderPasses()
 {
     renderPassBuilder.create(vulkanContext.device.logicalDevice);
 
+    // create render pass
     renderPassBuilder.reset();
     renderPassBuilder.addColorAttachment(vulkanContext.swapChain->getFormat());
     renderPassBuilder.addSubPass({}, {}, {0}, {});
@@ -577,11 +578,13 @@ void VulkanApp::recordCommandBuffer(FrameBuffer *framebuffer)
     displayRenderPass->begin(primaryCommandBuffer);
 
     primaryCommandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, passPipeline->getGraphicsPipeline());
+    primaryCommandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, passPipeline->getGraphicsPipeline());
     vk::DescriptorSet samplerSet;
     DescriptorBuilder::beginSet(&layoutCache, &allocator)
             .bindImage(0, {postProcessManager->getCurrentAttachment()->getDescriptorInfo()}, // output attachment sampler
                        1, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eFragment)
             .build(samplerSet, layout);
+    primaryCommandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, passPipeline->getPipelineLayout(),
     primaryCommandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, passPipeline->getPipelineLayout(),
                                             0, {samplerSet}, nullptr);
     primaryCommandBuffer.draw(3, 1, 0, 0);

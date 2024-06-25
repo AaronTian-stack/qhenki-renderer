@@ -10,7 +10,19 @@ layout(location = 0) out vec4 outColor; // location is index of framebuffer / at
 layout(scalar, push_constant) uniform PushConstant {
     float seed;
     float intensity;
+    float vignetteX;
+    float vignetteY;
+    float saturation;
+    float saturationMul;
 } pc;
+
+const vec3 grayscale = vec3(0.3, 0.59, 0.11);
+
+vec3 adjustSaturation(vec3 color, float saturation)
+{
+    vec3 grey = vec3(dot(color, grayscale));
+    return mix(grey, color, saturation);
+}
 
 void main()
 {

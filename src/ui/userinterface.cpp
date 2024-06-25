@@ -163,6 +163,8 @@ void UserInterface::renderMenuBar()
         {
             IGFD::FileDialogConfig config;
             config.path = "../resources/gltf/";
+            IGFD::FileDialogConfig config;
+            config.path = "../resources/gltf/";
             ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose File", ".gltf,.glb", config);
         }
         ImGui::EndDisabled();
@@ -184,6 +186,7 @@ void UserInterface::renderMenuBar()
 
         const char* name = "Aaron Tian 2024";
         ImGui::SameLine(ImGui::GetWindowWidth() - ImGui::CalcTextSize(name).x - 15);
+        ImGui::Text("%s", name);
         ImGui::Text("%s", name);
         ImGui::EndMainMenuBar();
     }

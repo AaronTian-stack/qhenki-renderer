@@ -36,6 +36,7 @@ private:
     std::vector<uPtr<Model>> models;
 
     LightingParameters lightingParameters;
+    LightingParameters lightingParameters;
     uPtr<GBuffer> gBuffer;
     uPtr<Attachment> depthBuffer;
 
