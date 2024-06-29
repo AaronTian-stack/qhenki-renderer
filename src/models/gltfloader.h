@@ -5,6 +5,7 @@
 #include "model.h"
 #include "../smartpointer.h"
 #include "../vulkan/buffer/bufferfactory.h"
+#include <tsl/robin_map.h>
 
 #define POSITION_STRING "POSITION"
 #define NORMAL_STRING "NORMAL"
@@ -15,7 +16,7 @@
 class GLTFLoader
 {
 private:
-    static inline std::atomic<float> loadPercent = 1.f;
+    static inline std::atomic<float> loadPercent = 1.f; // TODO: rewrite so that loader is its own object (not static)
 
     static const inline std::array<std::pair<const char*, VertexBufferType>, 5> typeMap =
     {
@@ -28,7 +29,9 @@ private:
 
     static void makeMaterialsAndTextures(CommandPool &commandPool, QueueManager &queueManager,
                                          BufferFactory &bufferFactory, tinygltf::Model &gltfModel, Model *model);
-    static void processNode(BufferFactory &bufferFactory, tinygltf::Model &gltfModel, Model *model, Node *parent, int nodeIndex);
+    static void processNode(BufferFactory &bufferFactory, tinygltf::Model &gltfModel, Model *model, Node *parent, int nodeIndex,
+                            tsl::robin_map<Mesh*, int> &meshMap, tsl::robin_map<int, Node*> &numberNodeMap);
+    static void processSkinsAnimations(tinygltf::Model &gltfModel, Model *model, tsl::robin_map<int, Node*> &numberNodeMap);
     static uPtr<Buffer> createTangentVectors(BufferFactory &bufferFactory, tinygltf::Model &gltfModel , int verticesType,
                                              int normalType, int uvType, int indexType, vk::BufferUsageFlagBits flag);
     static uPtr<Buffer> getBuffer(BufferFactory &bufferFactory, tinygltf::Model &gltfModel,

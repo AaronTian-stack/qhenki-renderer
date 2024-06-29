@@ -18,7 +18,6 @@ file(GLOB_RECURSE IMGUI CONFIGURE_DEPENDS
         ${CMAKE_CURRENT_SOURCE_DIR}/dependencies/include/ImGuiFileDialog-0.6.7/*.h
 )
 
-
 add_subdirectory(dependencies/include/mikktspace)
 add_subdirectory(dependencies/include/spirv_cross)
 

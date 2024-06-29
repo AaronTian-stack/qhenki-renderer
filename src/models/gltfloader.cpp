@@ -49,31 +49,33 @@ uPtr<Model> GLTFLoader::create(CommandPool &commandPool, QueueManager &queueMana
 
     int rootNodeIndex = gltfModel.scenes[gltfModel.defaultScene].nodes[0];
 
-    auto loadMaterials = [&]()
-    {
+    std::thread matThread([&](){
         makeMaterialsAndTextures(commandPool, queueManager, bufferFactory, gltfModel, model.get());
-    };
+    });
 
-    auto processNodes = [&]()
-    {
-        processNode(bufferFactory, gltfModel, model.get(), nullptr, rootNodeIndex);
-    };
+    tsl::robin_map<Mesh*, int> meshMaterialMap;
+    tsl::robin_map<int, Node*> numberNodeMap;
+    std::thread nodeThread([&](){
+       processNode(bufferFactory, gltfModel, model.get(), nullptr, rootNodeIndex, meshMaterialMap, numberNodeMap);
+    });
 
-    std::thread matThread(loadMaterials);
-    std::thread nodeThread(processNodes);
+    nodeThread.join();
+
+    // assign joints to nodes
+    processSkinsAnimations(gltfModel, model.get(), numberNodeMap);
 
     matThread.join();
-    nodeThread.join();
 
     for (auto &mesh : model->meshes)
     {
-        mesh->material = &model->materials[mesh->materialIndex];
+        mesh->material = &model->materials[meshMaterialMap[mesh.get()]];
     }
 
     return model;
 }
 
-void GLTFLoader::processNode(BufferFactory &bufferFactory, tinygltf::Model &gltfModel, Model *model, Node *parent, int nodeIndex)
+void GLTFLoader::processNode(BufferFactory &bufferFactory, tinygltf::Model &gltfModel, Model *model, Node *parent, int nodeIndex,
+                             tsl::robin_map<Mesh*, int> &meshMap, tsl::robin_map<int, Node*> &numberNodeMap)
 {
     const tinygltf::Node& gltfNode = gltfModel.nodes[nodeIndex];
     loadPercent.store(loadPercent.load() + 0.5f / gltfModel.nodes.size());
@@ -92,6 +94,8 @@ void GLTFLoader::processNode(BufferFactory &bufferFactory, tinygltf::Model &gltf
     node->parent = parent;
     node->name = gltfNode.name;
 
+    numberNodeMap[nodeIndex] = node;
+
     // set node transform
     if (gltfNode.scale.empty() && gltfNode.rotation.empty() && gltfNode.translation.empty() && gltfNode.matrix.size() == 16)
     {
@@ -109,27 +113,27 @@ void GLTFLoader::processNode(BufferFactory &bufferFactory, tinygltf::Model &gltf
         glm::vec4 perspective;
         glm::decompose(transformation, scale, rotation, translation, skew, perspective);
 
-        node->scale = scale;
-        node->rotation = glm::conjugate(rotation);
-        node->translate = translation;
+        node->transform.scale = scale;
+        node->transform.rotation = glm::conjugate(rotation);
+        node->transform.translate = translation;
     }
     else
     {
         if (!gltfNode.scale.empty())
         {
             auto &scale = gltfNode.scale;
-            node->scale = {scale[0], scale[1], scale[2]};
+            node->transform.scale = {scale[0], scale[1], scale[2]};
         }
         if (!gltfNode.rotation.empty())
         {
             auto &rot = gltfNode.rotation;
             auto q = glm::dquat(rot[3], rot[0], rot[1], rot[2]);
-            node->rotation = q;
+            node->transform.rotation = q;
         }
         if (!gltfNode.translation.empty())
         {
             auto &trans = gltfNode.translation;
-            node->translate = {trans[0], trans[1], trans[2]};
+            node->transform.translate = {trans[0], trans[1], trans[2]};
         }
     }
 
@@ -174,8 +178,7 @@ void GLTFLoader::processNode(BufferFactory &bufferFactory, tinygltf::Model &gltf
             // extract index data
             mesh->indexBuffer = getBuffer(bufferFactory, gltfModel, primitive.indices, vk::BufferUsageFlagBits::eIndexBuffer, 0);
 
-            mesh->material = &model->materials[primitive.material];
-            mesh->materialIndex = primitive.material;
+            meshMap[mesh.get()] = primitive.material;
 
             model->meshes.push_back(std::move(mesh));
             node->meshes.push_back(model->meshes.back().get());
@@ -185,7 +188,77 @@ void GLTFLoader::processNode(BufferFactory &bufferFactory, tinygltf::Model &gltf
     // recursively process child nodes
     for (int childIndex : gltfNode.children)
     {
-        processNode(bufferFactory, gltfModel, model, node, childIndex);
+        processNode(bufferFactory, gltfModel, model, node, childIndex, meshMap, numberNodeMap);
+    }
+}
+
+void GLTFLoader::processSkinsAnimations(tinygltf::Model &gltfModel, Model *model, tsl::robin_map<int, Node*> &numberNodeMap)
+{
+    // iterate through each skin
+    for (auto &skin : gltfModel.skins)
+    {
+        model->skins.emplace_back(skin.name);
+        Skin &skinObj = model->skins.back();
+
+        for (int joint : skin.joints)
+        {
+            const tinygltf::Accessor &accessor = gltfModel.accessors[joint];
+            const tinygltf::BufferView &bufferView = gltfModel.bufferViews[accessor.bufferView];
+            const tinygltf::Buffer &buffer = gltfModel.buffers[bufferView.buffer];
+
+            // read inverse bind matrix
+            const auto *ibm = reinterpret_cast<const glm::mat4*>(&buffer.data[bufferView.byteOffset + accessor.byteOffset]);
+
+            Node *n = numberNodeMap[joint];
+            skinObj.nodeBindMatrices.push_back({ n, *ibm });
+        }
+    }
+
+    // get the raw animation data
+    for (auto &animation : gltfModel.animations)
+    {
+        model->animations.emplace_back(animation.name);
+        Animation &anim = model->animations.back();
+        for (auto &channel : animation.channels)
+        {
+            TargetPath path = TargetPath::TRANSLATION;
+            if (channel.target_path == "translation")
+                path = TargetPath::TRANSLATION;
+            else if (channel.target_path == "rotation")
+                path = TargetPath::ROTATION;
+            else if (channel.target_path == "scale")
+                path = TargetPath::SCALE;
+            else throw std::runtime_error("Invalid target path");
+
+            anim.channels.push_back({ numberNodeMap[channel.target_node], channel.sampler, path });
+        }
+        for (auto &sampler : animation.samplers)
+        {
+            Interpolation interp = Interpolation::LINEAR;
+            if (sampler.interpolation == "LINEAR")
+                interp = Interpolation::LINEAR;
+            else if (sampler.interpolation == "STEP")
+                interp = Interpolation::STEP;
+            else if (sampler.interpolation == "CUBICSPLINE")
+                interp = Interpolation::CUBICSPLINE;
+            else throw std::runtime_error("Invalid interpolation");
+
+            anim.samplers.push_back({ sampler.input, sampler.output, interp });
+
+            // copy raw animation data if not copied already
+            auto addRawData = [&](int type) {
+                if (model->animationRawData.contains(type)) return;
+                const tinygltf::Accessor &accessor = gltfModel.accessors[type];
+                const tinygltf::BufferView &bufferView = gltfModel.bufferViews[accessor.bufferView];
+                const tinygltf::Buffer &buffer = gltfModel.buffers[bufferView.buffer];
+                const auto *data = &buffer.data[bufferView.byteOffset + accessor.byteOffset];
+
+                model->animationRawData[type] = std::vector<unsigned char>(data, data + accessor.count * accessor.ByteStride(bufferView));
+            };
+
+            addRawData(sampler.input);
+            addRawData(sampler.output);
+        }
     }
 }
 
@@ -235,7 +308,8 @@ uPtr<Buffer> GLTFLoader::getBuffer(BufferFactory &bufferFactory, tinygltf::Model
     return vBuffer;
 }
 
-void GLTFLoader::makeMaterialsAndTextures(CommandPool &commandPool, QueueManager &queueManager, BufferFactory &bufferFactory, tinygltf::Model &gltfModel, Model *model)
+void GLTFLoader::makeMaterialsAndTextures(CommandPool &commandPool, QueueManager &queueManager, BufferFactory &bufferFactory,
+                                          tinygltf::Model &gltfModel, Model *model)
 {
     auto time1 = std::chrono::high_resolution_clock::now();
     std::vector<vk::CommandBuffer> commandBuffers;

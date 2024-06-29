@@ -18,7 +18,6 @@ enum VertexBufferType
 class Mesh
 {
 private:;
-    int materialIndex; // used in loading only TODO: get rid of this
     std::array<uPtr<Buffer>, 5> vertexBuffers;
 
     uPtr<Buffer> indexBuffer;

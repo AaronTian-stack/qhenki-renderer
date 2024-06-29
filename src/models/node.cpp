@@ -1,7 +1,7 @@
 #include "node.h"
 #include <glm/gtx/transform.hpp>
 
-Node::Node() : parent(nullptr), translate(0.f), scale(1.f)
+Node::Node() : parent(nullptr)
 {}
 
 void Node::draw(const uPtr<Node> &node, vk::CommandBuffer commandBuffer, Pipeline &pipeline)
@@ -21,11 +21,11 @@ void Node::draw(const uPtr<Node> &node, vk::CommandBuffer commandBuffer, Pipelin
     }
 }
 
-glm::mat4 Node::getLocalTransform()
+glm::mat4 Node::getLocalTransform() const
 {
-    return glm::translate(glm::mat4(), translate) *
-           glm::mat4_cast(rotation) *
-           glm::scale(glm::mat4(), scale);
+    return glm::translate(glm::mat4(), transform.translate) *
+           glm::mat4_cast(transform.rotation) *
+           glm::scale(glm::mat4(), transform.scale);
 }
 
 glm::mat4 Node::getWorldTransform()
