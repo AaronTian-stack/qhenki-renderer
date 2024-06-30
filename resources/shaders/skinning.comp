@@ -1,15 +1,16 @@
 #version 450
 #extension GL_EXT_scalar_block_layout : require
+#extension GL_EXT_shader_explicit_arithmetic_types_int16 : require
 
 layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
 
-layout(set = 0, binding = 0, scalar) readonly buffer PositionsIn {
+layout(scalar, set = 0, binding = 0) readonly buffer PositionsIn {
     vec3 positionsIn[];
 };
 
 // joints that affect each vertex
 layout(scalar, set = 0, binding = 1) readonly buffer JointsIn {
-    uvec4 jointsIn[];
+    u16vec4 jointsIn[];
 };
 
 // weights for each joint that affect each vertex
@@ -26,16 +27,21 @@ layout(scalar, set = 0, binding = 4) writeonly buffer PositionsOut {
     vec3 positionsOut[];
 };
 
+//layout(scalar, set = 0, binding = 5) writeonly buffer NormalsOut {
+//    vec3 normalsOut[];
+//};
+
 void main()
 {
     uint vertexIndex = gl_GlobalInvocationID.x;
 
     vec3 outPosition = vec3(0.0);
-    uvec4 joint = jointsIn[vertexIndex];
+    u16vec4 joint = jointsIn[vertexIndex];
     vec4 weights = weightsIn[vertexIndex];
     for (int i = 0; i < 4; i++)
     {
-        mat4 jointMatrix = jointMatrices[joint[i]];
+        mat4 jointMatrix = jointMatrices[joint[i]]; // TODO: wrong
+//        mat4 jointMatrix = mat4(1.0);
         outPosition += (jointMatrix * vec4(positionsIn[vertexIndex], 1.0)).xyz * weights[i];
     }
     positionsOut[vertexIndex] = outPosition;

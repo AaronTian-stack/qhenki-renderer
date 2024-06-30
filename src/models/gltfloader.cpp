@@ -84,17 +84,17 @@ void GLTFLoader::processNode(BufferFactory &bufferFactory, tinygltf::Model &gltf
     Node *node;
     if (!parent)
     {
-        model->root = mkU<Node>();
+        model->root = mkU<Node>(model);
         node = model->root.get();
     }
     else
     {
-        parent->children.push_back(mkU<Node>());
+        parent->children.push_back(mkU<Node>(model));
         node = parent->children.back().get();
     }
     node->parent = parent;
     node->name = gltfNode.name;
-    node->skin = gltfNode.skin;
+    node->skinIndex = gltfNode.skin;
 
     numberNodeMap[nodeIndex] = node;
 
@@ -177,15 +177,26 @@ void GLTFLoader::processNode(BufferFactory &bufferFactory, tinygltf::Model &gltf
                                              primitive.indices,
                                              flags);
             }
-            if (primitive.attributes.count(JOINTS_STRING) != 0)
+            auto hasJoints = primitive.attributes.count(JOINTS_STRING) != 0;
+            if (hasJoints)
             {
                 mesh->jointsBuffer = getBuffer(bufferFactory, gltfModel, primitive.attributes.at(JOINTS_STRING),
                                                flags, sizeof(glm::u16vec4));
             }
-            if (primitive.attributes.count(WEIGHTS_STRING) != 0)
+            auto hasWeights = primitive.attributes.count(WEIGHTS_STRING) != 0;
+            if (hasWeights)
             {
                 mesh->weightsBuffer = getBuffer(bufferFactory, gltfModel, primitive.attributes.at(WEIGHTS_STRING),
                                                 flags, sizeof(glm::vec4));
+            }
+            if (hasJoints && hasWeights)
+            {
+                mesh->skinnedPositions = bufferFactory.createBuffer(mesh->vertexBuffers[VertexBufferType::POSITION]->info.size,
+                                                                    flags,
+                                                                    VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
+                mesh->skinnedNormals = bufferFactory.createBuffer(mesh->vertexBuffers[VertexBufferType::NORMAL]->info.size,
+                                                                  flags,
+                                                                  VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
             }
 
             // extract index data
@@ -290,38 +301,27 @@ uPtr<Buffer> GLTFLoader::getBuffer(BufferFactory &bufferFactory, tinygltf::Model
     const tinygltf::BufferView &bufferView = gltfModel.bufferViews[accessor.bufferView];
     const tinygltf::Buffer &buffer = gltfModel.buffers[bufferView.buffer];
 
-    size_t count = accessor.count;
-    uPtr<Buffer> vBuffer;
-
     if (flags & vk::BufferUsageFlagBits::eIndexBuffer && flags & vk::BufferUsageFlagBits::eVertexBuffer)
     {
         std::cerr << "Cannot have both vertex and index buffer!" << std::endl;
         throw std::runtime_error("Invalid buffer usage flag");
     }
 
-    if (flags & vk::BufferUsageFlagBits::eVertexBuffer)
-    {
-        vBuffer = bufferFactory.createBuffer(count * vertexSize, flags,
-                                             VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
-        vBuffer->fill(&buffer.data[0] + bufferView.byteOffset + accessor.byteOffset);
-    }
-    else if (flags & vk::BufferUsageFlagBits::eIndexBuffer)
+    uPtr<Buffer> vBuffer = bufferFactory.createBuffer(bufferView.byteLength, flags,
+                                         VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
+    vBuffer->fill(&buffer.data[0] + bufferView.byteOffset + accessor.byteOffset);
+
+    if (flags & vk::BufferUsageFlagBits::eIndexBuffer)
     {
         // handle different formats
         if (accessor.componentType == TINYGLTF_PARAMETER_TYPE_UNSIGNED_SHORT)
         {
             // 16 bit
-            vBuffer = bufferFactory.createBuffer(count * sizeof(uint16_t), flags,
-                                                 VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
-            vBuffer->fill(&buffer.data[0] + bufferView.byteOffset + accessor.byteOffset);
             vBuffer->setIndexType(vk::IndexType::eUint16);
         }
         else if (accessor.componentType == TINYGLTF_PARAMETER_TYPE_UNSIGNED_INT)
         {
             // 32 bit
-            vBuffer = bufferFactory.createBuffer(count * sizeof(uint32_t), flags,
-                                                 VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
-            vBuffer->fill(&buffer.data[0] + bufferView.byteOffset + accessor.byteOffset);
             vBuffer->setIndexType(vk::IndexType::eUint32);
         }
         else
@@ -329,11 +329,6 @@ uPtr<Buffer> GLTFLoader::getBuffer(BufferFactory &bufferFactory, tinygltf::Model
             std::cerr << "Index component type " << accessor.componentType << " not supported!" << std::endl;
             throw std::runtime_error("Index type not supported");
         }
-    }
-    else
-    {
-        std::cerr << "Invalid buffer usage flag!" << std::endl;
-        throw std::runtime_error("Invalid buffer usage flag");
     }
 
     return vBuffer;

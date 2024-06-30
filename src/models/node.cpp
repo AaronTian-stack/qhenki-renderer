@@ -1,7 +1,7 @@
 #include "node.h"
 #include <glm/gtx/transform.hpp>
 
-Node::Node() : parent(nullptr), skin(-1)
+Node::Node(Model *model) : parent(nullptr), model(model), skinIndex(-1)
 {}
 
 void Node::draw(vk::CommandBuffer commandBuffer, Pipeline &pipeline)
@@ -21,6 +21,45 @@ void Node::draw(vk::CommandBuffer commandBuffer, Pipeline &pipeline)
     }
 }
 
+void Node::skin(vk::CommandBuffer commandBuffer, Pipeline &pipeline,
+                    DescriptorLayoutCache &layoutCache, DescriptorAllocator &allocator)
+{
+    for (auto mesh : meshes)
+    {
+        if (!mesh) continue;
+        if (!mesh->jointsBuffer || !mesh->weightsBuffer) continue;
+
+        // bind descriptor sets
+        auto pos = mesh->getDescriptorInfo(VertexBufferType::POSITION);
+        auto joint = mesh->getDescriptorInfo(VertexBufferTypeExt::JOINTS);
+        auto weights = mesh->getDescriptorInfo(VertexBufferTypeExt::WEIGHTS);
+        auto matrices = model->skins[skinIndex].jointsBuffer->getDescriptorInfo();
+
+        auto outPos = mesh->getDescriptorInfo(VertexBufferTypeExt::SKIN_POSITION);
+//        auto outNormal = mesh->getDescriptorInfo(VertexBufferTypeExt::SKIN_NORMAL);
+
+        vk::DescriptorSet set;
+        vk::DescriptorSetLayout layout;
+        DescriptorBuilder::beginSet(&layoutCache, &allocator)
+            .bindBuffer(0, &pos, vk::DescriptorType::eStorageBuffer, vk::ShaderStageFlagBits::eCompute)
+            .bindBuffer(1, &joint, vk::DescriptorType::eStorageBuffer, vk::ShaderStageFlagBits::eCompute)
+            .bindBuffer(2, &weights, vk::DescriptorType::eStorageBuffer, vk::ShaderStageFlagBits::eCompute)
+            .bindBuffer(3, &matrices, vk::DescriptorType::eStorageBuffer, vk::ShaderStageFlagBits::eCompute)
+            .bindBuffer(4, &outPos, vk::DescriptorType::eStorageBuffer, vk::ShaderStageFlagBits::eCompute)
+            .build(set, layout);
+
+        commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eCompute, pipeline.getPipelineLayout(), 0, {set}, {});
+
+        assert(pos.range % sizeof(glm::vec3) == 0);
+        const auto numPositions = pos.range / sizeof(glm::vec3);
+        commandBuffer.dispatch(numPositions, 1, 1);
+    }
+    for (auto &child : children)
+    {
+        child->skin(commandBuffer, pipeline, layoutCache, allocator);
+    }
+}
+
 glm::mat4 Node::getLocalTransform() const
 {
     return glm::translate(glm::mat4(), transform.translate) *
@@ -28,7 +67,7 @@ glm::mat4 Node::getLocalTransform() const
            glm::scale(glm::mat4(), transform.scale);
 }
 
-glm::mat4 Node::getWorldTransform()
+glm::mat4 Node::getWorldTransform() const
 {
     if (parent)
     {
@@ -37,12 +76,12 @@ glm::mat4 Node::getWorldTransform()
     return getLocalTransform();
 }
 
-void Node::updateJointTransforms(std::vector<Skin> &skins)
+void Node::updateJointTransforms()
 {
-    if (skin != -1)
+    if (skinIndex != -1)
     {
         auto inverse = glm::inverse(getWorldTransform());
-        auto &s = skins[skin];
+        auto &s = model->skins[skinIndex];
         auto jointMatrices = static_cast<glm::mat4*>(s.jointsBuffer->getPointer());
         for (int i = 0; i < s.nodeBindMatrices.size(); i++)
         {
@@ -52,6 +91,6 @@ void Node::updateJointTransforms(std::vector<Skin> &skins)
     }
     for (auto &child : children)
     {
-        child->updateJointTransforms(skins);
+        child->updateJointTransforms();
     }
 }

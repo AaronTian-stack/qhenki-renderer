@@ -15,6 +15,15 @@ enum VertexBufferType
     UV_1,
 };
 
+enum VertexBufferTypeExt
+{
+    JOINTS = 5,
+    WEIGHTS,
+    SKIN_POSITION,
+    SKIN_NORMAL,
+    END
+};
+
 class Mesh
 {
 private:;
@@ -23,12 +32,18 @@ private:;
     uPtr<Buffer> jointsBuffer;
     uPtr<Buffer> weightsBuffer;
 
+    uPtr<Buffer> skinnedPositions;
+    uPtr<Buffer> skinnedNormals;
+
     uPtr<Buffer> indexBuffer;
 
 public:
     Material *material;
     Mesh();
     void draw(vk::CommandBuffer commandBuffer);
+    vk::DescriptorBufferInfo getDescriptorInfo(unsigned int bufferType);
     void destroy();
+
+    friend class Node;
     friend class GLTFLoader;
 };

@@ -105,3 +105,8 @@ void Model::updateAnimation(float time)
         }
     }
 }
+
+Node *Model::getRoot()
+{
+    return root.get();
+}

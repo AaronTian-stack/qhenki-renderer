@@ -398,7 +398,7 @@ void VulkanApp::recordOffscreenBuffer(vk::CommandBuffer commandBuffer, Descripto
                                              1, {samplerSet}, nullptr);
         }
 
-        model->root->draw(commandBuffer, *gBufferPS.pipeline);
+        model->getRoot()->draw(commandBuffer, *gBufferPS.pipeline);
     }
     lock.unlock();
 
@@ -536,12 +536,17 @@ void VulkanApp::recordCommandBuffer(FrameBuffer *framebuffer)
                           , std::try_to_lock);
     if (lock.owns_lock())
     {
-        if (!models.empty()) models.back()->updateAnimation((float)glfwGetTime());
+        if (!models.empty())
+        {
+            auto &model = models.back();
+            model->updateAnimation((float)glfwGetTime());
+
+            model->getRoot()->updateJointTransforms();
+            primaryCommandBuffer.bindPipeline(vk::PipelineBindPoint::eCompute, skinning.pipeline->getPipeline());
+            model->getRoot()->skin(primaryCommandBuffer, *skinning.pipeline, layoutCache, allocator);
+        }
         lock.unlock();
     }
-
-    // TODO: run compute skinning
-        // bind pipeline, descriptor sets, then dispatch
 
     ScreenUtils::setViewport(primaryCommandBuffer, swapChainExtent.width, swapChainExtent.height);
     ScreenUtils::setScissor(primaryCommandBuffer, swapChainExtent);

@@ -2,20 +2,20 @@
 
 #include <vector>
 #include <smartpointer.h>
-#include <glm/detail/type_mat.hpp>
 #include "mesh.h"
-#include <glm/detail/type_mat4x4.hpp>
 #include "../vulkan/pipeline/pipeline.h"
 #include "transform.h"
 #include "skin.h"
-#include <glm/gtc/quaternion.hpp>
+#include "../vulkan/descriptors/descriptorbuilder.h"
+#include "model.h"
 
 class Node
 {
 private:
     Node *parent;
+    Model *model;
     std::string name; // for debugging
-    int skin; // index of skin
+    int skinIndex;
 
 public:
     Transform transform;
@@ -23,10 +23,12 @@ public:
     std::vector<uPtr<Node>> children;
     std::vector<Mesh*> meshes;
 
-    Node();
+    explicit Node(Model *model);
     glm::mat4 getLocalTransform() const;
-    glm::mat4 getWorldTransform();
-    void updateJointTransforms(std::vector<Skin> &skins);
+    glm::mat4 getWorldTransform() const;
+    void updateJointTransforms();
     void draw(vk::CommandBuffer commandBuffer, Pipeline &pipeline);
+    void skin(vk::CommandBuffer commandBuffer, Pipeline &pipeline,
+                  DescriptorLayoutCache &layoutCache, DescriptorAllocator &allocator);
     friend class GLTFLoader;
 };

@@ -1,3 +1,5 @@
+#pragma once
+
 #include <vector>
 #include <smartpointer.h>
 #include "mesh.h"
@@ -12,6 +14,7 @@
 class Model
 {
 private:
+    uPtr<Node> root;
     std::vector<uPtr<Mesh>> meshes;
 
     std::vector<Material> materials;
@@ -23,11 +26,13 @@ private:
     tsl::robin_map<int, std::vector<unsigned char>> animationRawData;
 
 public:
-    uPtr<Node> root;
     Model();
+    Node* getRoot();
     std::vector<vk::DescriptorImageInfo> getDescriptorImageInfo();
     void skin(vk::CommandBuffer commandBuffer);
     void destroy();
     void updateAnimation(float time);
+
+    friend class Node;
     friend class GLTFLoader;
 };
