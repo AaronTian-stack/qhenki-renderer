@@ -39,6 +39,5 @@ struct Animation
     std::vector<Channel> channels;
     std::vector<Sampler> samplers;
 
-
     explicit Animation(std::string &name) : name(name) {}
 };

@@ -3,7 +3,7 @@
 #include <atomic>
 #include <gltf/tiny_gltf.h>
 #include "model.h"
-#include "../smartpointer.h"
+#include <smartpointer.h>
 #include "../vulkan/buffer/bufferfactory.h"
 #include <tsl/robin_map.h>
 
@@ -12,6 +12,8 @@
 #define TEXCOORD_STRING_0 "TEXCOORD_0"
 #define TEXCOORD_STRING_1 "TEXCOORD_1"
 #define TANGENT_STRING "TANGENT"
+#define JOINTS_STRING "JOINTS_0"
+#define WEIGHTS_STRING "WEIGHTS_0"
 
 class GLTFLoader
 {
@@ -31,11 +33,11 @@ private:
                                          BufferFactory &bufferFactory, tinygltf::Model &gltfModel, Model *model);
     static void processNode(BufferFactory &bufferFactory, tinygltf::Model &gltfModel, Model *model, Node *parent, int nodeIndex,
                             tsl::robin_map<Mesh*, int> &meshMap, tsl::robin_map<int, Node*> &numberNodeMap);
-    static void processSkinsAnimations(tinygltf::Model &gltfModel, Model *model, tsl::robin_map<int, Node*> &numberNodeMap);
+    static void processSkinsAnimations(BufferFactory &bufferFactory, tinygltf::Model &gltfModel, Model *model, tsl::robin_map<int, Node*> &numberNodeMap);
     static uPtr<Buffer> createTangentVectors(BufferFactory &bufferFactory, tinygltf::Model &gltfModel , int verticesType,
-                                             int normalType, int uvType, int indexType, vk::BufferUsageFlagBits flag);
+                                             int normalType, int uvType, int indexType, vk::BufferUsageFlags flags);
     static uPtr<Buffer> getBuffer(BufferFactory &bufferFactory, tinygltf::Model &gltfModel,
-                          int type, vk::BufferUsageFlagBits flag, size_t vertexSize);
+                          int type, vk::BufferUsageFlags flags, size_t vertexSize);
 
 public:
     static uPtr<Model> create(CommandPool &commandPool, QueueManager &queueManager, BufferFactory &bufferFactory, const char* filename);

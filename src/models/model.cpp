@@ -15,6 +15,10 @@ void Model::destroy()
     {
         texture->destroy();
     }
+    for (auto &skin : skins)
+    {
+        skin.jointsBuffer->destroy();
+    }
 }
 
 void Model::draw(vk::CommandBuffer commandBuffer)
@@ -34,4 +38,63 @@ std::vector<vk::DescriptorImageInfo> Model::getDescriptorImageInfo()
         descriptorImageInfo.push_back(texture->getDescriptorInfo());
     }
     return descriptorImageInfo;
+}
+
+void Model::updateAnimation(float time)
+{
+    for (auto &animation : animations) // TODO: this updates all animations, we need to update only the active ones
+    {
+        for (auto &channel : animation.channels)
+        {
+            auto &sampler = animation.samplers[channel.sampler];
+            auto &node = channel.node;
+
+            // cast sampler input to floats
+            auto &inputBuffer = animationRawData[sampler.input];
+            assert(inputBuffer.size() % sizeof(float) == 0);
+            const auto size = inputBuffer.size() * sizeof(unsigned char) / sizeof(float);
+            auto inputTimes = reinterpret_cast<float*>(inputBuffer.data());
+
+            int timeIndex = 0;
+            while (inputTimes[timeIndex] < time && timeIndex < size) timeIndex++;
+
+            auto &outputBuffer = animationRawData[sampler.output];
+
+            float interpolationValue = (time - inputTimes[timeIndex]) / (inputTimes[timeIndex + 1] - inputTimes[timeIndex]);
+
+            if (channel.path == TargetPath::TRANSLATION)
+            {
+                assert(outputBuffer.size() % sizeof(glm::vec3) == 0);
+                auto translations = reinterpret_cast<glm::vec3*>(outputBuffer.data());
+                node->transform.translate = glm::mix(translations[timeIndex], translations[timeIndex + 1], interpolationValue);
+            }
+            else if (channel.path == TargetPath::ROTATION)
+            {
+                assert(outputBuffer.size() % sizeof(glm::quat) == 0);
+                auto rotations = reinterpret_cast<glm::quat*>(outputBuffer.data());
+                node->transform.rotation = glm::slerp(rotations[timeIndex], rotations[timeIndex + 1], interpolationValue);
+            }
+            else if (channel.path == TargetPath::SCALE)
+            {
+                assert(outputBuffer.size() % sizeof(glm::vec3) == 0);
+                auto scales = reinterpret_cast<glm::vec3*>(outputBuffer.data());
+                node->transform.scale = glm::mix(scales[timeIndex], scales[timeIndex + 1], interpolationValue);
+            }
+        }
+    }
+    for (auto &skin : skins)
+    {
+        // update the transformation of the joint and write to SSBO
+        auto inverseBindMatrices = static_cast<glm::mat4*>(skin.jointsBuffer->getPointer());
+        for (int i = 0; i < skin.nodeBindMatrices.size(); i++)
+        {
+            auto &nodeBindMatrix = skin.nodeBindMatrices[i];
+            auto &jointNode = nodeBindMatrix.node;
+            auto &inverseBindMatrix = nodeBindMatrix.inverseBindMatrix;
+
+            // update joint matrix
+//            inverseBindMatrices[i] = jointNode->getWorldTransform() * inverseBindMatrix;
+            inverseBindMatrices[i] = inverseBindMatrix; // TODO: what
+        }
+    }
 }

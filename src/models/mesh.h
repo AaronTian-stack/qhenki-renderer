@@ -20,6 +20,9 @@ class Mesh
 private:;
     std::array<uPtr<Buffer>, 5> vertexBuffers;
 
+    uPtr<Buffer> jointsBuffer;
+    uPtr<Buffer> weightsBuffer;
+
     uPtr<Buffer> indexBuffer;
 
 public:

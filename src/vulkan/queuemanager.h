@@ -1,7 +1,7 @@
 #pragma once
 
 #include "context/swapchain.h"
-#include "../smartpointer.h"
+#include <smartpointer.h>
 #include "context/queuesindices.h"
 
 class QueueManager

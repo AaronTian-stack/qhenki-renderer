@@ -1,6 +1,6 @@
 #pragma once
 
-#include "smartpointer.h"
+#include <smartpointer.h>
 #include "vulkan/queuemanager.h"
 #include "vulkan/pipeline/pipeline.h"
 #include "vulkan/pipeline/pipelinefactory.h"
@@ -24,6 +24,7 @@
 #include "vfx/postprocessmanager.h"
 #include "vfx/effects/fxaa.h"
 #include "lights/lights.h"
+#include "vulkan/pipeline/pipelineshader.h"
 #include <atomic>
 #include <mutex>
 
@@ -49,9 +50,8 @@ private:
     uPtr<RenderPass> offscreenRenderPass;
     PipelineBuilder pipelineFactory;
 
-    uPtr<Pipeline> gBufferPipeline, lightingPipeline, passPipeline, passAndClearPipeline, cubeMapPipeline, lightDisplayPipeline, solidPlanePipeline;
-
-    uPtr<Shader> gBufferShader, lightingShader, passShader, passAndClearShader, cubeMapShader, lightDisplayShader, solidPlaneShader;
+    PipelineShader gBufferPS, lighting, pass, passAndClear, cubeMap, lightDisplay, solidPlane;
+    PipelineShader skinning;
 
     std::mutex modelMutex;
     uPtr<CommandPool> graphicsCommandPool; // one pool per thread

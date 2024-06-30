@@ -1,6 +1,6 @@
 #include "mesh.h"
 
-Mesh::Mesh() : material(nullptr)
+Mesh::Mesh() : material(nullptr), jointsBuffer(nullptr), weightsBuffer(nullptr), indexBuffer(nullptr)
 {}
 
 void Mesh::destroy()
@@ -10,6 +10,8 @@ void Mesh::destroy()
         if (vb) vb->destroy();
     }
     indexBuffer->destroy();
+    if (jointsBuffer) jointsBuffer->destroy();
+    if (weightsBuffer) weightsBuffer->destroy();
 }
 
 void Mesh::draw(vk::CommandBuffer commandBuffer)

@@ -1,0 +1,35 @@
+#version 450
+#extension GL_EXT_scalar_block_layout : require
+
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+
+layout(binding = 0, scalar) readonly buffer PositionsIn {
+    vec3 positionsIn[];
+};
+
+// joints that affect each vertex
+layout(binding = 1, scalar) readonly buffer JointsIn {
+    uvec4 jointsIn[];
+};
+
+// weights for each joint that affect each vertex
+layout(binding = 2, scalar) readonly buffer WeightsIn {
+    vec4 weightsIn[];
+};
+
+// inverse bind matrices for each joint
+layout(binding = 3, scalar) readonly buffer JointMatrices {
+    mat4 jointMatrices[];
+};
+
+layout(binding = 4, scalar) writeonly buffer PositionsOut {
+    vec3 positionsOut[];
+};
+
+void main()
+{
+    // which vertex
+    uint vertexIndex = gl_GlobalInvocationID.x;
+
+
+}

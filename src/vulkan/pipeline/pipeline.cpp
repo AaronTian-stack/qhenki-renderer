@@ -1,25 +1,22 @@
 #include "pipeline.h"
 #include <stdexcept>
 
-Pipeline::Pipeline(vk::Device device) : Destroyable(device) {}
-
-vk::PipelineLayout Pipeline::createPipelineLayout(const vk::PipelineLayoutCreateInfo &pipelineLayoutInfo)
-{
-    auto layout = device.createPipelineLayout(pipelineLayoutInfo);
-    pipelineLayout = layout;
-    return pipelineLayout;
-}
+Pipeline::Pipeline(vk::Device device, const vk::Pipeline &pipeline, const vk::PipelineLayout &pipelineLayout)
+: Destroyable(device), pipeline(pipeline), pipelineLayout(pipelineLayout)
+{}
 
 void Pipeline::createGraphicsPipeline(const vk::GraphicsPipelineCreateInfo &pipelineInfo)
 {
     // see vkCreateGraphicsPipelines
     auto result = device.createGraphicsPipeline(nullptr, pipelineInfo);
-    graphicsPipeline = result.value;
+    pipeline = result.value;
+
+    pipelineLayout = pipelineInfo.layout;
 }
 
 void Pipeline::destroy()
 {
-    device.destroyPipeline(graphicsPipeline);
+    device.destroyPipeline(pipeline);
     device.destroyPipelineLayout(pipelineLayout);
 }
 
@@ -28,13 +25,13 @@ vk::PipelineLayout Pipeline::getPipelineLayout()
     return pipelineLayout;
 }
 
-
-vk::Pipeline Pipeline::getGraphicsPipeline()
+vk::Pipeline Pipeline::getPipeline()
 {
-    return graphicsPipeline;
+    return pipeline;
 }
 
 void Pipeline::setPushConstant(vk::CommandBuffer commandBuffer, void *value, size_t size, size_t offset, vk::ShaderStageFlags stages)
 {
     commandBuffer.pushConstants(pipelineLayout, stages, offset, size, value);
 }
+

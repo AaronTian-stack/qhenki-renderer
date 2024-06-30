@@ -3,7 +3,7 @@
 #include "syncer.h"
 #include "commandpool.h"
 #include "buffer/buffer.h"
-#include "../smartpointer.h"
+#include <smartpointer.h>
 #include "buffer/bufferfactory.h"
 
 class Frame : public Destroyable

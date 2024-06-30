@@ -70,8 +70,6 @@ void PipelineBuilder::reset()
 
 uPtr<Pipeline> PipelineBuilder::buildPipeline(RenderPass* renderPass, int subpass, Shader* shader)
 {
-    auto pipeline = mkU<Pipeline>(device);
-
     vk::GraphicsPipelineCreateInfo pipelineInfo{};
 
     pipelineInfo.stageCount = 2;
@@ -89,7 +87,7 @@ uPtr<Pipeline> PipelineBuilder::buildPipeline(RenderPass* renderPass, int subpas
     pipelineInfo.pColorBlendState = &colorBlending;
     pipelineInfo.pDynamicState = &dynamicState;
 
-    pipelineInfo.layout = pipeline->createPipelineLayout(pipelineLayoutInfo);
+    pipelineInfo.layout = device.createPipelineLayout(pipelineLayoutInfo);
 
     pipelineInfo.renderPass = renderPass->getRenderPass();
     pipelineInfo.subpass = subpass;
@@ -97,9 +95,24 @@ uPtr<Pipeline> PipelineBuilder::buildPipeline(RenderPass* renderPass, int subpas
     pipelineInfo.basePipelineHandle = VK_NULL_HANDLE; // Optional
     pipelineInfo.basePipelineIndex = -1; // Optional
 
-    pipeline->createGraphicsPipeline(pipelineInfo);
+    auto result = device.createGraphicsPipeline(nullptr, pipelineInfo);
+    if (result.result != vk::Result::eSuccess)
+        throw std::runtime_error("Failed to create graphics pipeline!");
 
-    return pipeline;
+    return mkU<Pipeline>(device, result.value, pipelineInfo.layout);
+}
+
+uPtr<Pipeline> PipelineBuilder::buildComputePipeline(Shader *shader)
+{
+    vk::ComputePipelineCreateInfo pipelineInfo{};
+    pipelineInfo.stage = shader->getShaderStages()[0];
+    pipelineInfo.layout = device.createPipelineLayout(pipelineLayoutInfo);
+
+    auto result = device.createComputePipeline(nullptr, pipelineInfo);
+    if (result.result != vk::Result::eSuccess)
+        throw std::runtime_error("Failed to create compute pipeline!");
+
+    return mkU<Pipeline>(device, result.value, pipelineInfo.layout);
 }
 
 void PipelineBuilder::addPushConstant(uint32_t size, vk::ShaderStageFlags stageFlags)
@@ -229,21 +242,7 @@ void PipelineBuilder::parseVertexShader(const char *filePath, DescriptorLayoutCa
         }
     }
 
-//    processPushConstants(glsl, resources, vk::ShaderStageFlagBits::eVertex);
-
-    //// CREATE DESCRIPTOR SET LAYOUT
-//    for (const auto &uniformBuffer : resources.uniform_buffers)
-//    {
-//        std::cout << "Uniform Buffer: " << uniformBuffer.name << std::endl;
-//        BindInfo bindInfo = getBindInfo(glsl, uniformBuffer);
-//        bindingsMap[bindInfo.set].bindings.emplace_back(bindInfo.binding,
-//                                            vk::DescriptorType::eUniformBuffer,
-//                                            bindInfo.arrayLength, // number of values in array
-//                                            vk::ShaderStageFlagBits::eVertex,
-//                                            nullptr // for images
-//                                            );
-//    }
-processBuffers(glsl, resources, vk::ShaderStageFlagBits::eVertex);
+    processBuffers(glsl, resources, vk::ShaderStageFlagBits::eVertex);
     updateDescriptorSetLayouts(layoutCache);
 }
 
@@ -254,8 +253,6 @@ void PipelineBuilder::parseFragmentShader(const char *filePath, DescriptorLayout
 
     spirv_cross::CompilerGLSL glsl(spirvBytecode, shaderCode.size() / sizeof(uint32_t));
     spirv_cross::ShaderResources resources = glsl.get_shader_resources();
-
-//    processPushConstants(glsl, resources, vk::ShaderStageFlagBits::eFragment);
 
     for (auto &sampledImage : resources.sampled_images)
     {
@@ -282,22 +279,6 @@ void PipelineBuilder::parseFragmentShader(const char *filePath, DescriptorLayout
                                             );
     }
 
-//    for (const auto &uniformBuffer : resources.uniform_buffers)
-//    {
-//        throw std::runtime_error("Uniform Buffers in Fragment Shader are not yet supported");
-//    }
-//
-//    for (const auto &storageBuffer : resources.storage_buffers)
-//    {
-//        std::cout << "Storage Buffer" << storageBuffer.name << std::endl;
-//        BindInfo bindInfo = getBindInfo(glsl, storageBuffer);
-//        bindingsMap[bindInfo.set].bindings.emplace_back(bindInfo.binding,
-//                                            vk::DescriptorType::eStorageBuffer,
-//                                            bindInfo.arrayLength, // number of values in array
-//                                            vk::ShaderStageFlagBits::eFragment,
-//                                            nullptr
-//                                            );
-//    }
     processBuffers(glsl, resources, vk::ShaderStageFlagBits::eFragment);
     updateDescriptorSetLayouts(layoutCache);
 }
@@ -306,6 +287,18 @@ void PipelineBuilder::parseShader(const char *filePath1, const char *filePath2, 
 {
     parseVertexShader(filePath1, layoutCache, interleaved);
     parseFragmentShader(filePath2, layoutCache);
+}
+
+void PipelineBuilder::parseComputeShader(const char *filePath, DescriptorLayoutCache &layoutCache)
+{
+    auto shaderCode = Shader::readFile(filePath);
+    auto spirvBytecode = reinterpret_cast<const uint32_t *>(shaderCode.data());
+
+    spirv_cross::CompilerGLSL glsl(spirvBytecode, shaderCode.size() / sizeof(uint32_t));
+    spirv_cross::ShaderResources resources = glsl.get_shader_resources();
+
+    processBuffers(glsl, resources, vk::ShaderStageFlagBits::eCompute);
+    updateDescriptorSetLayouts(layoutCache);
 }
 
 std::pair<vk::Format, size_t> mapTypeToFormat(const spirv_cross::SPIRType &type)

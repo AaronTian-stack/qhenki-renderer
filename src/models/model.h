@@ -1,5 +1,5 @@
 #include <vector>
-#include "../smartpointer.h"
+#include <smartpointer.h>
 #include "mesh.h"
 #include <glm/detail/type_mat4x4.hpp>
 #include "node.h"
@@ -48,5 +48,6 @@ public:
     std::vector<vk::DescriptorImageInfo> getDescriptorImageInfo();
     void draw(vk::CommandBuffer commandBuffer);
     void destroy();
+    void updateAnimation(float time);
     friend class GLTFLoader;
 };
