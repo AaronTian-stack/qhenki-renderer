@@ -20,6 +20,9 @@ VulkanApp::~VulkanApp()
     for (auto &frame : frames)
         frame.destroy();
 
+    for (auto &semaphore : computeSemaphores)
+        vulkanContext.device.logicalDevice.destroySemaphore(semaphore);
+
     syncer.destroy();
     graphicsCommandPool->destroy();
     transferCommandPool->destroy();
@@ -295,6 +298,9 @@ void VulkanApp::create(Window &window)
     {
         frames.emplace_back(device, *graphicsCommandPool, syncer);
 
+        computeCommandBuffers.push_back(graphicsCommandPool->createCommandBuffer());
+        computeSemaphores.push_back(syncer.createSemaphore());
+
         cameraBuffers.emplace_back(bufferFactory.createBuffer(sizeof(CameraMatrices),
                                                               vk::BufferUsageFlagBits::eUniformBuffer,
                                                               flags));
@@ -531,22 +537,22 @@ void VulkanApp::recordCommandBuffer(FrameBuffer *framebuffer)
     auto &allocator = allocators[currentFrame];
     allocator.resetPools();
 
-    // attempt to acquire model lock
-    std::unique_lock lock(modelMutex
-                          , std::try_to_lock);
-    if (lock.owns_lock())
-    {
+    // allocate one time command buffer primary
+    auto compute = computeCommandBuffers[currentFrame];
+    compute.reset();
+    compute.begin({vk::CommandBufferUsageFlagBits::eOneTimeSubmit, nullptr});
+    std::unique_lock lock(modelMutex);
         if (!models.empty())
         {
             auto &model = models.back();
             model->updateAnimation((float)glfwGetTime());
-
             model->getRoot()->updateJointTransforms();
-            primaryCommandBuffer.bindPipeline(vk::PipelineBindPoint::eCompute, skinning.pipeline->getPipeline());
-            model->getRoot()->skin(primaryCommandBuffer, *skinning.pipeline, layoutCache, allocator);
+
+            compute.bindPipeline(vk::PipelineBindPoint::eCompute, skinning.pipeline->getPipeline());
+            model->getRoot()->skin(compute, *skinning.pipeline, layoutCache, allocator);
         }
-        lock.unlock();
-    }
+    lock.unlock();
+    compute.end();
 
     ScreenUtils::setViewport(primaryCommandBuffer, swapChainExtent.width, swapChainExtent.height);
     ScreenUtils::setScissor(primaryCommandBuffer, swapChainExtent);
@@ -628,8 +634,18 @@ void VulkanApp::render()
     recordCommandBuffer(fb);
 
     auto &queueManager = vulkanContext.queueManager;
+
+    // submit the compute job first
+    vk::SubmitInfo computeSubmitInfo;
+    computeSubmitInfo.commandBufferCount = 1;
+    computeSubmitInfo.pCommandBuffers = &computeCommandBuffers[currentFrame];
+    computeSubmitInfo.signalSemaphoreCount = 1;
+    computeSubmitInfo.pSignalSemaphores = &computeSemaphores[currentFrame];
+
+    queueManager.submitGraphics(computeSubmitInfo, VK_NULL_HANDLE);
+
     // lots of information about syncing in frame.getSubmitInfo() struct.
-    queueManager.submitGraphics(frame.getSubmitInfo(), frame.inFlightFence); // signal fence when done
+    frame.submit(queueManager, {computeSemaphores[currentFrame]}, {vk::PipelineStageFlagBits::eVertexInput});
 
     std::vector<vk::Semaphore> signalSemaphores = {frame.renderFinishedSemaphore};
     // calls the present command, waits for given semaphores

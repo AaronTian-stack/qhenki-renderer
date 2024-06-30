@@ -8,10 +8,8 @@ vk::Semaphore Syncer::createSemaphore()
 
 vk::Semaphore Syncer::createSemaphore(const char* name)
 {
-    if (semaphores.find(name) != semaphores.end())
-    {
-        throw std::runtime_error("already existing semaphore name!");
-    }
+    if (semaphores.contains(name))
+        return semaphores[name];
     auto sem = createSemaphore();
     semaphores[name] = sem;
     return sem;
@@ -26,10 +24,8 @@ vk::Fence Syncer::createFence(bool startSignaled)
 
 vk::Fence Syncer::createFence(const char* name, bool startSignaled)
 {
-    if (fences.find(name) != fences.end())
-    {
-        throw std::runtime_error("already existing fence name!");
-    }
+    if (fences.contains(name))
+        return fences[name];
     auto fence = createFence(startSignaled);
     fences[name] = fence;
     return fence;

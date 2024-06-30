@@ -221,14 +221,16 @@ void GLTFLoader::processSkinsAnimations(BufferFactory &bufferFactory, tinygltf::
         model->skins.emplace_back(skin.name);
         Skin &skinObj = model->skins.back();
 
-        for (int joint : skin.joints)
-        {
-            const tinygltf::Accessor &accessor = gltfModel.accessors[joint];
-            const tinygltf::BufferView &bufferView = gltfModel.bufferViews[accessor.bufferView];
-            const tinygltf::Buffer &buffer = gltfModel.buffers[bufferView.buffer];
+        const tinygltf::Accessor &accessor = gltfModel.accessors[skin.inverseBindMatrices];
+        const tinygltf::BufferView &bufferView = gltfModel.bufferViews[accessor.bufferView];
+        const tinygltf::Buffer &buffer = gltfModel.buffers[bufferView.buffer];
 
+        for (int i = 0; i < skin.joints.size(); i++)
+        {
+            int joint = skin.joints[i];
             // read inverse bind matrix
-            const auto *ibm = reinterpret_cast<const glm::mat4*>(&buffer.data[bufferView.byteOffset + accessor.byteOffset]);
+            const auto *ibm = reinterpret_cast<const glm::mat4*>(&buffer.data[bufferView.byteOffset + accessor.byteOffset
+                                                                              + i * sizeof(glm::mat4)]);
 
             auto n = numberNodeMap[joint];
             skinObj.nodeBindMatrices.push_back({ n, *ibm });
@@ -303,13 +305,6 @@ uPtr<Buffer> GLTFLoader::getBuffer(BufferFactory &bufferFactory, tinygltf::Model
         std::cerr << "Cannot have both vertex and index buffer!" << std::endl;
         throw std::runtime_error("Invalid buffer usage flag");
     }
-
-//    auto j = reinterpret_cast<const unsigned char*>(&buffer.data[bufferView.byteOffset + accessor.byteOffset]);
-//    // try to read out first 4 entries
-//    for (int i = 0; i < 4; i++)
-//    {
-//        std::cout << j[i] << std::endl;
-//    }
 
     uPtr<Buffer> vBuffer = bufferFactory.createBuffer(bufferView.byteLength, flags,
                                          VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);

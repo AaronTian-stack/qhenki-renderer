@@ -25,6 +25,6 @@ public:
     void begin();
     void end();
 
-    vk::SubmitInfo getSubmitInfo();
+    void submit(QueueManager &queueManager, std::vector<vk::Semaphore> waitSemaphores, std::vector<vk::PipelineStageFlags> waitStages);
     void finish(Syncer &syncer);
 };

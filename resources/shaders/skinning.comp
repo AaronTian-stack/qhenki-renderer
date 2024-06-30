@@ -41,9 +41,9 @@ void main()
     for (int i = 0; i < 4; i++)
     {
         mat4 jointMatrix = jointMatrices[joint[i]];
-//        mat4 jointMatrix = mat4(1.0);
         outPosition += (jointMatrix * vec4(positionsIn[vertexIndex], 1.0)).xyz * weights[i];
     }
     positionsOut[vertexIndex] = outPosition;
+
     // TODO: the normals need to be updated as well!
 }

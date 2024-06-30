@@ -61,6 +61,8 @@ private:
     int currentFrame = 0;
     const int MAX_FRAMES_IN_FLIGHT = 2;
     std::vector<Frame> frames;
+    std::vector<vk::CommandBuffer> computeCommandBuffers;
+    std::vector<vk::Semaphore> computeSemaphores;
 
     uPtr<Buffer> bayerMatrix;
     std::vector<uPtr<Buffer>> cameraBuffers;

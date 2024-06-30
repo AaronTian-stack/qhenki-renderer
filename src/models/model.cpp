@@ -40,8 +40,9 @@ std::vector<vk::DescriptorImageInfo> Model::getDescriptorImageInfo()
 
 void Model::updateAnimation(float time)
 {
-    for (auto &animation : animations) // TODO: this updates all animations, we need to update only the active ones
+    if (!animations.empty())
     {
+        auto &animation = animations[0];
         for (auto &channel : animation.channels)
         {
             auto &sampler = animation.samplers[channel.sampler];
