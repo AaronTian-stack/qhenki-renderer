@@ -304,9 +304,16 @@ uPtr<Buffer> GLTFLoader::getBuffer(BufferFactory &bufferFactory, tinygltf::Model
         throw std::runtime_error("Invalid buffer usage flag");
     }
 
+//    auto j = reinterpret_cast<const unsigned char*>(&buffer.data[bufferView.byteOffset + accessor.byteOffset]);
+//    // try to read out first 4 entries
+//    for (int i = 0; i < 4; i++)
+//    {
+//        std::cout << j[i] << std::endl;
+//    }
+
     uPtr<Buffer> vBuffer = bufferFactory.createBuffer(bufferView.byteLength, flags,
                                          VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
-    vBuffer->fill(&buffer.data[0] + bufferView.byteOffset + accessor.byteOffset);
+    vBuffer->fill(&buffer.data[bufferView.byteOffset + accessor.byteOffset]);
 
     if (flags & vk::BufferUsageFlagBits::eIndexBuffer)
     {
