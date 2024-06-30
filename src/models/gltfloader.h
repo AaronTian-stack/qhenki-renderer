@@ -37,7 +37,7 @@ private:
     static uPtr<Buffer> createTangentVectors(BufferFactory &bufferFactory, tinygltf::Model &gltfModel , int verticesType,
                                              int normalType, int uvType, int indexType, vk::BufferUsageFlags flags);
     static uPtr<Buffer> getBuffer(BufferFactory &bufferFactory, tinygltf::Model &gltfModel,
-                          int type, vk::BufferUsageFlags flags, size_t vertexSize);
+                          int type, vk::BufferUsageFlags flags);
 
 public:
     static uPtr<Model> create(CommandPool &commandPool, QueueManager &queueManager, BufferFactory &bufferFactory, const char* filename);

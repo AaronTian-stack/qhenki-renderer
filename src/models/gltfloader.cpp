@@ -162,8 +162,7 @@ void GLTFLoader::processNode(BufferFactory &bufferFactory, tinygltf::Model &gltf
 
                 size_t vertexSize = (type.second == VertexBufferType::UV_0 || type.second == VertexBufferType::UV_1)
                         ? sizeof(glm::vec2) : sizeof(glm::vec3);
-                mesh->vertexBuffers[type.second] = getBuffer(bufferFactory, gltfModel, primitive.attributes.at(type.first),
-                                                             flags, vertexSize);
+                mesh->vertexBuffers[type.second] = getBuffer(bufferFactory, gltfModel, primitive.attributes.at(type.first), flags);
             }
             if (primitive.attributes.count(TANGENT_STRING) == 0)
             {
@@ -180,14 +179,12 @@ void GLTFLoader::processNode(BufferFactory &bufferFactory, tinygltf::Model &gltf
             auto hasJoints = primitive.attributes.count(JOINTS_STRING) != 0;
             if (hasJoints)
             {
-                mesh->jointsBuffer = getBuffer(bufferFactory, gltfModel, primitive.attributes.at(JOINTS_STRING),
-                                               flags, sizeof(glm::u16vec4));
+                mesh->jointsBuffer = getBuffer(bufferFactory, gltfModel, primitive.attributes.at(JOINTS_STRING), flags);
             }
             auto hasWeights = primitive.attributes.count(WEIGHTS_STRING) != 0;
             if (hasWeights)
             {
-                mesh->weightsBuffer = getBuffer(bufferFactory, gltfModel, primitive.attributes.at(WEIGHTS_STRING),
-                                                flags, sizeof(glm::vec4));
+                mesh->weightsBuffer = getBuffer(bufferFactory, gltfModel, primitive.attributes.at(WEIGHTS_STRING), flags);
             }
             if (hasJoints && hasWeights)
             {
@@ -200,7 +197,7 @@ void GLTFLoader::processNode(BufferFactory &bufferFactory, tinygltf::Model &gltf
             }
 
             // extract index data
-            mesh->indexBuffer = getBuffer(bufferFactory, gltfModel, primitive.indices, vk::BufferUsageFlagBits::eIndexBuffer, 0);
+            mesh->indexBuffer = getBuffer(bufferFactory, gltfModel, primitive.indices, vk::BufferUsageFlagBits::eIndexBuffer);
 
             meshMap[mesh.get()] = primitive.material;
 
@@ -295,7 +292,7 @@ void GLTFLoader::processSkinsAnimations(BufferFactory &bufferFactory, tinygltf::
 }
 
 uPtr<Buffer> GLTFLoader::getBuffer(BufferFactory &bufferFactory, tinygltf::Model &gltfModel,
-                           int type, vk::BufferUsageFlags flags, size_t vertexSize)
+                           int type, vk::BufferUsageFlags flags)
 {
     const tinygltf::Accessor &accessor = gltfModel.accessors[type];
     const tinygltf::BufferView &bufferView = gltfModel.bufferViews[accessor.bufferView];
