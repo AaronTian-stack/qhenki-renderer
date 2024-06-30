@@ -47,6 +47,7 @@ uPtr<Model> GLTFLoader::create(CommandPool &commandPool, QueueManager &queueMana
 
     uPtr<Model> model = mkU<Model>();
 
+    // TODO: multiple roots
     int rootNodeIndex = gltfModel.scenes[gltfModel.defaultScene].nodes[0];
 
     std::thread matThread([&](){
@@ -93,6 +94,7 @@ void GLTFLoader::processNode(BufferFactory &bufferFactory, tinygltf::Model &gltf
     }
     node->parent = parent;
     node->name = gltfNode.name;
+    node->skin = gltfNode.skin;
 
     numberNodeMap[nodeIndex] = node;
 
@@ -259,16 +261,20 @@ void GLTFLoader::processSkinsAnimations(BufferFactory &bufferFactory, tinygltf::
             else throw std::runtime_error("Invalid interpolation");
 
             anim.samplers.push_back({ sampler.input, sampler.output, interp });
+            auto &samp = anim.samplers.back();
 
             // copy raw animation data if not copied already
             auto addRawData = [&](int type) {
-                if (model->animationRawData.contains(type)) return;
+
                 const tinygltf::Accessor &accessor = gltfModel.accessors[type];
                 const tinygltf::BufferView &bufferView = gltfModel.bufferViews[accessor.bufferView];
                 const tinygltf::Buffer &buffer = gltfModel.buffers[bufferView.buffer];
-                const auto *data = &buffer.data[bufferView.byteOffset + accessor.byteOffset];
 
-                model->animationRawData[type] = std::vector<unsigned char>(data, data + accessor.count * accessor.ByteStride(bufferView));
+                if (model->animationRawData.contains(type)) return;
+
+                const auto *data = &buffer.data[bufferView.byteOffset + accessor.byteOffset];
+                model->animationRawData[type] =
+                        std::vector<unsigned char>(data, data + accessor.count * accessor.ByteStride(bufferView));
             };
 
             addRawData(sampler.input);

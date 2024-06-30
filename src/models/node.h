@@ -7,6 +7,7 @@
 #include <glm/detail/type_mat4x4.hpp>
 #include "../vulkan/pipeline/pipeline.h"
 #include "transform.h"
+#include "skin.h"
 #include <glm/gtc/quaternion.hpp>
 
 class Node
@@ -14,6 +15,7 @@ class Node
 private:
     Node *parent;
     std::string name; // for debugging
+    int skin; // index of skin
 
 public:
     Transform transform;
@@ -24,6 +26,7 @@ public:
     Node();
     glm::mat4 getLocalTransform() const;
     glm::mat4 getWorldTransform();
-    static void draw(const uPtr<Node> &node, vk::CommandBuffer commandBuffer, Pipeline &pipeline);
+    void updateJointTransforms(std::vector<Skin> &skins);
+    void draw(vk::CommandBuffer commandBuffer, Pipeline &pipeline);
     friend class GLTFLoader;
 };

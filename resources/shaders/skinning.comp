@@ -3,33 +3,41 @@
 
 layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
 
-layout(binding = 0, scalar) readonly buffer PositionsIn {
+layout(set = 0, binding = 0, scalar) readonly buffer PositionsIn {
     vec3 positionsIn[];
 };
 
 // joints that affect each vertex
-layout(binding = 1, scalar) readonly buffer JointsIn {
+layout(scalar, set = 0, binding = 1) readonly buffer JointsIn {
     uvec4 jointsIn[];
 };
 
 // weights for each joint that affect each vertex
-layout(binding = 2, scalar) readonly buffer WeightsIn {
+layout(scalar, set = 0, binding = 2) readonly buffer WeightsIn {
     vec4 weightsIn[];
 };
 
 // inverse bind matrices for each joint
-layout(binding = 3, scalar) readonly buffer JointMatrices {
+layout(scalar, set = 0, binding = 3) readonly buffer JointMatrices {
     mat4 jointMatrices[];
 };
 
-layout(binding = 4, scalar) writeonly buffer PositionsOut {
+layout(scalar, set = 0, binding = 4) writeonly buffer PositionsOut {
     vec3 positionsOut[];
 };
 
 void main()
 {
-    // which vertex
     uint vertexIndex = gl_GlobalInvocationID.x;
 
-
+    vec3 outPosition = vec3(0.0);
+    uvec4 joint = jointsIn[vertexIndex];
+    vec4 weights = weightsIn[vertexIndex];
+    for (int i = 0; i < 4; i++)
+    {
+        mat4 jointMatrix = jointMatrices[joint[i]];
+        outPosition += (jointMatrix * vec4(positionsIn[vertexIndex], 1.0)).xyz * weights[i];
+    }
+    positionsOut[vertexIndex] = outPosition;
+    // TODO: the normals need to be updated as well!
 }

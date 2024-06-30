@@ -1,4 +1,5 @@
 #include "model.h"
+#include <iostream>
 
 Model::Model()
 {
@@ -21,12 +22,9 @@ void Model::destroy()
     }
 }
 
-void Model::draw(vk::CommandBuffer commandBuffer)
+void Model::skin(vk::CommandBuffer commandBuffer)
 {
-    for (auto &mesh : meshes)
-    {
-        mesh->draw(commandBuffer);
-    }
+
 }
 
 std::vector<vk::DescriptorImageInfo> Model::getDescriptorImageInfo()
@@ -55,12 +53,22 @@ void Model::updateAnimation(float time)
             const auto size = inputBuffer.size() * sizeof(unsigned char) / sizeof(float);
             auto inputTimes = reinterpret_cast<float*>(inputBuffer.data());
 
+            // pretty sure gltf animations always start at 0
+            const auto newTime = fmod(time, inputTimes[size - 1]);
+
             int timeIndex = 0;
-            while (inputTimes[timeIndex] < time && timeIndex < size) timeIndex++;
+            for (int i = 0; i < size - 1; i++)
+            {
+                if (newTime >= inputTimes[i] && newTime < inputTimes[i + 1])
+                {
+                    timeIndex = i;
+                    break;
+                }
+            }
 
             auto &outputBuffer = animationRawData[sampler.output];
 
-            float interpolationValue = (time - inputTimes[timeIndex]) / (inputTimes[timeIndex + 1] - inputTimes[timeIndex]);
+            float interpolationValue = (newTime - inputTimes[timeIndex]) / (inputTimes[timeIndex + 1] - inputTimes[timeIndex]);
 
             if (channel.path == TargetPath::TRANSLATION)
             {
@@ -93,8 +101,7 @@ void Model::updateAnimation(float time)
             auto &inverseBindMatrix = nodeBindMatrix.inverseBindMatrix;
 
             // update joint matrix
-//            inverseBindMatrices[i] = jointNode->getWorldTransform() * inverseBindMatrix;
-            inverseBindMatrices[i] = inverseBindMatrix; // TODO: what
+            inverseBindMatrices[i] = jointNode->getWorldTransform() * inverseBindMatrix;
         }
     }
 }

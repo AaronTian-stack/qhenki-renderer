@@ -398,7 +398,7 @@ void VulkanApp::recordOffscreenBuffer(vk::CommandBuffer commandBuffer, Descripto
                                              1, {samplerSet}, nullptr);
         }
 
-        Node::draw(model->root, commandBuffer, *gBufferPS.pipeline);
+        model->root->draw(commandBuffer, *gBufferPS.pipeline);
     }
     lock.unlock();
 
@@ -530,6 +530,19 @@ void VulkanApp::recordCommandBuffer(FrameBuffer *framebuffer)
 
     auto &allocator = allocators[currentFrame];
     allocator.resetPools();
+
+    // attempt to acquire model lock
+    std::unique_lock lock(modelMutex
+                          , std::try_to_lock);
+    if (lock.owns_lock())
+    {
+        if (!models.empty()) models.back()->updateAnimation((float)glfwGetTime());
+        lock.unlock();
+    }
+
+    // TODO: run compute skinning
+        // bind pipeline, descriptor sets, then dispatch
+
     ScreenUtils::setViewport(primaryCommandBuffer, swapChainExtent.width, swapChainExtent.height);
     ScreenUtils::setScissor(primaryCommandBuffer, swapChainExtent);
     recordOffscreenBuffer(primaryCommandBuffer, allocator);

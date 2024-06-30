@@ -1,6 +1,6 @@
 #pragma once
 
-#include "node.h"
+class Node;
 
 struct NodeBindMatrix
 {

@@ -16,7 +16,7 @@ void Mesh::destroy()
 
 void Mesh::draw(vk::CommandBuffer commandBuffer)
 {
-    // TODO: perhaps mesh can select shader to use based on buffer inputs
+    // TODO: needs some notion of what shader is bound
     std::vector<Buffer*> buffers;
 
     buffers.reserve(vertexBuffers.size());
