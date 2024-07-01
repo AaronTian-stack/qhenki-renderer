@@ -306,12 +306,46 @@ uPtr<Buffer> GLTFLoader::getBuffer(BufferFactory &bufferFactory, tinygltf::Model
         throw std::runtime_error("Invalid buffer usage flag");
     }
 
-    uPtr<Buffer> vBuffer = bufferFactory.createBuffer(bufferView.byteLength, flags,
-                                         VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
-    vBuffer->fill(&buffer.data[bufferView.byteOffset + accessor.byteOffset]);
+    uPtr<Buffer> vBuffer;
+
+    if (flags & vk::BufferUsageFlagBits::eVertexBuffer)
+    {
+        if (accessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT || accessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE)
+        {
+            vBuffer = bufferFactory.createBuffer(accessor.count * sizeof(uint32_t), flags,
+                                                 VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
+            if (accessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT)
+            {
+                // read out the data and convert to regular uint, since I only support regular int/floats
+                // really only applies to compute shaders or things that would use indexing (floats are floats)
+                const auto *data = reinterpret_cast<const uint16_t*>(&buffer.data[bufferView.byteOffset + accessor.byteOffset]);
+                std::vector<uint32_t> newData(accessor.count);
+                for (int i = 0; i < accessor.count; i++)
+                    newData[i] = data[i];
+                vBuffer->fill(newData.data());
+            }
+            if (accessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE)
+            {
+                const auto *data = reinterpret_cast<const uint8_t*>(&buffer.data[bufferView.byteOffset + accessor.byteOffset]);
+                std::vector<uint32_t> newData(accessor.count);
+                for (int i = 0; i < accessor.count; i++)
+                    newData[i] = data[i];
+                vBuffer->fill(newData.data());
+            }
+        }
+        else
+        {
+            // probably just regular float
+            vBuffer = bufferFactory.createBuffer(bufferView.byteLength, flags,
+                                                 VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
+            vBuffer->fill(&buffer.data[bufferView.byteOffset + accessor.byteOffset]);
+        }
+    }
 
     if (flags & vk::BufferUsageFlagBits::eIndexBuffer)
     {
+        vBuffer = bufferFactory.createBuffer(bufferView.byteLength, flags,
+                                             VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
         // handle different formats
         if (accessor.componentType == TINYGLTF_PARAMETER_TYPE_UNSIGNED_SHORT)
         {
@@ -328,6 +362,7 @@ uPtr<Buffer> GLTFLoader::getBuffer(BufferFactory &bufferFactory, tinygltf::Model
             std::cerr << "Index component type " << accessor.componentType << " not supported!" << std::endl;
             throw std::runtime_error("Index type not supported");
         }
+        vBuffer->fill(&buffer.data[bufferView.byteOffset + accessor.byteOffset]);
     }
 
     return vBuffer;
