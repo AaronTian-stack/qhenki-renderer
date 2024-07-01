@@ -63,6 +63,7 @@ private:
     std::vector<Frame> frames;
     std::vector<vk::CommandBuffer> computeCommandBuffers;
     std::vector<vk::Semaphore> computeSemaphores;
+    std::vector<vk::Fence> computeFences;
 
     uPtr<Buffer> bayerMatrix;
     std::vector<uPtr<Buffer>> cameraBuffers;

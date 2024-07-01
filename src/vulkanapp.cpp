@@ -23,6 +23,9 @@ VulkanApp::~VulkanApp()
     for (auto &semaphore : computeSemaphores)
         vulkanContext.device.logicalDevice.destroySemaphore(semaphore);
 
+    for (auto &fence : computeFences)
+        vulkanContext.device.logicalDevice.destroyFence(fence);
+
     syncer.destroy();
     graphicsCommandPool->destroy();
     transferCommandPool->destroy();
@@ -300,6 +303,7 @@ void VulkanApp::create(Window &window)
 
         computeCommandBuffers.push_back(graphicsCommandPool->createCommandBuffer());
         computeSemaphores.push_back(syncer.createSemaphore());
+        computeFences.push_back(syncer.createFence(true));
 
         cameraBuffers.emplace_back(bufferFactory.createBuffer(sizeof(CameraMatrices),
                                                               vk::BufferUsageFlagBits::eUniformBuffer,
@@ -642,7 +646,10 @@ void VulkanApp::render()
     computeSubmitInfo.signalSemaphoreCount = 1;
     computeSubmitInfo.pSignalSemaphores = &computeSemaphores[currentFrame];
 
-    queueManager.submitGraphics(computeSubmitInfo, VK_NULL_HANDLE);
+    auto fence = computeFences[currentFrame];
+    queueManager.submitGraphics(computeSubmitInfo, fence);
+    syncer.waitForFences({fence});
+    syncer.resetFence(fence);
 
     // lots of information about syncing in frame.getSubmitInfo() struct.
     frame.submit(queueManager, {computeSemaphores[currentFrame]}, {vk::PipelineStageFlagBits::eVertexInput});

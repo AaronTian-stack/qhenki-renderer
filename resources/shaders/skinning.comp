@@ -1,49 +1,65 @@
 #version 450
 #extension GL_EXT_scalar_block_layout : require
-#extension GL_EXT_shader_explicit_arithmetic_types_int32 : require
 
-layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+layout(local_size_x = 256, local_size_y = 1, local_size_z = 1) in;
+
+layout(scalar, push_constant) uniform constants {
+    int numVertices;
+} pc;
 
 layout(scalar, set = 0, binding = 0) readonly buffer PositionsIn {
     vec3 positionsIn[];
 };
 
+layout(scalar, set = 0, binding = 1) readonly buffer NormalsIn {
+    vec3 normalsIn[];
+};
+
 // joints that affect each vertex
-layout(scalar, set = 0, binding = 1) readonly buffer JointsIn {
+layout(scalar, set = 0, binding = 2) readonly buffer JointsIn {
     uvec4 jointsIn[];
 };
 
 // weights for each joint that affect each vertex
-layout(scalar, set = 0, binding = 2) readonly buffer WeightsIn {
+layout(scalar, set = 0, binding = 3) readonly buffer WeightsIn {
     vec4 weightsIn[];
 };
 
 // inverse bind matrices for each joint
-layout(scalar, set = 0, binding = 3) readonly buffer JointMatrices {
+layout(scalar, set = 0, binding = 4) readonly buffer JointMatrices {
     mat4 jointMatrices[];
 };
 
-layout(scalar, set = 0, binding = 4) writeonly buffer PositionsOut {
+layout(scalar, set = 0, binding = 5) writeonly buffer PositionsOut {
     vec3 positionsOut[];
 };
 
-//layout(scalar, set = 0, binding = 5) writeonly buffer NormalsOut {
-//    vec3 normalsOut[];
-//};
+layout(scalar, set = 0, binding = 6) writeonly buffer NormalsOut {
+    vec3 normalsOut[];
+};
 
 void main()
 {
     uint vertexIndex = gl_GlobalInvocationID.x;
 
+    if (vertexIndex > pc.numVertices)
+    {
+        return;
+    }
+
     vec3 outPosition = vec3(0.0);
+    vec3 outNormal = vec3(0.0);
     uvec4 joint = jointsIn[vertexIndex];
     vec4 weights = weightsIn[vertexIndex];
     for (int i = 0; i < 4; i++)
     {
         mat4 jointMatrix = jointMatrices[joint[i]];
         outPosition += (jointMatrix * vec4(positionsIn[vertexIndex], 1.0)).xyz * weights[i];
-    }
-    positionsOut[vertexIndex] = outPosition;
 
-    // TODO: the normals need to be updated as well!
+        mat3 normalMatrix = transpose(inverse(mat3(jointMatrix)));
+        outNormal += normalMatrix * normalsIn[vertexIndex] * weights[i];
+    }
+
+    positionsOut[vertexIndex] = outPosition;
+    normalsOut[vertexIndex] = outNormal;
 }

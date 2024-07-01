@@ -228,6 +228,7 @@ void GLTFLoader::processSkinsAnimations(BufferFactory &bufferFactory, tinygltf::
         for (int i = 0; i < skin.joints.size(); i++)
         {
             int joint = skin.joints[i];
+            if (accessor.type != TINYGLTF_TYPE_MAT4) throw std::runtime_error("Invalid inverse bind matrix type");
             // read inverse bind matrix
             const auto *ibm = reinterpret_cast<const glm::mat4*>(&buffer.data[bufferView.byteOffset + accessor.byteOffset
                                                                               + i * sizeof(glm::mat4)]);
@@ -312,24 +313,27 @@ uPtr<Buffer> GLTFLoader::getBuffer(BufferFactory &bufferFactory, tinygltf::Model
     {
         if (accessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT || accessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE)
         {
-            vBuffer = bufferFactory.createBuffer(accessor.count * sizeof(uint32_t), flags,
+            if (accessor.type != 4) throw std::runtime_error("Invalid type"); // assumes is always joint index
+            vBuffer = bufferFactory.createBuffer(accessor.count * sizeof(glm::uvec4), flags,
                                                  VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
-            if (accessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT)
-            {
-                // read out the data and convert to regular uint, since I only support regular int/floats
-                // really only applies to compute shaders or things that would use indexing (floats are floats)
-                const auto *data = reinterpret_cast<const uint16_t*>(&buffer.data[bufferView.byteOffset + accessor.byteOffset]);
-                std::vector<uint32_t> newData(accessor.count);
-                for (int i = 0; i < accessor.count; i++)
-                    newData[i] = data[i];
-                vBuffer->fill(newData.data());
-            }
             if (accessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE)
             {
-                const auto *data = reinterpret_cast<const uint8_t*>(&buffer.data[bufferView.byteOffset + accessor.byteOffset]);
-                std::vector<uint32_t> newData(accessor.count);
+                const auto *data = reinterpret_cast<const glm::u8vec4*>(&buffer.data[bufferView.byteOffset + accessor.byteOffset]);
+                std::vector<glm::uvec4> newData(accessor.count);
                 for (int i = 0; i < accessor.count; i++)
+                {
                     newData[i] = data[i];
+                }
+                vBuffer->fill(newData.data());
+            }
+            if (accessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT)
+            {
+                const auto *data = reinterpret_cast<const glm::u16vec4*>(&buffer.data[bufferView.byteOffset + accessor.byteOffset]);
+                std::vector<glm::uvec4> newData(accessor.count);
+                for (int i = 0; i < accessor.count; i++)
+                {
+                    newData[i] = data[i];
+                }
                 vBuffer->fill(newData.data());
             }
         }
