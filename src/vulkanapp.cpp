@@ -303,7 +303,7 @@ void VulkanApp::create(Window &window)
 
         computeCommandBuffers.push_back(graphicsCommandPool->createCommandBuffer());
         computeSemaphores.push_back(syncer.createSemaphore());
-        computeFences.push_back(syncer.createFence(true));
+        computeFences.push_back(syncer.createFence(false));
 
         cameraBuffers.emplace_back(bufferFactory.createBuffer(sizeof(CameraMatrices),
                                                               vk::BufferUsageFlagBits::eUniformBuffer,

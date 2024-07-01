@@ -19,13 +19,6 @@ void Mesh::destroy()
 void Mesh::draw(vk::CommandBuffer commandBuffer)
 {
     // TODO: needs some notion of what shader is bound
-    std::vector<Buffer*> buffers;
-
-    buffers.reserve(vertexBuffers.size());
-    for (auto &vb : vertexBuffers)
-    {
-        if (vb) buffers.push_back(vb.get());
-    }
 
     if (skinnedPositions)
         skinnedPositions->bind(commandBuffer, 0);

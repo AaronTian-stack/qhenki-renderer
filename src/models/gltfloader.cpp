@@ -190,10 +190,10 @@ void GLTFLoader::processNode(BufferFactory &bufferFactory, tinygltf::Model &gltf
             {
                 mesh->skinnedPositions = bufferFactory.createBuffer(mesh->vertexBuffers[VertexBufferType::POSITION]->info.size,
                                                                     flags,
-                                                                    VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
+                                                                    VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT);
                 mesh->skinnedNormals = bufferFactory.createBuffer(mesh->vertexBuffers[VertexBufferType::NORMAL]->info.size,
                                                                   flags,
-                                                                  VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
+                                                                  VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT);
             }
 
             // extract index data
@@ -348,17 +348,20 @@ uPtr<Buffer> GLTFLoader::getBuffer(BufferFactory &bufferFactory, tinygltf::Model
 
     if (flags & vk::BufferUsageFlagBits::eIndexBuffer)
     {
-        vBuffer = bufferFactory.createBuffer(bufferView.byteLength, flags,
-                                             VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
+
         // handle different formats
         if (accessor.componentType == TINYGLTF_PARAMETER_TYPE_UNSIGNED_SHORT)
         {
             // 16 bit
+            vBuffer = bufferFactory.createBuffer(accessor.count * sizeof(uint16_t), flags,
+                                                 VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
             vBuffer->setIndexType(vk::IndexType::eUint16);
         }
         else if (accessor.componentType == TINYGLTF_PARAMETER_TYPE_UNSIGNED_INT)
         {
             // 32 bit
+            vBuffer = bufferFactory.createBuffer(accessor.count * sizeof(uint32_t), flags,
+                                                 VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
             vBuffer->setIndexType(vk::IndexType::eUint32);
         }
         else
