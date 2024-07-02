@@ -1,14 +1,14 @@
 #include "node.h"
 #include <glm/gtx/transform.hpp>
+#include <iostream>
 
-Node::Node(Model *model) : parent(nullptr), model(model), skinIndex(-1)
+Node::Node(Model *model) : parent(nullptr), model(model), skinIndex(-1), dirty(true)
 {}
 
 void Node::draw(vk::CommandBuffer commandBuffer, Pipeline &pipeline)
 {
     for (auto mesh : meshes)
     {
-        if (!mesh) continue;
         auto wt = getWorldTransform();
         pipeline.setPushConstant(commandBuffer, &wt, sizeof(glm::mat4), 0, vk::ShaderStageFlagBits::eVertex);
         auto &material = *mesh->material;
@@ -54,7 +54,8 @@ void Node::skin(vk::CommandBuffer commandBuffer, Pipeline &pipeline,
         assert(pos.range % sizeof(glm::vec3) == 0);
         auto numPositions = pos.range / sizeof(glm::vec3);
         pipeline.setPushConstant(commandBuffer, &numPositions, sizeof(int), 0, vk::ShaderStageFlagBits::eCompute);
-        commandBuffer.dispatch(numPositions / 64, 1, 1);
+        const auto workGroupSize = 64;
+        commandBuffer.dispatch((numPositions + workGroupSize - 1) / workGroupSize, 1, 1);
     }
     for (auto &child : children)
     {
@@ -62,20 +63,25 @@ void Node::skin(vk::CommandBuffer commandBuffer, Pipeline &pipeline,
     }
 }
 
-glm::mat4 Node::getLocalTransform() const
+glm::mat4 Node::getLocalTransform()
 {
-    return glm::translate(glm::mat4(), transform.translate) *
+    return glm::translate(transform.translate) *
            glm::mat4_cast(transform.rotation) *
-           glm::scale(glm::mat4(), transform.scale);
+           glm::scale(transform.scale);
 }
 
-glm::mat4 Node::getWorldTransform() const
+glm::mat4 Node::getWorldTransform()
 {
-    if (parent)
+    if (dirty)
     {
-        return parent->getWorldTransform() * getLocalTransform();
+        // recalculate world transform
+        if (parent)
+            worldTransform = parent->getWorldTransform() * getLocalTransform();
+        else
+            worldTransform = getLocalTransform();
+        dirty = false;
     }
-    return getLocalTransform();
+    return worldTransform;
 }
 
 void Node::updateJointTransforms()
@@ -94,5 +100,32 @@ void Node::updateJointTransforms()
     for (auto &child : children)
     {
         child->updateJointTransforms();
+    }
+}
+
+void Node::setTranslation(glm::vec3 translation)
+{
+    transform.translate = translation;
+    invalidate();
+}
+
+void Node::setRotation(glm::quat rotation)
+{
+    transform.rotation = rotation;
+    invalidate();
+}
+
+void Node::setScale(glm::vec3 scale)
+{
+    transform.scale = scale;
+    invalidate();
+}
+
+void Node::invalidate()
+{
+    dirty = true;
+    for (auto &child : children)
+    {
+        child->invalidate();
     }
 }

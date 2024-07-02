@@ -249,14 +249,20 @@ void GLTFLoader::processSkinsAnimations(BufferFactory &bufferFactory, tinygltf::
         Animation &anim = model->animations.back();
         for (auto &channel : animation.channels)
         {
-            TargetPath path = TargetPath::TRANSLATION;
+            TargetPath path;
             if (channel.target_path == "translation")
                 path = TargetPath::TRANSLATION;
             else if (channel.target_path == "rotation")
                 path = TargetPath::ROTATION;
             else if (channel.target_path == "scale")
                 path = TargetPath::SCALE;
-            else throw std::runtime_error("Invalid target path");
+            else if (channel.target_path == "weights")
+                path = TargetPath::WEIGHT;
+            else
+            {
+                std::cerr << "Invalid target path " << channel.target_path << std::endl;
+                throw std::runtime_error("Invalid target path");
+            }
 
             anim.channels.push_back({ numberNodeMap[channel.target_node], channel.sampler, path });
         }
@@ -272,7 +278,6 @@ void GLTFLoader::processSkinsAnimations(BufferFactory &bufferFactory, tinygltf::
             else throw std::runtime_error("Invalid interpolation");
 
             anim.samplers.push_back({ sampler.input, sampler.output, interp });
-            auto &samp = anim.samplers.back();
 
             // copy raw animation data if not copied already
             auto addRawData = [&](int type) {
@@ -311,35 +316,36 @@ uPtr<Buffer> GLTFLoader::getBuffer(BufferFactory &bufferFactory, tinygltf::Model
 
     if (flags & vk::BufferUsageFlagBits::eVertexBuffer)
     {
-        if (accessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT || accessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE)
+        if (accessor.componentType == TINYGLTF_COMPONENT_TYPE_INT) throw std::runtime_error("int not supported");
+        if (accessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE)
         {
             if (accessor.type != 4) throw std::runtime_error("Invalid type"); // assumes is always joint index
-            vBuffer = bufferFactory.createBuffer(accessor.count * sizeof(glm::uvec4), flags,
+            vBuffer = bufferFactory.createBuffer(accessor.count * sizeof(glm::u16vec4), flags,
                                                  VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
             if (accessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE)
             {
                 const auto *data = reinterpret_cast<const glm::u8vec4*>(&buffer.data[bufferView.byteOffset + accessor.byteOffset]);
-                std::vector<glm::uvec4> newData(accessor.count);
+                std::vector<glm::u16vec4> newData(accessor.count);
                 for (int i = 0; i < accessor.count; i++)
                 {
                     newData[i] = data[i];
                 }
                 vBuffer->fill(newData.data());
             }
-            if (accessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT)
-            {
-                const auto *data = reinterpret_cast<const glm::u16vec4*>(&buffer.data[bufferView.byteOffset + accessor.byteOffset]);
-                std::vector<glm::uvec4> newData(accessor.count);
-                for (int i = 0; i < accessor.count; i++)
-                {
-                    newData[i] = data[i];
-                }
-                vBuffer->fill(newData.data());
-            }
+//            if (accessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT)
+//            {
+//                const auto *data = reinterpret_cast<const glm::u16vec4*>(&buffer.data[bufferView.byteOffset + accessor.byteOffset]);
+//                std::vector<glm::uvec4> newData(accessor.count);
+//                for (int i = 0; i < accessor.count; i++)
+//                {
+//                    newData[i] = data[i];
+//                }
+//                vBuffer->fill(newData.data());
+//            }
         }
         else
         {
-            // probably just regular float
+            // float or short
             vBuffer = bufferFactory.createBuffer(bufferView.byteLength, flags,
                                                  VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
             vBuffer->fill(&buffer.data[bufferView.byteOffset + accessor.byteOffset]);

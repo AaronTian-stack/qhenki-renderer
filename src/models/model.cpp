@@ -75,19 +75,19 @@ void Model::updateAnimation(float time)
             {
                 assert(outputBuffer.size() % sizeof(glm::vec3) == 0);
                 auto translations = reinterpret_cast<glm::vec3*>(outputBuffer.data());
-                node->transform.translate = glm::mix(translations[timeIndex], translations[timeIndex + 1], interpolationValue);
+                node->setTranslation(glm::mix(translations[timeIndex], translations[timeIndex + 1], interpolationValue));
             }
             else if (channel.path == TargetPath::ROTATION)
             {
                 assert(outputBuffer.size() % sizeof(glm::quat) == 0);
                 auto rotations = reinterpret_cast<glm::quat*>(outputBuffer.data());
-                node->transform.rotation = glm::slerp(rotations[timeIndex], rotations[timeIndex + 1], interpolationValue);
+                node->setRotation(glm::slerp(rotations[timeIndex], rotations[timeIndex + 1], interpolationValue));
             }
             else if (channel.path == TargetPath::SCALE)
             {
                 assert(outputBuffer.size() % sizeof(glm::vec3) == 0);
                 auto scales = reinterpret_cast<glm::vec3*>(outputBuffer.data());
-                node->transform.scale = glm::mix(scales[timeIndex], scales[timeIndex + 1], interpolationValue);
+                node->setScale(glm::mix(scales[timeIndex], scales[timeIndex + 1], interpolationValue));
             }
         }
     }

@@ -540,7 +540,6 @@ void VulkanApp::recordCommandBuffer(FrameBuffer *framebuffer)
 
     auto &allocator = allocators[currentFrame];
     allocator.resetPools();
-
     // allocate one time command buffer primary
     auto compute = computeCommandBuffers[currentFrame];
     compute.reset();
@@ -553,6 +552,7 @@ void VulkanApp::recordCommandBuffer(FrameBuffer *framebuffer)
             model->getRoot()->updateJointTransforms();
 
             compute.bindPipeline(vk::PipelineBindPoint::eCompute, skinning.pipeline->getPipeline());
+
             model->getRoot()->skin(compute, *skinning.pipeline, layoutCache, allocator);
         }
     lock.unlock();
@@ -764,7 +764,8 @@ void VulkanApp::updateLightBuffers()
 
 void VulkanApp::attemptToDeleteOldModel()
 {
-    std::unique_lock lock(modelMutex);
+    std::unique_lock lock(modelMutex, std::try_to_lock);
+    if (!lock.owns_lock()) return;
     if (models.size() > 1)
     {
         bool canDelete = true;

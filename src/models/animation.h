@@ -9,6 +9,7 @@ enum TargetPath
     TRANSLATION,
     ROTATION,
     SCALE,
+    WEIGHT,
 };
 
 enum Interpolation
