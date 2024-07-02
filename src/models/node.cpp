@@ -54,7 +54,7 @@ void Node::skin(vk::CommandBuffer commandBuffer, Pipeline &pipeline,
         assert(pos.range % sizeof(glm::vec3) == 0);
         auto numPositions = pos.range / sizeof(glm::vec3);
         pipeline.setPushConstant(commandBuffer, &numPositions, sizeof(int), 0, vk::ShaderStageFlagBits::eCompute);
-        const auto workGroupSize = 64;
+        const auto workGroupSize = 256;
         commandBuffer.dispatch((numPositions + workGroupSize - 1) / workGroupSize, 1, 1);
     }
     for (auto &child : children)
