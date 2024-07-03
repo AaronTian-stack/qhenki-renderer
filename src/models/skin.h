@@ -12,8 +12,8 @@ struct Skin
 {
     std::string name;
     std::vector<NodeBindMatrix> nodeBindMatrices;
+    std::vector<uPtr<Buffer>> jointBuffers;
     explicit Skin(std::string &name) : name(name) {}
-    uPtr<Buffer> jointsBuffer;
     friend class GLTFLoader;
 };
 

@@ -18,7 +18,10 @@ void Model::destroy()
     }
     for (auto &skin : skins)
     {
-        skin.jointsBuffer->destroy();
+        for (auto &jointBuffer : skin.jointBuffers)
+        {
+            jointBuffer->destroy();
+        }
     }
 }
 
@@ -38,7 +41,7 @@ std::vector<vk::DescriptorImageInfo> Model::getDescriptorImageInfo()
     return descriptorImageInfo;
 }
 
-void Model::updateAnimation(float time)
+void Model::updateAnimation(float time, int frame)
 {
     if (!animations.empty())
     {
@@ -94,7 +97,7 @@ void Model::updateAnimation(float time)
     for (auto &skin : skins)
     {
         // update the transformation of the joint and write to SSBO
-        auto inverseBindMatrices = static_cast<glm::mat4*>(skin.jointsBuffer->getPointer());
+        auto inverseBindMatrices = static_cast<glm::mat4*>(skin.jointBuffers[frame]->getPointer());
         for (int i = 0; i < skin.nodeBindMatrices.size(); i++)
         {
             auto &nodeBindMatrix = skin.nodeBindMatrices[i];

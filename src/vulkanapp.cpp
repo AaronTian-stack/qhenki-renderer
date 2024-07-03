@@ -359,7 +359,7 @@ void VulkanApp::setModel(const std::string& filePath)
     camera.simpleReset();
     std::thread t([this, filePath](){
         auto newModel = GLTFLoader::create(*transferCommandPool, vulkanContext.queueManager,
-                                           bufferFactory, filePath.c_str());
+                                           bufferFactory, filePath.c_str(), MAX_FRAMES_IN_FLIGHT);
         std::lock_guard lock(modelMutex);
         models.push_back(std::move(newModel));
         GLTFLoader::setLoadPercent(1.f);
@@ -543,17 +543,18 @@ void VulkanApp::recordCommandBuffer(FrameBuffer *framebuffer)
     // allocate one time command buffer primary
     auto compute = computeCommandBuffers[currentFrame];
     compute.reset();
-    compute.begin({vk::CommandBufferUsageFlagBits::eOneTimeSubmit, nullptr});
+    vk::CommandBufferBeginInfo beginInfo{};
+    compute.begin(beginInfo);
     std::unique_lock lock(modelMutex);
         if (!models.empty())
         {
             auto &model = models.back();
-            model->updateAnimation((float)glfwGetTime());
-            model->getRoot()->updateJointTransforms();
+            model->updateAnimation((float)glfwGetTime(), currentFrame);
+            model->getRoot()->updateJointTransforms(currentFrame);
 
             compute.bindPipeline(vk::PipelineBindPoint::eCompute, skinning.pipeline->getPipeline());
 
-            model->getRoot()->skin(compute, *skinning.pipeline, layoutCache, allocator);
+            model->getRoot()->skin(compute, *skinning.pipeline, layoutCache, allocator, currentFrame);
         }
     lock.unlock();
     compute.end();
@@ -639,20 +640,37 @@ void VulkanApp::render()
 
     auto &queueManager = vulkanContext.queueManager;
 
+    vk::PipelineStageFlags computeFlag = vk::PipelineStageFlagBits::eComputeShader;
+
     // submit the compute job first
     vk::SubmitInfo computeSubmitInfo;
     computeSubmitInfo.commandBufferCount = 1;
     computeSubmitInfo.pCommandBuffers = &computeCommandBuffers[currentFrame];
     computeSubmitInfo.signalSemaphoreCount = 1;
     computeSubmitInfo.pSignalSemaphores = &computeSemaphores[currentFrame];
+    computeSubmitInfo.pWaitDstStageMask = &computeFlag;
 
-    auto fence = computeFences[currentFrame];
-    queueManager.submitGraphics(computeSubmitInfo, fence);
-    syncer.waitForFences({fence});
-    syncer.resetFence(fence);
+    queueManager.submitGraphics(computeSubmitInfo, VK_NULL_HANDLE);
+
+    vk::PipelineStageFlags graphicsWaitStageMasks[] = { vk::PipelineStageFlagBits::eVertexInput,
+                                                        vk::PipelineStageFlagBits::eColorAttachmentOutput };
+    vk::SubmitInfo graphicsSubmitInfo;
+    graphicsSubmitInfo.commandBufferCount = 1;
+    graphicsSubmitInfo.pCommandBuffers = &frame.commandBuffer;
+
+    graphicsSubmitInfo.signalSemaphoreCount = 1;
+    graphicsSubmitInfo.pSignalSemaphores = &frame.renderFinishedSemaphore;
+
+    vk::Semaphore waitSemaphores[] = {frame.imageAvailableSemaphore, computeSemaphores[currentFrame]};
+    graphicsSubmitInfo.waitSemaphoreCount = 2;
+    graphicsSubmitInfo.pWaitSemaphores = waitSemaphores;
+
+    graphicsSubmitInfo.pWaitDstStageMask = graphicsWaitStageMasks;
+
+    queueManager.submitGraphics(graphicsSubmitInfo, frame.inFlightFence);
 
     // lots of information about syncing in frame.getSubmitInfo() struct.
-    frame.submit(queueManager, {computeSemaphores[currentFrame]}, {vk::PipelineStageFlagBits::eVertexInput});
+//    frame.submit(queueManager, {computeSemaphores[currentFrame]}, {vk::PipelineStageFlagBits::eVertexInput});
 
     std::vector<vk::Semaphore> signalSemaphores = {frame.renderFinishedSemaphore};
     // calls the present command, waits for given semaphores

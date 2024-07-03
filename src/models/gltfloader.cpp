@@ -12,7 +12,8 @@
 #include <glm/gtx/matrix_decompose.hpp>
 #include <thread>
 
-uPtr<Model> GLTFLoader::create(CommandPool &commandPool, QueueManager &queueManager, BufferFactory &bufferFactory, const char* filename)
+uPtr<Model> GLTFLoader::create(CommandPool &commandPool, QueueManager &queueManager, BufferFactory &bufferFactory,
+                               const char* filename, int framesInFlight)
 {
     tinygltf::TinyGLTF loader;
     tinygltf::Model gltfModel;
@@ -63,7 +64,7 @@ uPtr<Model> GLTFLoader::create(CommandPool &commandPool, QueueManager &queueMana
     nodeThread.join();
 
     // assign joints to nodes
-    processSkinsAnimations(bufferFactory, gltfModel, model.get(), numberNodeMap);
+    processSkinsAnimations(bufferFactory, gltfModel, model.get(), numberNodeMap, framesInFlight);
 
     matThread.join();
 
@@ -213,7 +214,8 @@ void GLTFLoader::processNode(BufferFactory &bufferFactory, tinygltf::Model &gltf
     }
 }
 
-void GLTFLoader::processSkinsAnimations(BufferFactory &bufferFactory, tinygltf::Model &gltfModel, Model *model, tsl::robin_map<int, Node*> &numberNodeMap)
+void GLTFLoader::processSkinsAnimations(BufferFactory &bufferFactory, tinygltf::Model &gltfModel, Model *model,
+                                        tsl::robin_map<int, Node*> &numberNodeMap, int framesInFlight)
 {
     // iterate through each skin
     for (auto &skin : gltfModel.skins)
@@ -237,9 +239,10 @@ void GLTFLoader::processSkinsAnimations(BufferFactory &bufferFactory, tinygltf::
             skinObj.nodeBindMatrices.push_back({ n, *ibm });
         }
 
-        skinObj.jointsBuffer = bufferFactory.createBuffer(skin.joints.size() * sizeof(glm::mat4),
+        for (int i = 0; i < framesInFlight; i++)
+            skinObj.jointBuffers.push_back(bufferFactory.createBuffer(skin.joints.size() * sizeof(glm::mat4),
                                                           vk::BufferUsageFlagBits::eStorageBuffer,
-                                                          VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT);
+                                                          VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT));
     }
 
     // get the raw animation data

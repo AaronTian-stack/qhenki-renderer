@@ -33,14 +33,16 @@ private:
                                          BufferFactory &bufferFactory, tinygltf::Model &gltfModel, Model *model);
     static void processNode(BufferFactory &bufferFactory, tinygltf::Model &gltfModel, Model *model, Node *parent, int nodeIndex,
                             tsl::robin_map<Mesh*, int> &meshMap, tsl::robin_map<int, Node*> &numberNodeMap);
-    static void processSkinsAnimations(BufferFactory &bufferFactory, tinygltf::Model &gltfModel, Model *model, tsl::robin_map<int, Node*> &numberNodeMap);
+    static void processSkinsAnimations(BufferFactory &bufferFactory, tinygltf::Model &gltfModel, Model *model,
+                                       tsl::robin_map<int, Node*> &numberNodeMap, int framesInFlight);
     static uPtr<Buffer> createTangentVectors(BufferFactory &bufferFactory, tinygltf::Model &gltfModel , int verticesType,
                                              int normalType, int uvType, int indexType, vk::BufferUsageFlags flags);
     static uPtr<Buffer> getBuffer(BufferFactory &bufferFactory, tinygltf::Model &gltfModel,
                           int type, vk::BufferUsageFlags flags);
 
 public:
-    static uPtr<Model> create(CommandPool &commandPool, QueueManager &queueManager, BufferFactory &bufferFactory, const char* filename);
+    static uPtr<Model> create(CommandPool &commandPool, QueueManager &queueManager, BufferFactory &bufferFactory,
+                              const char* filename, int framesInFlight);
     static float getLoadPercent();
     static void setLoadPercent(float percent);
 };

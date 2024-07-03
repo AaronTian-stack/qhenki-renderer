@@ -33,9 +33,9 @@ public:
     void setScale(glm::vec3 scale);
     glm::mat4 getLocalTransform();
     glm::mat4 getWorldTransform();
-    void updateJointTransforms();
+    void updateJointTransforms(int frame);
     void draw(vk::CommandBuffer commandBuffer, Pipeline &pipeline);
     void skin(vk::CommandBuffer commandBuffer, Pipeline &pipeline,
-                  DescriptorLayoutCache &layoutCache, DescriptorAllocator &allocator);
+                  DescriptorLayoutCache &layoutCache, DescriptorAllocator &allocator, int frame);
     friend class GLTFLoader;
 };

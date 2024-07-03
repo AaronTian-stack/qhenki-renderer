@@ -22,7 +22,7 @@ void Node::draw(vk::CommandBuffer commandBuffer, Pipeline &pipeline)
 }
 
 void Node::skin(vk::CommandBuffer commandBuffer, Pipeline &pipeline,
-                    DescriptorLayoutCache &layoutCache, DescriptorAllocator &allocator)
+                    DescriptorLayoutCache &layoutCache, DescriptorAllocator &allocator, int frame)
 {
     for (auto mesh : meshes)
     {
@@ -34,7 +34,7 @@ void Node::skin(vk::CommandBuffer commandBuffer, Pipeline &pipeline,
         auto normals = mesh->getDescriptorInfo(VertexBufferType::NORMAL);
         auto joint = mesh->getDescriptorInfo(VertexBufferTypeExt::JOINTS);
         auto weights = mesh->getDescriptorInfo(VertexBufferTypeExt::WEIGHTS);
-        auto matrices = model->skins[skinIndex].jointsBuffer->getDescriptorInfo();
+        auto matrices = model->skins[skinIndex].jointBuffers[frame]->getDescriptorInfo();
         auto outPos = mesh->getDescriptorInfo(VertexBufferTypeExt::SKIN_POSITION);
         auto outNormal = mesh->getDescriptorInfo(VertexBufferTypeExt::SKIN_NORMAL);
 
@@ -59,7 +59,7 @@ void Node::skin(vk::CommandBuffer commandBuffer, Pipeline &pipeline,
     }
     for (auto &child : children)
     {
-        child->skin(commandBuffer, pipeline, layoutCache, allocator);
+        child->skin(commandBuffer, pipeline, layoutCache, allocator, frame);
     }
 }
 
@@ -84,13 +84,13 @@ glm::mat4 Node::getWorldTransform()
     return worldTransform;
 }
 
-void Node::updateJointTransforms()
+void Node::updateJointTransforms(int frame)
 {
     if (skinIndex != -1)
     {
         auto inverse = glm::inverse(getWorldTransform());
         auto &s = model->skins[skinIndex];
-        auto jointMatrices = static_cast<glm::mat4*>(s.jointsBuffer->getPointer());
+        auto jointMatrices = static_cast<glm::mat4*>(s.jointBuffers[frame]->getPointer());
         for (int i = 0; i < s.nodeBindMatrices.size(); i++)
         {
             auto &joint = s.nodeBindMatrices[i];
@@ -99,7 +99,7 @@ void Node::updateJointTransforms()
     }
     for (auto &child : children)
     {
-        child->updateJointTransforms();
+        child->updateJointTransforms(frame);
     }
 }
 
