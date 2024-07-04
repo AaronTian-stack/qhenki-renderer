@@ -180,7 +180,7 @@ void PostProcessMenu::renderPostProcessMenu(PostProcess *postProcess)
     auto *chromaticAberration = dynamic_cast<ChromaticAberration*>(postProcess);
     if (chromaticAberration)
     {
-        ImGui::SliderFloat("Intensity", &chromaticAberration->maxIntensity, 0.0f, 1.0f);
+        ImGui::SliderFloat("Intensity", &chromaticAberration->maxIntensity, 0.01f, 5.0f);
     }
 }
 
