@@ -30,7 +30,7 @@ vk::DescriptorPool DescriptorAllocator::grabPool()
     else
     {
         // create new pool
-        return createPool(1000, static_cast<vk::DescriptorPoolCreateFlagBits>(0));
+        return createPool(1000, vk::DescriptorPoolCreateFlagBits::eUpdateAfterBind);
     }
 }
 
