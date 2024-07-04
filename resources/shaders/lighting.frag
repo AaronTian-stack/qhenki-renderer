@@ -19,6 +19,7 @@ layout(location = 2) in vec3 cameraForward;
 layout(location = 3) in mat4 cameraViewProj;
 
 layout(scalar, push_constant) uniform LightingInfo {
+    mat4 cubeMapRotation;
     float iblIntensity;
     float emissionMultiplier;
     int pointLightCount;
@@ -378,6 +379,9 @@ vec3 calculateRectangle(RectangleLight light, vec3 N, vec3 V, vec3 R, vec3 fragP
 
 vec3 calculateIBL(vec3 N, vec3 V, vec3 R, vec3 F0, Material material)
 {
+    vec3 rotatedN = normalize((lightingInfo.cubeMapRotation * vec4(N, 1.0)).xyz);
+    vec3 rotatedR = normalize((lightingInfo.cubeMapRotation * vec4(R, 1.0)).xyz);
+
     R = getSpecularDominantDirArea(N, R, material.roughness);
     float nvDOT = max(dot(N, V), 0.0);
 
@@ -388,16 +392,16 @@ vec3 calculateIBL(vec3 N, vec3 V, vec3 R, vec3 F0, Material material)
     vec3 kD = 1.0 - F;
     kD *= 1.0 - material.metallic;
 
-    vec3 irradiance = texture(irradianceMap, N).rgb;
+    vec3 irradiance = texture(irradianceMap, rotatedN).rgb;
     vec3 diffuse    = irradiance * material.albedo;
 
     float MAX_REFLECTION_LOD = textureQueryLevels(radianceMap) + 1.0;
     float level = material.roughness * MAX_REFLECTION_LOD;
     vec3 prefilteredColor;
     if (level <= 1)
-        prefilteredColor = texture(cubeMap, R).rgb;
+        prefilteredColor = texture(cubeMap, rotatedR).rgb;
     else
-        prefilteredColor = textureLod(radianceMap, R, material.roughness * MAX_REFLECTION_LOD).rgb;
+        prefilteredColor = textureLod(radianceMap, rotatedR, material.roughness * MAX_REFLECTION_LOD).rgb;
     vec2 envBRDF  = texture(brdfLUT, vec2(nvDOT, material.roughness)).rg;
     vec3 specular = prefilteredColor * (F * envBRDF.x + envBRDF.y);
 

@@ -79,6 +79,7 @@ private:
 
     uPtr<PostProcessManager> postProcessManager;
 
+    float cubeMapRotation;
     Camera camera;
     CameraMatrices cameraMatrices;
     DescriptorLayoutCache layoutCache;

@@ -9,6 +9,7 @@
 #include "vfx/effects/vignette.h"
 #include "vfx/effects/sharpen.h"
 #include "vfx/effects/filmgrain.h"
+#include "vfx/effects/chromaticaberration.h"
 #include <thread>
 
 VulkanApp::VulkanApp() : drawBackground(true), clearColor(0.25f) {}
@@ -247,10 +248,13 @@ void VulkanApp::createPostProcess()
                                 pipelineFactory, layoutCache, &postProcessManager->getPingPongRenderPass());
     auto filmGrain = mkS<FilmGrain>(vulkanContext.device.logicalDevice, "filmgrain.frag",
                                     pipelineFactory, layoutCache, &postProcessManager->getPingPongRenderPass());
+    auto chromaticAberration = mkS<ChromaticAberration>(vulkanContext.device.logicalDevice, "chromatic_aberration.frag",
+                                                        pipelineFactory, layoutCache, &postProcessManager->getPingPongRenderPass());
     postProcessManager->addPostProcess(fxaa);
     postProcessManager->addPostProcess(vignette);
     postProcessManager->addPostProcess(sharpen);
     postProcessManager->addPostProcess(filmGrain);
+    postProcessManager->addPostProcess(chromaticAberration);
     postProcessManager->activatePostProcess(0);
     auto reinhard = mkU<PostProcess>("Reinhard", vulkanContext.device.logicalDevice, "reinhard.frag",
                                      pipelineFactory, layoutCache, &postProcessManager->getPingPongRenderPass());
@@ -415,6 +419,7 @@ void VulkanApp::recordOffscreenBuffer(vk::CommandBuffer commandBuffer, Descripto
     offscreenRenderPass->nextSubpass(); // composition pass
 
     commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, lighting.pipeline->getPipeline());
+    lightingParameters.cubeMapRotation = glm::rotate(glm::radians(cubeMapRotation), glm::vec3(0.f, 1.f, 0.f));
     lightingParameters.pointLightCount = 0;
     lightingParameters.rectangleLightCount = static_cast<int>(rectangleLights.size());
     lightingParameters.sphereLightCount = static_cast<int>(sphereLights.size());
@@ -486,6 +491,8 @@ void VulkanApp::recordOffscreenBuffer(vk::CommandBuffer commandBuffer, Descripto
         commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, cubeMap.pipeline->getPipelineLayout(),
                                          0, {cameraSet, cubeSamplerSet}, nullptr);
 
+        auto cbmrm = glm::rotate(glm::radians(-cubeMapRotation), glm::vec3(0.f, 1.f, 0.f));
+        cubeMap.pipeline->setPushConstant(commandBuffer, &cbmrm, sizeof(glm::mat4), 0, vk::ShaderStageFlagBits::eVertex);
         PrimitiveDrawer::drawCube(commandBuffer);
     }
 
@@ -652,25 +659,8 @@ void VulkanApp::render()
 
     queueManager.submitGraphics(computeSubmitInfo, VK_NULL_HANDLE);
 
-    vk::PipelineStageFlags graphicsWaitStageMasks[] = { vk::PipelineStageFlagBits::eVertexInput,
-                                                        vk::PipelineStageFlagBits::eColorAttachmentOutput };
-    vk::SubmitInfo graphicsSubmitInfo;
-    graphicsSubmitInfo.commandBufferCount = 1;
-    graphicsSubmitInfo.pCommandBuffers = &frame.commandBuffer;
-
-    graphicsSubmitInfo.signalSemaphoreCount = 1;
-    graphicsSubmitInfo.pSignalSemaphores = &frame.renderFinishedSemaphore;
-
-    vk::Semaphore waitSemaphores[] = {frame.imageAvailableSemaphore, computeSemaphores[currentFrame]};
-    graphicsSubmitInfo.waitSemaphoreCount = 2;
-    graphicsSubmitInfo.pWaitSemaphores = waitSemaphores;
-
-    graphicsSubmitInfo.pWaitDstStageMask = graphicsWaitStageMasks;
-
-    queueManager.submitGraphics(graphicsSubmitInfo, frame.inFlightFence);
-
-    // lots of information about syncing in frame.getSubmitInfo() struct.
-//    frame.submit(queueManager, {computeSemaphores[currentFrame]}, {vk::PipelineStageFlagBits::eVertexInput});
+    // lots of information about syncing in frame.getSubmitInfo() struct
+    frame.submit(queueManager, {computeSemaphores[currentFrame]}, {vk::PipelineStageFlagBits::eVertexInput});
 
     std::vector<vk::Semaphore> signalSemaphores = {frame.renderFinishedSemaphore};
     // calls the present command, waits for given semaphores
@@ -816,6 +806,7 @@ MenuPayloads VulkanApp::getPartialMenuPayload()
     m.postProcessManager = postProcessManager.get();
     m.camera = &camera;
     m.visualMenuPayload.lightingParameters = &lightingParameters;
+    m.visualMenuPayload.cubeMapRotation = &cubeMapRotation;
     m.visualMenuPayload.clearColor = &clearColor;
     m.visualMenuPayload.drawBackground = &drawBackground;
     m.lightsList.sphereLights = &sphereLights;

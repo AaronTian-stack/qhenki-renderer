@@ -4,6 +4,8 @@
 #include <glm/vec3.hpp>
 #include <glm/glm.hpp>
 
+#define DEFAULT_FOV 45.0f
+
 struct CameraOptions
 {
     float nearClip = 0.1f;

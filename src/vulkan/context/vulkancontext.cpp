@@ -48,7 +48,9 @@ bool VulkanContext::create(Window &window)
             | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT
             | VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT;
 
-    auto inst_ret = builder.set_app_name("Vulkan PBR").request_validation_layers()
+    auto inst_ret = builder.set_app_name("Vulkan PBR")
+#ifdef DEBUG
+            .request_validation_layers()
             .set_debug_messenger_severity(severity)
             .set_debug_callback (
             [] (VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
@@ -59,7 +61,9 @@ bool VulkanContext::create(Window &window)
                 std::cerr << "validation layer: " << pCallbackData->pMessage << std::endl;
                 return VK_FALSE;
             }
-    ).require_api_version(1, 2).build();
+    )
+#endif
+    .require_api_version(1, 2).build();
 
     if (!inst_ret) {
         std::cerr << "Failed to create Vulkan instance. Error: " << inst_ret.error().message() << "\n";
@@ -112,7 +116,8 @@ bool VulkanContext::create(Window &window)
     auto dev_ret = device_builder
             .add_pNext(&scalarFeatures)
             .build();
-    if (!dev_ret) {
+    if (!dev_ret)
+    {
         std::cerr << "Failed to create Vulkan device. Error: " << dev_ret.error().message() << "\n";
         return false;
     }
@@ -142,7 +147,7 @@ bool VulkanContext::create(Window &window)
     vkb::SwapchainBuilder swapchain_builder{ vkb_device };
     auto swap_ret = swapchain_builder
             .set_desired_format(format)
-            .set_desired_present_mode(VK_PRESENT_MODE_FIFO_RELAXED_KHR)
+            .set_desired_present_mode(VK_PRESENT_MODE_MAILBOX_KHR)
             .add_image_usage_flags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT)
             .build();
     if (!swap_ret){

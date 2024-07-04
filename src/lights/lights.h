@@ -5,6 +5,7 @@
 
 struct LightingParameters
 {
+    glm::mat4 cubeMapRotation;
     float iblIntensity = 1.f;
     float emissionMultiplier = 1.f;
     int pointLightCount = 0;

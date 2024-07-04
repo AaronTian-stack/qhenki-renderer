@@ -58,6 +58,7 @@ My personal hobby renderer written in C++ using Vulkan. It is intended as a plac
     * Vignette
     * Sharpen
     * Film Grain
+    * Chromatic Aberration
   * Multiple selectable tone mapping operators
     * Reinhard
     * Khronos PBR Neutral

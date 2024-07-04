@@ -27,7 +27,9 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${dir}/build)
 #Include library files
 include_directories(dependencies/include)
 
-add_executable(${PROJECT_NAME} ${SOURCE_FILES} ${IMGUI} main.cpp)
+add_executable(${PROJECT_NAME} ${SOURCE_FILES} ${IMGUI} main.cpp
+        src/vfx/effects/chromaticaberration.cpp
+        src/vfx/effects/chromaticaberration.h)
 add_subdirectory(dependencies/include/glm)
 find_package(Vulkan REQUIRED)
 
