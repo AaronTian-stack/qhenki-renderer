@@ -490,8 +490,7 @@ void VulkanApp::recordOffscreenBuffer(vk::CommandBuffer commandBuffer, Descripto
 
         commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, cubeMap.pipeline->getPipelineLayout(),
                                          0, {cameraSet, cubeSamplerSet}, nullptr);
-
-        auto cbmrm = glm::rotate(glm::radians(-cubeMapRotation), glm::vec3(0.f, 1.f, 0.f));
+        auto cbmrm = glm::rotate(glm::radians(-cubeMapRotation) + 0.001f, glm::vec3(0.f, 1.f, 0.f));
         cubeMap.pipeline->setPushConstant(commandBuffer, &cbmrm, sizeof(glm::mat4), 0, vk::ShaderStageFlagBits::eVertex);
         PrimitiveDrawer::drawCube(commandBuffer);
     }
@@ -742,7 +741,7 @@ void VulkanApp::updateLightBuffers()
         auto &tl = tubeLights[i];
         TubeLightShader light;
         light.color = tl.color * tl.intensity;
-        light.radius = tl.radius;
+        light.radius = glm::max(tl.radius, 0.001f);
 
         auto &rm = tl.rotation;
         auto tm = glm::translate(tl.position);

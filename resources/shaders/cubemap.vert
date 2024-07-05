@@ -23,6 +23,6 @@ void main()
 {
     localPos = inPosition;
     mat4 rotView = mat4(mat3(ubo.view)); // remove translation from the view matrix
-    vec4 clipPos = ubo.proj * rotView * pc.rotate * vec4(localPos, 1.0);
+    vec4 clipPos = ((ubo.proj * rotView) * pc.rotate) * vec4(localPos, 1.0);
     gl_Position = clipPos.xyww; // always depth 1.0
 }
