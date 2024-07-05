@@ -39,8 +39,6 @@ My personal hobby renderer written in C++ using Vulkan. It is intended as a plac
   </tr>
 </table>
 
-![applevr](screenshots/applevr.png)
-
 <table border="1">
   <tr>
     <td colspan="2" align="center"><b>Post-Processing Stack</b></td>
@@ -51,7 +49,10 @@ My personal hobby renderer written in C++ using Vulkan. It is intended as a plac
 </table>
 
 <table border="1">
-<tr>
+  <tr>
+    <td colspan="2"><img src="screenshots/applevr.png" alt="applevr"></td>
+  </tr>
+  <tr>
     <td><img src="screenshots/gun.png" alt="gun"></td>
     <td><img src="screenshots/teapot.png" alt="teapot"></td>
   </tr>
