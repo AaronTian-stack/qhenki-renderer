@@ -14,6 +14,7 @@ void VisualMenu::renderMenu(void *payload)
         if (validPayload)
         {
             ImGui::Checkbox("Draw Background", visualMenuPayload->drawBackground);
+            ImGui::DragFloat("Background Rotation", visualMenuPayload->cubeMapRotation, 1.f);
             ImGui::BeginDisabled(*visualMenuPayload->drawBackground);
             ImGui::ColorEdit3("Clear Color", reinterpret_cast<float *>(visualMenuPayload->clearColor));
             ImGui::EndDisabled();

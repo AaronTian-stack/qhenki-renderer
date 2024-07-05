@@ -7,6 +7,7 @@
 struct VisualMenuPayload
 {
     LightingParameters *lightingParameters;
+    float *cubeMapRotation;
     glm::vec3 *clearColor;
     bool *postProcessOpen;
     bool *lightsOpen;

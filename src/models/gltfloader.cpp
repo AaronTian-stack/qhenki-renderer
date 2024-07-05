@@ -12,7 +12,8 @@
 #include <glm/gtx/matrix_decompose.hpp>
 #include <thread>
 
-uPtr<Model> GLTFLoader::create(CommandPool &commandPool, QueueManager &queueManager, BufferFactory &bufferFactory, const char* filename)
+uPtr<Model> GLTFLoader::create(CommandPool &commandPool, QueueManager &queueManager, BufferFactory &bufferFactory,
+                               const char* filename, int framesInFlight)
 {
     tinygltf::TinyGLTF loader;
     tinygltf::Model gltfModel;
@@ -47,33 +48,36 @@ uPtr<Model> GLTFLoader::create(CommandPool &commandPool, QueueManager &queueMana
 
     uPtr<Model> model = mkU<Model>();
 
+    // TODO: multiple roots
     int rootNodeIndex = gltfModel.scenes[gltfModel.defaultScene].nodes[0];
 
-    auto loadMaterials = [&]()
-    {
+    std::thread matThread([&](){
         makeMaterialsAndTextures(commandPool, queueManager, bufferFactory, gltfModel, model.get());
-    };
+    });
 
-    auto processNodes = [&]()
-    {
-        processNode(bufferFactory, gltfModel, model.get(), nullptr, rootNodeIndex);
-    };
+    tsl::robin_map<Mesh*, int> meshMaterialMap;
+    tsl::robin_map<int, Node*> numberNodeMap;
+    std::thread nodeThread([&](){
+       processNode(bufferFactory, gltfModel, model.get(), nullptr, rootNodeIndex, meshMaterialMap, numberNodeMap);
+    });
 
-    std::thread matThread(loadMaterials);
-    std::thread nodeThread(processNodes);
+    nodeThread.join();
+
+    // assign joints to nodes
+    processSkinsAnimations(bufferFactory, gltfModel, model.get(), numberNodeMap, framesInFlight);
 
     matThread.join();
-    nodeThread.join();
 
     for (auto &mesh : model->meshes)
     {
-        mesh->material = &model->materials[mesh->materialIndex];
+        mesh->material = &model->materials[meshMaterialMap[mesh.get()]];
     }
 
     return model;
 }
 
-void GLTFLoader::processNode(BufferFactory &bufferFactory, tinygltf::Model &gltfModel, Model *model, Node *parent, int nodeIndex)
+void GLTFLoader::processNode(BufferFactory &bufferFactory, tinygltf::Model &gltfModel, Model *model, Node *parent, int nodeIndex,
+                             tsl::robin_map<Mesh*, int> &meshMap, tsl::robin_map<int, Node*> &numberNodeMap)
 {
     const tinygltf::Node& gltfNode = gltfModel.nodes[nodeIndex];
     loadPercent.store(loadPercent.load() + 0.5f / gltfModel.nodes.size());
@@ -81,16 +85,19 @@ void GLTFLoader::processNode(BufferFactory &bufferFactory, tinygltf::Model &gltf
     Node *node;
     if (!parent)
     {
-        model->root = mkU<Node>();
+        model->root = mkU<Node>(model);
         node = model->root.get();
     }
     else
     {
-        parent->children.push_back(mkU<Node>());
+        parent->children.push_back(mkU<Node>(model));
         node = parent->children.back().get();
     }
     node->parent = parent;
     node->name = gltfNode.name;
+    node->skinIndex = gltfNode.skin;
+
+    numberNodeMap[nodeIndex] = node;
 
     // set node transform
     if (gltfNode.scale.empty() && gltfNode.rotation.empty() && gltfNode.translation.empty() && gltfNode.matrix.size() == 16)
@@ -109,27 +116,27 @@ void GLTFLoader::processNode(BufferFactory &bufferFactory, tinygltf::Model &gltf
         glm::vec4 perspective;
         glm::decompose(transformation, scale, rotation, translation, skew, perspective);
 
-        node->scale = scale;
-        node->rotation = glm::conjugate(rotation);
-        node->translate = translation;
+        node->transform.scale = scale;
+        node->transform.rotation = glm::conjugate(rotation);
+        node->transform.translate = translation;
     }
     else
     {
         if (!gltfNode.scale.empty())
         {
             auto &scale = gltfNode.scale;
-            node->scale = {scale[0], scale[1], scale[2]};
+            node->transform.scale = {scale[0], scale[1], scale[2]};
         }
         if (!gltfNode.rotation.empty())
         {
             auto &rot = gltfNode.rotation;
             auto q = glm::dquat(rot[3], rot[0], rot[1], rot[2]);
-            node->rotation = q;
+            node->transform.rotation = q;
         }
         if (!gltfNode.translation.empty())
         {
             auto &trans = gltfNode.translation;
-            node->translate = {trans[0], trans[1], trans[2]};
+            node->transform.translate = {trans[0], trans[1], trans[2]};
         }
     }
 
@@ -147,6 +154,7 @@ void GLTFLoader::processNode(BufferFactory &bufferFactory, tinygltf::Model &gltf
 
             uPtr<Mesh> mesh = mkU<Mesh>();
 
+            auto flags = vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eStorageBuffer;
             // extract vertex data
             for (auto &type : typeMap)
             {
@@ -155,8 +163,7 @@ void GLTFLoader::processNode(BufferFactory &bufferFactory, tinygltf::Model &gltf
 
                 size_t vertexSize = (type.second == VertexBufferType::UV_0 || type.second == VertexBufferType::UV_1)
                         ? sizeof(glm::vec2) : sizeof(glm::vec3);
-                auto vBuffer = getBuffer(bufferFactory, gltfModel, primitive.attributes.at(type.first), vk::BufferUsageFlagBits::eVertexBuffer, vertexSize);
-                mesh->vertexBuffers[type.second] = std::move(vBuffer);
+                mesh->vertexBuffers[type.second] = getBuffer(bufferFactory, gltfModel, primitive.attributes.at(type.first), flags);
             }
             if (primitive.attributes.count(TANGENT_STRING) == 0)
             {
@@ -168,14 +175,32 @@ void GLTFLoader::processNode(BufferFactory &bufferFactory, tinygltf::Model &gltf
                                              primitive.attributes.at(NORMAL_STRING),
                                              primitive.attributes.at(TEXCOORD_STRING_0),
                                              primitive.indices,
-                                             vk::BufferUsageFlagBits::eVertexBuffer);
+                                             flags);
+            }
+            auto hasJoints = primitive.attributes.count(JOINTS_STRING) != 0;
+            if (hasJoints)
+            {
+                mesh->jointsBuffer = getBuffer(bufferFactory, gltfModel, primitive.attributes.at(JOINTS_STRING), flags);
+            }
+            auto hasWeights = primitive.attributes.count(WEIGHTS_STRING) != 0;
+            if (hasWeights)
+            {
+                mesh->weightsBuffer = getBuffer(bufferFactory, gltfModel, primitive.attributes.at(WEIGHTS_STRING), flags);
+            }
+            if (hasJoints && hasWeights)
+            {
+                mesh->skinnedPositions = bufferFactory.createBuffer(mesh->vertexBuffers[VertexBufferType::POSITION]->info.size,
+                                                                    flags,
+                                                                    VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT);
+                mesh->skinnedNormals = bufferFactory.createBuffer(mesh->vertexBuffers[VertexBufferType::NORMAL]->info.size,
+                                                                  flags,
+                                                                  VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT);
             }
 
             // extract index data
-            mesh->indexBuffer = getBuffer(bufferFactory, gltfModel, primitive.indices, vk::BufferUsageFlagBits::eIndexBuffer, 0);
+            mesh->indexBuffer = getBuffer(bufferFactory, gltfModel, primitive.indices, vk::BufferUsageFlagBits::eIndexBuffer);
 
-            mesh->material = &model->materials[primitive.material];
-            mesh->materialIndex = primitive.material;
+            meshMap[mesh.get()] = primitive.material;
 
             model->meshes.push_back(std::move(mesh));
             node->meshes.push_back(model->meshes.back().get());
@@ -185,57 +210,182 @@ void GLTFLoader::processNode(BufferFactory &bufferFactory, tinygltf::Model &gltf
     // recursively process child nodes
     for (int childIndex : gltfNode.children)
     {
-        processNode(bufferFactory, gltfModel, model, node, childIndex);
+        processNode(bufferFactory, gltfModel, model, node, childIndex, meshMap, numberNodeMap);
+    }
+}
+
+void GLTFLoader::processSkinsAnimations(BufferFactory &bufferFactory, tinygltf::Model &gltfModel, Model *model,
+                                        tsl::robin_map<int, Node*> &numberNodeMap, int framesInFlight)
+{
+    // iterate through each skin
+    for (auto &skin : gltfModel.skins)
+    {
+        model->skins.emplace_back(skin.name);
+        Skin &skinObj = model->skins.back();
+
+        const tinygltf::Accessor &accessor = gltfModel.accessors[skin.inverseBindMatrices];
+        const tinygltf::BufferView &bufferView = gltfModel.bufferViews[accessor.bufferView];
+        const tinygltf::Buffer &buffer = gltfModel.buffers[bufferView.buffer];
+
+        for (int i = 0; i < skin.joints.size(); i++)
+        {
+            int joint = skin.joints[i];
+            if (accessor.type != TINYGLTF_TYPE_MAT4) throw std::runtime_error("Invalid inverse bind matrix type");
+            // read inverse bind matrix
+            const auto *ibm = reinterpret_cast<const glm::mat4*>(&buffer.data[bufferView.byteOffset + accessor.byteOffset
+                                                                              + i * sizeof(glm::mat4)]);
+
+            auto n = numberNodeMap[joint];
+            skinObj.nodeBindMatrices.push_back({ n, *ibm });
+        }
+
+        for (int i = 0; i < framesInFlight; i++)
+            skinObj.jointBuffers.push_back(bufferFactory.createBuffer(skin.joints.size() * sizeof(glm::mat4),
+                                                          vk::BufferUsageFlagBits::eStorageBuffer,
+                                                          VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT));
+    }
+
+    // get the raw animation data
+    for (auto &animation : gltfModel.animations)
+    {
+        model->animations.emplace_back(animation.name);
+        Animation &anim = model->animations.back();
+        for (auto &channel : animation.channels)
+        {
+            TargetPath path;
+            if (channel.target_path == "translation")
+                path = TargetPath::TRANSLATION;
+            else if (channel.target_path == "rotation")
+                path = TargetPath::ROTATION;
+            else if (channel.target_path == "scale")
+                path = TargetPath::SCALE;
+            else if (channel.target_path == "weights")
+                path = TargetPath::WEIGHT;
+            else
+            {
+                std::cerr << "Invalid target path " << channel.target_path << std::endl;
+                throw std::runtime_error("Invalid target path");
+            }
+
+            anim.channels.push_back({ numberNodeMap[channel.target_node], channel.sampler, path });
+        }
+        for (auto &sampler : animation.samplers)
+        {
+            Interpolation interp = Interpolation::LINEAR;
+            if (sampler.interpolation == "LINEAR")
+                interp = Interpolation::LINEAR;
+            else if (sampler.interpolation == "STEP")
+                interp = Interpolation::STEP;
+            else if (sampler.interpolation == "CUBICSPLINE")
+                interp = Interpolation::CUBICSPLINE;
+            else throw std::runtime_error("Invalid interpolation");
+
+            anim.samplers.push_back({ sampler.input, sampler.output, interp });
+
+            // copy raw animation data if not copied already
+            auto addRawData = [&](int type) {
+
+                const tinygltf::Accessor &accessor = gltfModel.accessors[type];
+                const tinygltf::BufferView &bufferView = gltfModel.bufferViews[accessor.bufferView];
+                const tinygltf::Buffer &buffer = gltfModel.buffers[bufferView.buffer];
+
+                if (model->animationRawData.contains(type)) return;
+
+                const auto *data = &buffer.data[bufferView.byteOffset + accessor.byteOffset];
+                model->animationRawData[type] =
+                        std::vector<unsigned char>(data, data + accessor.count * accessor.ByteStride(bufferView));
+            };
+
+            addRawData(sampler.input);
+            addRawData(sampler.output);
+        }
     }
 }
 
 uPtr<Buffer> GLTFLoader::getBuffer(BufferFactory &bufferFactory, tinygltf::Model &gltfModel,
-                           int type, vk::BufferUsageFlagBits flag, size_t vertexSize)
+                           int type, vk::BufferUsageFlags flags)
 {
     const tinygltf::Accessor &accessor = gltfModel.accessors[type];
     const tinygltf::BufferView &bufferView = gltfModel.bufferViews[accessor.bufferView];
     const tinygltf::Buffer &buffer = gltfModel.buffers[bufferView.buffer];
 
-    size_t count = accessor.count;
+    if (flags & vk::BufferUsageFlagBits::eIndexBuffer && flags & vk::BufferUsageFlagBits::eVertexBuffer)
+    {
+        std::cerr << "Cannot have both vertex and index buffer!" << std::endl;
+        throw std::runtime_error("Invalid buffer usage flag");
+    }
+
     uPtr<Buffer> vBuffer;
 
-    switch (flag) {
-        case vk::BufferUsageFlagBits::eVertexBuffer:
-            vBuffer = bufferFactory.createBuffer(count * vertexSize, flag,
+    if (flags & vk::BufferUsageFlagBits::eVertexBuffer)
+    {
+        if (accessor.componentType == TINYGLTF_COMPONENT_TYPE_INT) throw std::runtime_error("int not supported");
+        if (accessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE)
+        {
+            if (accessor.type != 4) throw std::runtime_error("Invalid type"); // assumes is always joint index
+            vBuffer = bufferFactory.createBuffer(accessor.count * sizeof(glm::u16vec4), flags,
                                                  VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
-            vBuffer->fill(&buffer.data[0] + bufferView.byteOffset + accessor.byteOffset);
-            break;
-        case vk::BufferUsageFlagBits::eIndexBuffer:
-            // handle different formats
-            if (accessor.componentType == TINYGLTF_PARAMETER_TYPE_UNSIGNED_SHORT)
+            if (accessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE)
             {
-                // 16 bit
-                vBuffer = bufferFactory.createBuffer(count * sizeof(uint16_t), flag,
-                                                     VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
-                vBuffer->fill(&buffer.data[0] + bufferView.byteOffset + accessor.byteOffset);
-                vBuffer->setIndexType(vk::IndexType::eUint16);
+                const auto *data = reinterpret_cast<const glm::u8vec4*>(&buffer.data[bufferView.byteOffset + accessor.byteOffset]);
+                std::vector<glm::u16vec4> newData(accessor.count);
+                for (int i = 0; i < accessor.count; i++)
+                {
+                    newData[i] = data[i];
+                }
+                vBuffer->fill(newData.data());
             }
-            else if (accessor.componentType == TINYGLTF_PARAMETER_TYPE_UNSIGNED_INT)
-            {
-                // 32 bit
-                vBuffer = bufferFactory.createBuffer(count * sizeof(uint32_t), flag,
-                                                     VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
-                vBuffer->fill(&buffer.data[0] + bufferView.byteOffset + accessor.byteOffset);
-                vBuffer->setIndexType(vk::IndexType::eUint32);
-            }
-            else
-            {
-                std::cerr << "Index component type " << accessor.componentType << " not supported!" << std::endl;
-                throw std::runtime_error("Index type not supported");
-            }
-            break;
-        default:
-            throw std::runtime_error("Invalid buffer usage flag");
+//            if (accessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT)
+//            {
+//                const auto *data = reinterpret_cast<const glm::u16vec4*>(&buffer.data[bufferView.byteOffset + accessor.byteOffset]);
+//                std::vector<glm::uvec4> newData(accessor.count);
+//                for (int i = 0; i < accessor.count; i++)
+//                {
+//                    newData[i] = data[i];
+//                }
+//                vBuffer->fill(newData.data());
+//            }
+        }
+        else
+        {
+            // float or short
+            vBuffer = bufferFactory.createBuffer(bufferView.byteLength, flags,
+                                                 VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
+            vBuffer->fill(&buffer.data[bufferView.byteOffset + accessor.byteOffset]);
+        }
     }
+
+    if (flags & vk::BufferUsageFlagBits::eIndexBuffer)
+    {
+
+        // handle different formats
+        if (accessor.componentType == TINYGLTF_PARAMETER_TYPE_UNSIGNED_SHORT)
+        {
+            // 16 bit
+            vBuffer = bufferFactory.createBuffer(accessor.count * sizeof(uint16_t), flags,
+                                                 VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
+            vBuffer->setIndexType(vk::IndexType::eUint16);
+        }
+        else if (accessor.componentType == TINYGLTF_PARAMETER_TYPE_UNSIGNED_INT)
+        {
+            // 32 bit
+            vBuffer = bufferFactory.createBuffer(accessor.count * sizeof(uint32_t), flags,
+                                                 VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
+            vBuffer->setIndexType(vk::IndexType::eUint32);
+        }
+        else
+        {
+            std::cerr << "Index component type " << accessor.componentType << " not supported!" << std::endl;
+            throw std::runtime_error("Index type not supported");
+        }
+        vBuffer->fill(&buffer.data[bufferView.byteOffset + accessor.byteOffset]);
+    }
+
     return vBuffer;
 }
 
-void GLTFLoader::makeMaterialsAndTextures(CommandPool &commandPool, QueueManager &queueManager, BufferFactory &bufferFactory, tinygltf::Model &gltfModel, Model *model)
+void GLTFLoader::makeMaterialsAndTextures(CommandPool &commandPool, QueueManager &queueManager, BufferFactory &bufferFactory,
+                                          tinygltf::Model &gltfModel, Model *model)
 {
     auto time1 = std::chrono::high_resolution_clock::now();
     std::vector<vk::CommandBuffer> commandBuffers;
@@ -382,7 +532,7 @@ void GLTFLoader::makeMaterialsAndTextures(CommandPool &commandPool, QueueManager
 }
 
 uPtr<Buffer> GLTFLoader::createTangentVectors(BufferFactory &bufferFactory, tinygltf::Model &gltfModel, int vertexType,
-                                              int normalType, int uvType, int indexType, vk::BufferUsageFlagBits flag)
+                                              int normalType, int uvType, int indexType, vk::BufferUsageFlags flags)
 {
     auto getReinterpretedPointer = [](tinygltf::Model &gltfModel, int type) -> const void* {
         const tinygltf::Accessor &accessor = gltfModel.accessors[type];
@@ -401,7 +551,7 @@ uPtr<Buffer> GLTFLoader::createTangentVectors(BufferFactory &bufferFactory, tiny
     const auto* indices16 = reinterpret_cast<const uint16_t*>(getReinterpretedPointer(gltfModel, indexType));
     const auto* indices32 = reinterpret_cast<const uint32_t*>(getReinterpretedPointer(gltfModel, indexType));
 
-    auto buffer = bufferFactory.createBuffer(vAccessor.count * sizeof(glm::vec3), flag,
+    auto buffer = bufferFactory.createBuffer(vAccessor.count * sizeof(glm::vec3), flags,
                                               VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
 
     auto *tangents = (glm::vec3*) malloc(vAccessor.count * sizeof(glm::vec3));

@@ -7,7 +7,7 @@ void FilmGrain::bindData(vk::CommandBuffer commandBuffer)
 
 FilmGrain::FilmGrain(vk::Device device, const char *shaderPath, PipelineBuilder &pipelineFactory,
                    DescriptorLayoutCache &layoutCache, RenderPass *renderPass)
-        : PostProcess("Film Grain", device, shaderPath,pipelineFactory, layoutCache,renderPass), filmGrainData({0.0f, 0.5f})
+        : PostProcess("Film Grain", device, shaderPath,pipelineFactory, layoutCache,renderPass), filmGrainData({0.0f, 0.25f})
 {}
 
 void FilmGrain::updateTime(float time)

@@ -1,0 +1,66 @@
+#version 450
+#extension GL_EXT_scalar_block_layout : require
+#extension GL_EXT_shader_explicit_arithmetic_types_int16 : require
+
+layout(local_size_x = 256, local_size_y = 1, local_size_z = 1) in;
+
+layout(scalar, push_constant) uniform constants {
+    int numVertices;
+} pc;
+
+layout(scalar, set = 0, binding = 0) readonly buffer PositionsIn {
+    vec3 positionsIn[];
+};
+
+layout(scalar, set = 0, binding = 1) readonly buffer NormalsIn {
+    vec3 normalsIn[];
+};
+
+// joints that affect each vertex
+layout(scalar, set = 0, binding = 2) readonly buffer JointsIn {
+    u16vec4 jointsIn[];
+};
+
+// weights for each joint that affect each vertex
+layout(scalar, set = 0, binding = 3) readonly buffer WeightsIn {
+    vec4 weightsIn[];
+};
+
+// inverse bind matrices for each joint
+layout(scalar, set = 0, binding = 4) readonly buffer JointMatrices {
+    mat4 jointMatrices[];
+};
+
+layout(scalar, set = 0, binding = 5) writeonly buffer PositionsOut {
+    vec3 positionsOut[];
+};
+
+layout(scalar, set = 0, binding = 6) writeonly buffer NormalsOut {
+    vec3 normalsOut[];
+};
+
+void main()
+{
+    uint vertexIndex = gl_GlobalInvocationID.x;
+
+    if (vertexIndex > pc.numVertices)
+    {
+        return;
+    }
+
+    u16vec4 joint = jointsIn[vertexIndex];
+    vec4 weights = weightsIn[vertexIndex];
+
+    mat4 skinMat = weights[0] * jointMatrices[joint[0]]
+                    + weights[1] * jointMatrices[joint[1]]
+                    + weights[2] * jointMatrices[joint[2]]
+                    + weights[3] * jointMatrices[joint[3]];
+
+    vec3 outPosition = (skinMat * vec4(positionsIn[vertexIndex], 1.0)).xyz;
+
+    mat3 normalMatrix = transpose(inverse(mat3(skinMat)));
+    vec3 outNormal = (normalMatrix * normalsIn[vertexIndex]);
+
+    positionsOut[vertexIndex] = outPosition;
+    normalsOut[vertexIndex] = outNormal;
+}

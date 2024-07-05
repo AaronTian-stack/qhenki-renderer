@@ -5,7 +5,7 @@
 #include "pipeline.h"
 #include "shader.h"
 #include "../renderpass/renderpass.h"
-#include "../../smartpointer.h"
+#include <smartpointer.h>
 #include "../descriptors/descriptorlayoutcache.h"
 #include <iostream>
 #include <glm/glm.hpp>
@@ -60,6 +60,7 @@ public:
     PipelineBuilder();
 
     uPtr<Pipeline> buildPipeline(RenderPass* renderPass, int subpass, Shader* shader);
+    uPtr<Pipeline> buildComputePipeline(Shader *shader);
     void addPushConstant(uint32_t size, vk::ShaderStageFlags stageFlags = vk::ShaderStageFlagBits::eAll);
 
     void processPushConstants(spirv_cross::CompilerGLSL &glsl, spirv_cross::ShaderResources &resources,
@@ -67,9 +68,10 @@ public:
 
     void processBuffers(spirv_cross::CompilerGLSL &glsl, spirv_cross::ShaderResources &resources, vk::ShaderStageFlagBits stages);
     void updateDescriptorSetLayouts(DescriptorLayoutCache &layoutCache);
-    void parseVertexShader(const char *filePath, DescriptorLayoutCache &layoutCache, bool interleaved);
 
+    void parseVertexShader(const char *filePath, DescriptorLayoutCache &layoutCache, bool interleaved);
     void parseFragmentShader(const char *filePath, DescriptorLayoutCache &layoutCache);
+    void parseComputeShader(const char *filePath, DescriptorLayoutCache &layoutCache);
 
     // buffer
     void addVertexInputBinding(vk::VertexInputBindingDescription binding);

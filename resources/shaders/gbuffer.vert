@@ -29,13 +29,6 @@ layout(location = 2) in vec3 inTangent;
 layout(location = 3) in vec2 inUV_0;
 layout(location = 4) in vec2 inUV_1; // second UV set for AO
 
-const vec3[] colors = {
-{1.0f, 0.0f, 0.0f},
-{0.0f, 1.0f, 0.0f},
-{0.0f, 0.0f, 1.0f},
-{1.0f, 1.0f, 1.0f}
-};
-
 void main()
 {
     vec4 worldPos = modelTransform.matrix * vec4(inPosition, 1.0);
@@ -47,7 +40,7 @@ void main()
     fragTangent = matN * inTangent;
     fragBiTangent = cross(fragNormal, fragTangent);
 
-    fragColor = colors[0];
+    fragColor = vec3(1.0, 0.0, 0.0); // for debugging
     fragUV_0 = inUV_0;
     fragUV_1 = inUV_1;
 }

@@ -48,7 +48,9 @@ bool VulkanContext::create(Window &window)
             | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT
             | VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT;
 
-    auto inst_ret = builder.set_app_name("Vulkan PBR").request_validation_layers()
+    auto inst_ret = builder.set_app_name("Vulkan PBR")
+#ifndef NDEBUG
+            .request_validation_layers()
             .set_debug_messenger_severity(severity)
             .set_debug_callback (
             [] (VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
@@ -59,7 +61,9 @@ bool VulkanContext::create(Window &window)
                 std::cerr << "validation layer: " << pCallbackData->pMessage << std::endl;
                 return VK_FALSE;
             }
-    ).require_api_version(1, 2).build();
+    )
+#endif
+    .require_api_version(1, 2).build();
 
     if (!inst_ret) {
         std::cerr << "Failed to create Vulkan instance. Error: " << inst_ret.error().message() << "\n";
@@ -88,6 +92,7 @@ bool VulkanContext::create(Window &window)
 
     VkPhysicalDeviceFeatures requiredFeatures{};
     requiredFeatures.samplerAnisotropy = VK_TRUE;
+    requiredFeatures.shaderInt16 = VK_TRUE;
 
     vkb::PhysicalDeviceSelector selector{ vkbInstance };
     auto phys_ret = selector.set_surface(surface)
@@ -107,12 +112,22 @@ bool VulkanContext::create(Window &window)
     VkPhysicalDeviceScalarBlockLayoutFeatures scalarFeatures{};
     scalarFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SCALAR_BLOCK_LAYOUT_FEATURES;
     scalarFeatures.scalarBlockLayout = VK_TRUE;
+
+    VkPhysicalDevice16BitStorageFeatures storageFeatures{};
+    storageFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_16BIT_STORAGE_FEATURES;
+    storageFeatures.storageBuffer16BitAccess = VK_TRUE;
+    storageFeatures.storageInputOutput16 = VK_TRUE;
+    storageFeatures.storagePushConstant16 = VK_TRUE;
+    storageFeatures.uniformAndStorageBuffer16BitAccess = VK_TRUE;
+
     // by default, one queue from each family is enabled
     vkb::DeviceBuilder device_builder{ phys_ret.value() };
     auto dev_ret = device_builder
             .add_pNext(&scalarFeatures)
+            .add_pNext(&storageFeatures)
             .build();
-    if (!dev_ret) {
+    if (!dev_ret)
+    {
         std::cerr << "Failed to create Vulkan device. Error: " << dev_ret.error().message() << "\n";
         return false;
     }
@@ -142,8 +157,8 @@ bool VulkanContext::create(Window &window)
     vkb::SwapchainBuilder swapchain_builder{ vkb_device };
     auto swap_ret = swapchain_builder
             .set_desired_format(format)
-            .set_desired_present_mode(VK_PRESENT_MODE_FIFO_RELAXED_KHR)
-            .add_image_usage_flags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT)
+            .set_desired_present_mode(VK_PRESENT_MODE_MAILBOX_KHR)
+            .add_image_usage_flags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT)
             .build();
     if (!swap_ret){
         std::cerr << "Failed to create swap chain. Error: " << swap_ret.error().message() << "\n";

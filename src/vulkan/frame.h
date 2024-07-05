@@ -3,7 +3,7 @@
 #include "syncer.h"
 #include "commandpool.h"
 #include "buffer/buffer.h"
-#include "../smartpointer.h"
+#include <smartpointer.h>
 #include "buffer/bufferfactory.h"
 
 class Frame : public Destroyable
@@ -25,6 +25,6 @@ public:
     void begin();
     void end();
 
-    vk::SubmitInfo getSubmitInfo();
+    void submit(QueueManager &queueManager, std::vector<vk::Semaphore> waitSemaphores, std::vector<vk::PipelineStageFlags> waitStages);
     void finish(Syncer &syncer);
 };

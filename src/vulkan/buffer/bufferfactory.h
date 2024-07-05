@@ -5,7 +5,7 @@
 #include <vma/vk_mem_alloc.h>
 #include "../context/vulkancontext.h"
 #include "buffer.h"
-#include "../../smartpointer.h"
+#include <smartpointer.h>
 #include "../texture/image.h"
 #include "../texture/texture.h"
 
@@ -33,7 +33,7 @@ private:
 public:
     void create(VulkanContext &context);
 
-    uPtr<Buffer> createBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage, VmaAllocationCreateFlagBits flags = static_cast<VmaAllocationCreateFlagBits>(0));
+    uPtr<Buffer> createBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage, VmaAllocationCreateFlags flags);
     uPtr<Attachment> createAttachment(vk::ImageCreateInfo imageCreateInfo, vk::ImageViewCreateInfo imageViewCreateInfo, vk::Format format);
     uPtr<Attachment> createAttachment(vk::Format format, vk::Extent3D extent,
                                       vk::ImageUsageFlags imageUsage, vk::ImageAspectFlags aspectFlags);

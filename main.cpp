@@ -7,11 +7,11 @@
 
 #include "src/vulkanapp.h"
 
-Window window(1728, 768);
+Window window(1024, 768);
 
 int main()
 {
-    // if on macOS you will need to set MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS=1 in environment variables in run configuration
+    // if on macOS you will need to set MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS=1 in environment variables
     VulkanApp app;
     app.create(window);
 

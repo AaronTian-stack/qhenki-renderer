@@ -1,7 +1,7 @@
 
 function(compile_shaders SHADER_DIR OUTPUT_DIR)
 
-    file(GLOB_RECURSE SHADER_SOURCES "${SHADER_DIR}/*.vert" "${SHADER_DIR}/*.frag")
+    file(GLOB_RECURSE SHADER_SOURCES "${SHADER_DIR}/*.vert" "${SHADER_DIR}/*.frag" "${SHADER_DIR}/*.comp")
 
     foreach(SHADER_SOURCE ${SHADER_SOURCES})
         # Get the filename and extension

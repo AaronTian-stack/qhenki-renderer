@@ -9,6 +9,7 @@
 #include "vfx/effects/vignette.h"
 #include "vfx/effects/sharpen.h"
 #include "vfx/effects/filmgrain.h"
+#include "vfx/effects/chromaticaberration.h"
 #include <thread>
 
 VulkanApp::VulkanApp() : drawBackground(true), clearColor(0.25f) {}
@@ -20,30 +21,25 @@ VulkanApp::~VulkanApp()
     for (auto &frame : frames)
         frame.destroy();
 
+    for (auto &semaphore : computeSemaphores)
+        vulkanContext.device.logicalDevice.destroySemaphore(semaphore);
+
+    for (auto &fence : computeFences)
+        vulkanContext.device.logicalDevice.destroyFence(fence);
+
     syncer.destroy();
     graphicsCommandPool->destroy();
     transferCommandPool->destroy();
 
-    gBufferPipeline->destroy();
-    gBufferShader->destroy();
-
-    lightingPipeline->destroy();
-    lightingShader->destroy();
-
-    cubeMapPipeline->destroy();
-    cubeMapShader->destroy();
-
-    lightDisplayPipeline->destroy();
-    lightDisplayShader->destroy();
-
-    passAndClearPipeline->destroy();
-    passAndClearShader->destroy();
-
-    passPipeline->destroy();
-    passShader->destroy();
-
-    solidPlanePipeline->destroy();
-    solidPlaneShader->destroy();
+    gBufferPS.destroy();
+    lighting.destroy();
+    pass.destroy();
+    passAndClear.destroy();
+    cubeMap.destroy();
+    lightDisplay.destroy();
+    solidPlane.destroy();
+    
+    skinning.destroy();
 
     pipelineFactory.destroy();
 
@@ -173,7 +169,7 @@ void VulkanApp::createPipelines()
 {
     auto device = vulkanContext.device.logicalDevice;
 
-    gBufferShader = mkU<Shader>(device, "gbuffer.vert", "gbuffer.frag");
+    gBufferPS.shader = mkU<Shader>(device, "gbuffer.vert", "gbuffer.frag");
     pipelineFactory.reset();
     pipelineFactory.addVertexInputBinding({0, sizeof(glm::vec3), vk::VertexInputRate::eVertex}); // position
     pipelineFactory.addVertexInputBinding({1, sizeof(glm::vec3), vk::VertexInputRate::eVertex}); // normal
@@ -185,45 +181,51 @@ void VulkanApp::createPipelines()
 
     // TODO: some models don't render correctly without culling. investigate
     pipelineFactory.getRasterizer().cullMode = vk::CullModeFlagBits::eBack;
-    gBufferPipeline = pipelineFactory.buildPipeline(offscreenRenderPass.get(), 0, gBufferShader.get());
+    gBufferPS.pipeline = pipelineFactory.buildPipeline(offscreenRenderPass.get(), 0, gBufferPS.shader.get());
 
-    lightingShader = mkU<Shader>(device, "lighting.vert", "lighting.frag");
+    lighting.shader = mkU<Shader>(device, "lighting.vert", "lighting.frag");
     pipelineFactory.reset();
     pipelineFactory.parseShader("lighting.vert", "lighting.frag", layoutCache, false);
     pipelineFactory.getDepthStencil().depthWriteEnable = VK_FALSE;
     pipelineFactory.getColorBlending().attachmentCount = 1;
-    lightingPipeline = pipelineFactory.buildPipeline(offscreenRenderPass.get(), 1, lightingShader.get());
+    lighting.pipeline = pipelineFactory.buildPipeline(offscreenRenderPass.get(), 1, lighting.shader.get());
 
-    cubeMapShader = mkU<Shader>(device, "cubemap.vert", "cubemap.frag");
+    cubeMap.shader = mkU<Shader>(device, "cubemap.vert", "cubemap.frag");
     pipelineFactory.reset();
     pipelineFactory.addVertexInputBinding({0, sizeof(glm::vec3), vk::VertexInputRate::eVertex}); // position
     pipelineFactory.parseShader("cubemap.vert", "cubemap.frag", layoutCache, false);
     pipelineFactory.getDepthStencil().depthWriteEnable = VK_FALSE;
     pipelineFactory.getDepthStencil().depthCompareOp = vk::CompareOp::eLessOrEqual; // NEEDS TO BE EXPLICITLY SET
     pipelineFactory.getColorBlending().attachmentCount = 1;
-    cubeMapPipeline = pipelineFactory.buildPipeline(offscreenRenderPass.get(), 2, cubeMapShader.get());
+    cubeMap.pipeline = pipelineFactory.buildPipeline(offscreenRenderPass.get(), 2, cubeMap.shader.get());
 
     PrimitiveDrawer::create(bufferFactory);
 
-    passShader = mkU<Shader>(device, "passthrough.vert", "passthrough.frag");
+    pass.shader = mkU<Shader>(device, "passthrough.vert", "passthrough.frag");
     pipelineFactory.reset();
     pipelineFactory.parseShader("passthrough.vert", "passthrough.frag", layoutCache, false);
     pipelineFactory.getDepthStencil().depthWriteEnable = VK_FALSE;
     pipelineFactory.getColorBlending().attachmentCount = 1;
-    passPipeline = pipelineFactory.buildPipeline(displayRenderPass.get(), 0, passShader.get());
+    pass.pipeline = pipelineFactory.buildPipeline(displayRenderPass.get(), 0, pass.shader.get());
 
-    lightDisplayShader = mkU<Shader>(device, "solid.vert", "solid.frag");
+    lightDisplay.shader = mkU<Shader>(device, "solid.vert", "solid.frag");
     pipelineFactory.reset();
     pipelineFactory.addVertexInputBinding({0, sizeof(glm::vec3), vk::VertexInputRate::eVertex}); // position
     pipelineFactory.parseShader("solid.vert", "solid.frag", layoutCache, false);
     pipelineFactory.getColorBlending().attachmentCount = 1;
-    lightDisplayPipeline = pipelineFactory.buildPipeline(offscreenRenderPass.get(), 3, lightDisplayShader.get());
+    lightDisplay.pipeline = pipelineFactory.buildPipeline(offscreenRenderPass.get(), 3, lightDisplay.shader.get());
 
-    solidPlaneShader = mkU<Shader>(device, "plane.vert", "solid.frag");
+    solidPlane.shader = mkU<Shader>(device, "plane.vert", "solid.frag");
     pipelineFactory.reset();
     pipelineFactory.parseShader("plane.vert", "solid.frag", layoutCache, false);
     pipelineFactory.getColorBlending().attachmentCount = 1;
-    solidPlanePipeline = pipelineFactory.buildPipeline(offscreenRenderPass.get(), 3, solidPlaneShader.get());
+    solidPlane.pipeline = pipelineFactory.buildPipeline(offscreenRenderPass.get(), 3, solidPlane.shader.get());
+
+    // skinning shader
+    skinning.shader = mkU<Shader>(device, "skinning.comp");
+    pipelineFactory.reset();
+    pipelineFactory.parseComputeShader("skinning.comp", layoutCache);
+    skinning.pipeline = pipelineFactory.buildComputePipeline(skinning.shader.get());
 }
 
 void VulkanApp::createPostProcess()
@@ -232,12 +234,12 @@ void VulkanApp::createPostProcess()
     auto extent = vulkanContext.swapChain->getExtent();
 
     postProcessManager = mkU<PostProcessManager>(vulkanContext.device.logicalDevice, extent, bufferFactory, renderPassBuilder);
-    passAndClearShader = mkU<Shader>(device, "passthrough.vert", "passthrough_depth.frag");
+    passAndClear.shader = mkU<Shader>(device, "passthrough.vert", "passthrough_depth.frag");
     pipelineFactory.reset();
     pipelineFactory.parseShader("passthrough.vert", "passthrough_depth.frag", layoutCache, false);
     pipelineFactory.getDepthStencil().depthWriteEnable = VK_FALSE;
     pipelineFactory.getColorBlending().attachmentCount = 1;
-    passAndClearPipeline = pipelineFactory.buildPipeline(&postProcessManager->getPingPongRenderPass(), 0, passAndClearShader.get());
+    passAndClear.pipeline = pipelineFactory.buildPipeline(&postProcessManager->getPingPongRenderPass(), 0, passAndClear.shader.get());
     auto fxaa = mkS<FXAA>(vulkanContext.device.logicalDevice, "fxaa.frag",
                           pipelineFactory, layoutCache, &postProcessManager->getPingPongRenderPass());
     auto vignette = mkS<Vignette>(vulkanContext.device.logicalDevice, "vignette.frag",
@@ -246,10 +248,13 @@ void VulkanApp::createPostProcess()
                                 pipelineFactory, layoutCache, &postProcessManager->getPingPongRenderPass());
     auto filmGrain = mkS<FilmGrain>(vulkanContext.device.logicalDevice, "filmgrain.frag",
                                     pipelineFactory, layoutCache, &postProcessManager->getPingPongRenderPass());
+    auto chromaticAberration = mkS<ChromaticAberration>(vulkanContext.device.logicalDevice, "chromatic_aberration.frag",
+                                                        pipelineFactory, layoutCache, &postProcessManager->getPingPongRenderPass());
     postProcessManager->addPostProcess(fxaa);
     postProcessManager->addPostProcess(vignette);
     postProcessManager->addPostProcess(sharpen);
     postProcessManager->addPostProcess(filmGrain);
+    postProcessManager->addPostProcess(chromaticAberration);
     postProcessManager->activatePostProcess(0);
     auto reinhard = mkU<PostProcess>("Reinhard", vulkanContext.device.logicalDevice, "reinhard.frag",
                                      pipelineFactory, layoutCache, &postProcessManager->getPingPongRenderPass());
@@ -294,11 +299,15 @@ void VulkanApp::create(Window &window)
 
     syncer.create(device);
 
-    const auto flags = static_cast<VmaAllocationCreateFlagBits>(VMA_ALLOCATION_CREATE_MAPPED_BIT |
-                                                                VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
+    const auto flags = VMA_ALLOCATION_CREATE_MAPPED_BIT |
+                                                                VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
     for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
     {
         frames.emplace_back(device, *graphicsCommandPool, syncer);
+
+        computeCommandBuffers.push_back(graphicsCommandPool->createCommandBuffer());
+        computeSemaphores.push_back(syncer.createSemaphore());
+        computeFences.push_back(syncer.createFence(false));
 
         cameraBuffers.emplace_back(bufferFactory.createBuffer(sizeof(CameraMatrices),
                                                               vk::BufferUsageFlagBits::eUniformBuffer,
@@ -354,7 +363,7 @@ void VulkanApp::setModel(const std::string& filePath)
     camera.simpleReset();
     std::thread t([this, filePath](){
         auto newModel = GLTFLoader::create(*transferCommandPool, vulkanContext.queueManager,
-                                           bufferFactory, filePath.c_str());
+                                           bufferFactory, filePath.c_str(), MAX_FRAMES_IN_FLIGHT);
         std::lock_guard lock(modelMutex);
         models.push_back(std::move(newModel));
         GLTFLoader::setLoadPercent(1.f);
@@ -376,13 +385,13 @@ void VulkanApp::recordOffscreenBuffer(vk::CommandBuffer commandBuffer, Descripto
     DescriptorBuilder::beginSet(&layoutCache, &allocator)
             .bindBuffer(0, &bufferInfo, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eVertex)
             .build(cameraSet, layout);
-    commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, gBufferPipeline->getPipelineLayout(),
+    commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, gBufferPS.pipeline->getPipelineLayout(),
                                       0, {cameraSet}, nullptr);
 
     std::unique_lock lock(modelMutex);
     if (!models.empty())
     {
-        commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, gBufferPipeline->getGraphicsPipeline());
+        commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, gBufferPS.pipeline->getPipeline());
         auto &model = models.back();
         // get image infos of all model textures
         std::vector<vk::DescriptorImageInfo> imageInfos = model->getDescriptorImageInfo();
@@ -399,23 +408,24 @@ void VulkanApp::recordOffscreenBuffer(vk::CommandBuffer commandBuffer, Descripto
                     .bindBuffer(1, &bmi, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eFragment)
                     .build(samplerSet, layout);
 
-            commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, gBufferPipeline->getPipelineLayout(),
+            commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, gBufferPS.pipeline->getPipelineLayout(),
                                              1, {samplerSet}, nullptr);
         }
 
-        Node::draw(model->root, commandBuffer, *gBufferPipeline);
+        model->getRoot()->draw(commandBuffer, *gBufferPS.pipeline);
     }
     lock.unlock();
 
     offscreenRenderPass->nextSubpass(); // composition pass
 
-    commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, lightingPipeline->getGraphicsPipeline());
+    commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, lighting.pipeline->getPipeline());
+    lightingParameters.cubeMapRotation = glm::rotate(glm::radians(cubeMapRotation), glm::vec3(0.f, 1.f, 0.f));
     lightingParameters.pointLightCount = 0;
     lightingParameters.rectangleLightCount = static_cast<int>(rectangleLights.size());
     lightingParameters.sphereLightCount = static_cast<int>(sphereLights.size());
     lightingParameters.tubeLightCount = static_cast<int>(tubeLights.size());
 
-    lightingPipeline->setPushConstant(commandBuffer, &lightingParameters, sizeof(LightingParameters), 0, vk::ShaderStageFlagBits::eFragment);
+    lighting.pipeline->setPushConstant(commandBuffer, &lightingParameters, sizeof(LightingParameters), 0, vk::ShaderStageFlagBits::eFragment);
 
     std::vector<std::vector<vk::DescriptorImageInfo>> gBufferInfo =
     {
@@ -462,7 +472,7 @@ void VulkanApp::recordOffscreenBuffer(vk::CommandBuffer commandBuffer, Descripto
             .bindBuffer(2, &rectangleLightBufferInfo, vk::DescriptorType::eStorageBuffer, vk::ShaderStageFlagBits::eFragment)
             .build(lightSet, layout);
 
-    commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, lightingPipeline->getPipelineLayout(),
+    commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, lighting.pipeline->getPipelineLayout(),
                                      0, {cameraSet, inputSet, iblSamplerSet, lightSet}, nullptr);
 
     commandBuffer.draw(3, 1, 0, 0);
@@ -472,39 +482,41 @@ void VulkanApp::recordOffscreenBuffer(vk::CommandBuffer commandBuffer, Descripto
     if (drawBackground)
     {
         vk::DescriptorSet cubeSamplerSet;
-        commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, cubeMapPipeline->getGraphicsPipeline());
+        commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, cubeMap.pipeline->getPipeline());
         DescriptorBuilder::beginSet(&layoutCache, &allocator)
                 .bindImage(0, {envMap.cubeMap.texture->getDescriptorInfo()}, // env map sampler
                            1, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eFragment)
                 .build(cubeSamplerSet, layout);
 
-        commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, cubeMapPipeline->getPipelineLayout(),
+        commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, cubeMap.pipeline->getPipelineLayout(),
                                          0, {cameraSet, cubeSamplerSet}, nullptr);
 
+        auto cbmrm = glm::rotate(glm::radians(-cubeMapRotation), glm::vec3(0.f, 1.f, 0.f));
+        cubeMap.pipeline->setPushConstant(commandBuffer, &cbmrm, sizeof(glm::mat4), 0, vk::ShaderStageFlagBits::eVertex);
         PrimitiveDrawer::drawCube(commandBuffer);
     }
 
     offscreenRenderPass->nextSubpass(); // light display pass
 
-    commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, lightDisplayPipeline->getGraphicsPipeline());
-    commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, lightDisplayPipeline->getPipelineLayout(),
+    commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, lightDisplay.pipeline->getPipeline());
+    commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, lightDisplay.pipeline->getPipelineLayout(),
                                      0, {cameraSet}, nullptr);
 
-    commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, lightDisplayPipeline->getGraphicsPipeline());
+    commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, lightDisplay.pipeline->getPipeline());
     for (auto &light : sphereLights)
     {
         auto translate = glm::translate(light.position);
         auto scale = glm::scale(glm::vec3(light.radius));
-        PrimitiveDrawer::drawSphere(commandBuffer, *lightDisplayPipeline, glm::vec4(light.color * light.intensity, 1.f), translate * scale);
+        PrimitiveDrawer::drawSphere(commandBuffer, *lightDisplay.pipeline, glm::vec4(light.color * light.intensity, 1.f), translate * scale);
     }
     for (auto &light : tubeLights)
     {
         auto translate = glm::translate(light.position);
         auto rotate = glm::mat4_cast(light.rotation);
         auto scale = glm::scale(glm::vec3(light.length + light.radius * 2, light.radius, light.radius));
-        PrimitiveDrawer::drawCylinder(commandBuffer, *lightDisplayPipeline, glm::vec4(light.color * light.intensity, 1.f), translate * rotate * scale);
+        PrimitiveDrawer::drawCylinder(commandBuffer, *lightDisplay.pipeline, glm::vec4(light.color * light.intensity, 1.f), translate * rotate * scale);
     }
-    commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, solidPlanePipeline->getGraphicsPipeline());
+    commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, solidPlane.pipeline->getPipeline());
     for (auto &light : rectangleLights)
     {
         auto translate = glm::translate(light.position);
@@ -512,8 +524,8 @@ void VulkanApp::recordOffscreenBuffer(vk::CommandBuffer commandBuffer, Descripto
         auto scale = glm::scale(glm::vec3(light.size, 1.f));
         auto model = translate * rotate * scale;
         auto color = glm::vec4(light.color * light.intensity, 1.f);
-        solidPlanePipeline->setPushConstant(commandBuffer, &model, sizeof(glm::mat4), 0, vk::ShaderStageFlagBits::eVertex);
-        solidPlanePipeline->setPushConstant(commandBuffer, &color, sizeof(glm::vec4), sizeof(glm::mat4), vk::ShaderStageFlagBits::eFragment);
+        solidPlane.pipeline->setPushConstant(commandBuffer, &model, sizeof(glm::mat4), 0, vk::ShaderStageFlagBits::eVertex);
+        solidPlane.pipeline->setPushConstant(commandBuffer, &color, sizeof(glm::vec4), sizeof(glm::mat4), vk::ShaderStageFlagBits::eFragment);
         commandBuffer.draw(6, 1, 0, 0);
     }
 
@@ -535,6 +547,25 @@ void VulkanApp::recordCommandBuffer(FrameBuffer *framebuffer)
 
     auto &allocator = allocators[currentFrame];
     allocator.resetPools();
+    // allocate one time command buffer primary
+    auto compute = computeCommandBuffers[currentFrame];
+    compute.reset();
+    vk::CommandBufferBeginInfo beginInfo{};
+    compute.begin(beginInfo);
+    std::unique_lock lock(modelMutex);
+        if (!models.empty())
+        {
+            auto &model = models.back();
+            model->updateAnimation((float)glfwGetTime(), currentFrame);
+            model->getRoot()->updateJointTransforms(currentFrame);
+
+            compute.bindPipeline(vk::PipelineBindPoint::eCompute, skinning.pipeline->getPipeline());
+
+            model->getRoot()->skin(compute, *skinning.pipeline, layoutCache, allocator, currentFrame);
+        }
+    lock.unlock();
+    compute.end();
+
     ScreenUtils::setViewport(primaryCommandBuffer, swapChainExtent.width, swapChainExtent.height);
     ScreenUtils::setScissor(primaryCommandBuffer, swapChainExtent);
     recordOffscreenBuffer(primaryCommandBuffer, allocator);
@@ -555,15 +586,15 @@ void VulkanApp::recordCommandBuffer(FrameBuffer *framebuffer)
     ppr.setRenderAreaExtent(swapChainExtent);
     ppr.clear(0.f, 0.f, 0.f, 1.f);
     ppr.begin(primaryCommandBuffer);
-    primaryCommandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, passAndClearPipeline->getGraphicsPipeline());
+    primaryCommandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, passAndClear.pipeline->getPipeline());
     vk::DescriptorSet pprSamplerSet; vk::DescriptorSetLayout layout;
     DescriptorBuilder::beginSet(&layoutCache, &allocator)
             .bindImage(0, {postProcessManager->getAttachment(0)->getDescriptorInfo()},
                        1, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eFragment)
             .build(pprSamplerSet, layout);
-    primaryCommandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, passAndClearPipeline->getPipelineLayout(),
+    primaryCommandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, passAndClear.pipeline->getPipelineLayout(),
                                             0, {pprSamplerSet}, nullptr);
-    passAndClearPipeline->setPushConstant(primaryCommandBuffer, &clearColor, sizeof(glm::vec4), 0, vk::ShaderStageFlagBits::eFragment);
+    passAndClear.pipeline->setPushConstant(primaryCommandBuffer, &clearColor, sizeof(glm::vec4), 0, vk::ShaderStageFlagBits::eFragment);
     primaryCommandBuffer.draw(3, 1, 0, 0);
     ppr.end();
     //// END CLEAR COLOR
@@ -577,14 +608,14 @@ void VulkanApp::recordCommandBuffer(FrameBuffer *framebuffer)
     displayRenderPass->clear(0.f, 0.f, 0.f, 1.0f);
     displayRenderPass->begin(primaryCommandBuffer);
 
-    primaryCommandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, passPipeline->getGraphicsPipeline());
-    primaryCommandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, passPipeline->getGraphicsPipeline());
+    primaryCommandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, pass.pipeline->getPipeline());
+    primaryCommandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, pass.pipeline->getPipeline());
     vk::DescriptorSet samplerSet;
     DescriptorBuilder::beginSet(&layoutCache, &allocator)
             .bindImage(0, {postProcessManager->getCurrentAttachment()->getDescriptorInfo()}, // output attachment sampler
                        1, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eFragment)
             .build(samplerSet, layout);
-    primaryCommandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, passPipeline->getPipelineLayout(),
+    primaryCommandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pass.pipeline->getPipelineLayout(),
                                             0, {samplerSet}, nullptr);
     primaryCommandBuffer.draw(3, 1, 0, 0);
 
@@ -615,8 +646,21 @@ void VulkanApp::render()
     recordCommandBuffer(fb);
 
     auto &queueManager = vulkanContext.queueManager;
-    // lots of information about syncing in frame.getSubmitInfo() struct.
-    queueManager.submitGraphics(frame.getSubmitInfo(), frame.inFlightFence); // signal fence when done
+
+    vk::PipelineStageFlags computeFlag = vk::PipelineStageFlagBits::eComputeShader;
+
+    // submit the compute job first
+    vk::SubmitInfo computeSubmitInfo;
+    computeSubmitInfo.commandBufferCount = 1;
+    computeSubmitInfo.pCommandBuffers = &computeCommandBuffers[currentFrame];
+    computeSubmitInfo.signalSemaphoreCount = 1;
+    computeSubmitInfo.pSignalSemaphores = &computeSemaphores[currentFrame];
+    computeSubmitInfo.pWaitDstStageMask = &computeFlag;
+
+    queueManager.submitGraphics(computeSubmitInfo, VK_NULL_HANDLE);
+
+    // lots of information about syncing in frame.getSubmitInfo() struct
+    frame.submit(queueManager, {computeSemaphores[currentFrame]}, {vk::PipelineStageFlagBits::eVertexInput});
 
     std::vector<vk::Semaphore> signalSemaphores = {frame.renderFinishedSemaphore};
     // calls the present command, waits for given semaphores
@@ -728,7 +772,8 @@ void VulkanApp::updateLightBuffers()
 
 void VulkanApp::attemptToDeleteOldModel()
 {
-    std::unique_lock lock(modelMutex);
+    std::unique_lock lock(modelMutex, std::try_to_lock);
+    if (!lock.owns_lock()) return;
     if (models.size() > 1)
     {
         bool canDelete = true;
@@ -761,6 +806,7 @@ MenuPayloads VulkanApp::getPartialMenuPayload()
     m.postProcessManager = postProcessManager.get();
     m.camera = &camera;
     m.visualMenuPayload.lightingParameters = &lightingParameters;
+    m.visualMenuPayload.cubeMapRotation = &cubeMapRotation;
     m.visualMenuPayload.clearColor = &clearColor;
     m.visualMenuPayload.drawBackground = &drawBackground;
     m.lightsList.sphereLights = &sphereLights;

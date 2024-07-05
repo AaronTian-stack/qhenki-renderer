@@ -2,7 +2,7 @@
 
 #include "../vulkan/pipeline/shader.h"
 #include "../vulkan/pipeline/pipeline.h"
-#include "../smartpointer.h"
+#include <smartpointer.h>
 #include "../vulkan/pipeline/pipelinefactory.h"
 
 class PostProcess : public Destroyable

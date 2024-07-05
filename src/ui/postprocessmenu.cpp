@@ -4,6 +4,7 @@
 #include "../vfx/effects/sharpen.h"
 #include "../vfx/effects/vignette.h"
 #include "../vfx/effects/filmgrain.h"
+#include "../vfx/effects/chromaticaberration.h"
 
 void PostProcessMenu::renderMenu(void *payload)
 {
@@ -30,7 +31,7 @@ void PostProcessMenu::renderMenu(void *payload)
 
         if (ImGui::BeginTable("table1", 2))
         {
-            float columnWidth = 120.f;
+            float columnWidth = 150.f;
             ImGui::TableSetupColumn("Available Effects", ImGuiTableColumnFlags_WidthFixed, columnWidth);
             ImGui::TableSetupColumn("Active Effects", ImGuiTableColumnFlags_WidthFixed, columnWidth);
 
@@ -175,6 +176,11 @@ void PostProcessMenu::renderPostProcessMenu(PostProcess *postProcess)
     if (filmGrain)
     {
         ImGui::SliderFloat("Intensity", &filmGrain->filmGrainData.intensity, 0.0f, 1.0f);
+    }
+    auto *chromaticAberration = dynamic_cast<ChromaticAberration*>(postProcess);
+    if (chromaticAberration)
+    {
+        ImGui::SliderFloat("Intensity", &chromaticAberration->maxIntensity, 0.01f, 5.0f);
     }
 }
 

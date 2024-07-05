@@ -91,7 +91,7 @@ void UserInterface::render(MenuPayloads menuPayloads)
     ImGuiStyle& style = ImGui::GetStyle();
     style.FrameRounding = 5.0f;
 
-    const int y = 22;
+    const int y = 21;
 //    ImGui::ShowDemoWindow();
     ImGui::SetNextWindowPos(ImVec2(0, y));
     auto flags = ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove;

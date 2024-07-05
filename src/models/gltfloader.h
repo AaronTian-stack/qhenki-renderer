@@ -3,19 +3,22 @@
 #include <atomic>
 #include <gltf/tiny_gltf.h>
 #include "model.h"
-#include "../smartpointer.h"
+#include <smartpointer.h>
 #include "../vulkan/buffer/bufferfactory.h"
+#include <tsl/robin_map.h>
 
 #define POSITION_STRING "POSITION"
 #define NORMAL_STRING "NORMAL"
 #define TEXCOORD_STRING_0 "TEXCOORD_0"
 #define TEXCOORD_STRING_1 "TEXCOORD_1"
 #define TANGENT_STRING "TANGENT"
+#define JOINTS_STRING "JOINTS_0"
+#define WEIGHTS_STRING "WEIGHTS_0"
 
 class GLTFLoader
 {
 private:
-    static inline std::atomic<float> loadPercent = 1.f;
+    static inline std::atomic<float> loadPercent = 1.f; // TODO: rewrite so that loader is its own object (not static)
 
     static const inline std::array<std::pair<const char*, VertexBufferType>, 5> typeMap =
     {
@@ -28,14 +31,18 @@ private:
 
     static void makeMaterialsAndTextures(CommandPool &commandPool, QueueManager &queueManager,
                                          BufferFactory &bufferFactory, tinygltf::Model &gltfModel, Model *model);
-    static void processNode(BufferFactory &bufferFactory, tinygltf::Model &gltfModel, Model *model, Node *parent, int nodeIndex);
+    static void processNode(BufferFactory &bufferFactory, tinygltf::Model &gltfModel, Model *model, Node *parent, int nodeIndex,
+                            tsl::robin_map<Mesh*, int> &meshMap, tsl::robin_map<int, Node*> &numberNodeMap);
+    static void processSkinsAnimations(BufferFactory &bufferFactory, tinygltf::Model &gltfModel, Model *model,
+                                       tsl::robin_map<int, Node*> &numberNodeMap, int framesInFlight);
     static uPtr<Buffer> createTangentVectors(BufferFactory &bufferFactory, tinygltf::Model &gltfModel , int verticesType,
-                                             int normalType, int uvType, int indexType, vk::BufferUsageFlagBits flag);
+                                             int normalType, int uvType, int indexType, vk::BufferUsageFlags flags);
     static uPtr<Buffer> getBuffer(BufferFactory &bufferFactory, tinygltf::Model &gltfModel,
-                          int type, vk::BufferUsageFlagBits flag, size_t vertexSize);
+                          int type, vk::BufferUsageFlags flags);
 
 public:
-    static uPtr<Model> create(CommandPool &commandPool, QueueManager &queueManager, BufferFactory &bufferFactory, const char* filename);
+    static uPtr<Model> create(CommandPool &commandPool, QueueManager &queueManager, BufferFactory &bufferFactory,
+                              const char* filename, int framesInFlight);
     static float getLoadPercent();
     static void setLoadPercent(float percent);
 };
