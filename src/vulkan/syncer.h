@@ -3,12 +3,13 @@
 #include <vulkan/vulkan.h>
 #include <unordered_map>
 #include "destroyable.h"
+#include <tsl/robin_map.h>
 
 class Syncer : public Destroyable
 {
 private:
-    std::unordered_map<const char*, vk::Semaphore> semaphores;
-    std::unordered_map<const char*, vk::Fence> fences;
+    tsl::robin_map<const char*, vk::Semaphore> semaphores;
+    tsl::robin_map<const char*, vk::Fence> fences;
 
 public:
     vk::Semaphore createSemaphore();

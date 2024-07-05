@@ -87,6 +87,7 @@ vk::DescriptorSetLayout DescriptorLayoutCache::createDescriptorLayout(vk::Descri
     else
     {
         vk::DescriptorSetLayoutBindingFlagsCreateInfo extendedInfo{};
+        std::vector<vk::DescriptorBindingFlags> flags;
         // only do this if any of the descriptor counts are > 1
         for (const vk::DescriptorSetLayoutBinding &b : layoutInfo.bindings)
         {
@@ -95,9 +96,14 @@ vk::DescriptorSetLayout DescriptorLayoutCache::createDescriptorLayout(vk::Descri
                 extendedInfo.bindingCount = layoutInfo.bindings.size();
                 // update after bind is not very feasible due to limitations on hardware ie NV pascal
                 // enable partial binding to silence errors
-                vk::DescriptorBindingFlags partial = vk::DescriptorBindingFlagBits::ePartiallyBound;
-                extendedInfo.pBindingFlags = &partial;
+
+                // create a list of flags for each binding
+                flags.resize(layoutInfo.bindings.size(), vk::DescriptorBindingFlagBits::ePartiallyBound | vk::DescriptorBindingFlagBits::eUpdateAfterBind);
+
+                extendedInfo.pBindingFlags = flags.data();
                 info->pNext = &extendedInfo;
+
+                info->flags = vk::DescriptorSetLayoutCreateFlagBits::eUpdateAfterBindPool;
                 break;
             }
         }

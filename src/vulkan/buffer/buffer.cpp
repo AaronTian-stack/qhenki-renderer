@@ -21,13 +21,13 @@ void Buffer::fill(const void *data, unsigned int offset, vk::DeviceSize size)
     if (persistent)
     {
         char *p = static_cast<char *>(mappedData) + offset;
-        memcpy(p + offset, data, size);
+        memcpy(p, data, size);
     }
     else
     {
         vmaMapMemory(allocator, allocation, &mappedData);
-        char *p = static_cast<char *>(mappedData);
-        memcpy(p + offset, data, size);
+        char *p = static_cast<char *>(mappedData) + offset;
+        memcpy(p, data, size);
         vmaUnmapMemory(allocator, allocation);
     }
 }

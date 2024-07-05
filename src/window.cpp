@@ -7,6 +7,9 @@ Window::Window(unsigned int SCR_WIDTH, unsigned int SCR_HEIGHT) : SCR_WIDTH(SCR_
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
     glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
     window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "qhenki renderer - Vulkan", nullptr, nullptr);
+    // center the window
+    const GLFWvidmode *mode = glfwGetVideoMode(glfwGetPrimaryMonitor());
+    glfwSetWindowPos(window, (mode->width - SCR_WIDTH) / 2, (mode->height - SCR_HEIGHT) * 0.4);
 }
 
 Window::~Window()

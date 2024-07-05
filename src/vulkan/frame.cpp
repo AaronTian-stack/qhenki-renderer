@@ -32,13 +32,15 @@ void Frame::end()
     commandBuffer.end();
 }
 
-vk::SubmitInfo Frame::getSubmitInfo()
+void Frame::submit(QueueManager &queueManager, std::vector<vk::Semaphore> waitSemaphores, std::vector<vk::PipelineStageFlags> waitStages)
 {
     vk::SubmitInfo submitInfo{};
     //VkSemaphore waitSemaphores[] = {imageAvailableSemaphore};
-    submitInfo.waitSemaphoreCount = 1;
-    submitInfo.pWaitSemaphores = &imageAvailableSemaphore; // wait until the image has been acquired before drawing
-    submitInfo.pWaitDstStageMask = waitStages;
+    waitSemaphores.push_back(imageAvailableSemaphore);
+    submitInfo.waitSemaphoreCount = waitSemaphores.size();
+    submitInfo.pWaitSemaphores = waitSemaphores.data(); // wait until the image has been acquired before drawing
+    waitStages.emplace_back(vk::PipelineStageFlagBits::eColorAttachmentOutput);
+    submitInfo.pWaitDstStageMask = waitStages.data();
 
     submitInfo.commandBufferCount = 1; // TODO: probably needs to take in multiple command buffers at some point
     submitInfo.pCommandBuffers = &commandBuffer; // TODO: move these two lines into another function, this should not return the struct
@@ -46,7 +48,8 @@ vk::SubmitInfo Frame::getSubmitInfo()
     //VkSemaphore signalSemaphores[] = {renderFinishedSemaphore};
     submitInfo.signalSemaphoreCount = 1;
     submitInfo.pSignalSemaphores = &renderFinishedSemaphore; // signal this semaphore when the render is done
-    return submitInfo;
+
+    queueManager.submitGraphics(submitInfo, inFlightFence);
 }
 
 void Frame::finish(Syncer &syncer)

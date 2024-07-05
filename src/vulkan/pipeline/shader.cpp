@@ -40,39 +40,47 @@ vk::ShaderModule Shader::createShaderModule(const std::string &filePath)
     return device.createShaderModule(createInfo);
 }
 
+Shader::Shader(vk::Device device, const char* compShaderPath) : Destroyable(device)
+{
+    compShaderModule = createShaderModule(compShaderPath);
+
+    auto compShaderStageInfo = vk::PipelineShaderStageCreateInfo(
+            vk::PipelineShaderStageCreateFlags(),
+            vk::ShaderStageFlagBits::eCompute,
+            compShaderModule,
+            "main"
+    );
+
+    shaderStages = {compShaderStageInfo};
+}
+
 Shader::Shader(vk::Device device, const char* vertShaderPath, const char* fragShaderPath) : Destroyable(device)
 {
     vertShaderModule = createShaderModule(vertShaderPath);
     fragShaderModule = createShaderModule(fragShaderPath);
 
-    auto vertShaderStageInfo = vertexStageInfo(vertShaderModule);
-    auto fragShaderStageInfo = fragmentStageInfo(fragShaderModule);
+    auto vertShaderStageInfo = vk::PipelineShaderStageCreateInfo(
+            vk::PipelineShaderStageCreateFlags(),
+            vk::ShaderStageFlagBits::eVertex,
+            vertShaderModule,
+            "main"
+     );
+    auto fragShaderStageInfo = vk::PipelineShaderStageCreateInfo(
+            vk::PipelineShaderStageCreateFlags(),
+            vk::ShaderStageFlagBits::eFragment,
+            fragShaderModule,
+            "main"
+    );
 
     shaderStages = {vertShaderStageInfo, fragShaderStageInfo};
 }
 
-vk::PipelineShaderStageCreateInfo Shader::vertexStageInfo(const vk::ShaderModule &vertShaderModule)
-{
-    return {
-        vk::PipelineShaderStageCreateFlags(),
-        vk::ShaderStageFlagBits::eVertex, // vertex shader
-        vertShaderModule,
-        "main" // entry point, could combine multiple shaders into one module. however not possible with GLSL
-    };
-}
-
-vk::PipelineShaderStageCreateInfo Shader::fragmentStageInfo(vk::ShaderModule const &fragShaderModule)
-{
-    return {
-        vk::PipelineShaderStageCreateFlags(),
-        vk::ShaderStageFlagBits::eFragment,
-        fragShaderModule,
-        "main"
-    };
-}
-
 void Shader::destroy()
 {
-    device.destroyShaderModule(fragShaderModule);
-    device.destroyShaderModule(vertShaderModule);
+    if (vertShaderModule)
+        device.destroyShaderModule(vertShaderModule);
+    if (fragShaderModule)
+        device.destroyShaderModule(fragShaderModule);
+    if (compShaderModule)
+        device.destroyShaderModule(compShaderModule);
 }

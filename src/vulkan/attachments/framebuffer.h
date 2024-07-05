@@ -2,7 +2,7 @@
 
 #include "attachment.h"
 #include "../destroyable.h"
-#include "../../smartpointer.h"
+#include <smartpointer.h>
 
 class FrameBuffer : public Destroyable
 {

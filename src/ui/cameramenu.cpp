@@ -24,6 +24,14 @@ void CameraMenu::renderMenu(void *payload)
         else
         {
             ImGui::SliderFloat("FOV", &camera->regular.fov, 1.0f, 120.0f);
+            if (camera->regular.fov != DEFAULT_FOV)
+            {
+                ImGui::SameLine();
+                if (ImGui::Button("Reset"))
+                {
+                    camera->regular.fov = DEFAULT_FOV;
+                }
+            }
         }
 
         ImGui::End();

@@ -16,20 +16,47 @@ My personal hobby renderer written in C++ using Vulkan. It is intended as a plac
 
 ![helmet](screenshots/helmet.png)
 
-|        Dynamic Area Lights        |
-|:---------------------------------:|
-| ![lights](screenshots/lights.png) |
+<table border="1">
+  <tr>
+    <td colspan="2" align="center"><b>Dynamic Area Lights</b></td>
+  </tr>
+  <tr>
+    <td><img src="screenshots/lights.png" alt="lights"></td>
+  </tr>
+</table>
 
-![applevr](screenshots/applevr.png)
+<table border="1">
+  <tr>
+    <td colspan="2" align="center"><b>Compute Shader Skinning and Animation</b></td>
+  </tr>
+  <tr>
+    <td><img src="screenshots/spi-anim.gif" alt="spi"></td>
+    <td><img src="screenshots/pico-anim.gif" alt="pico"></td>
+  </tr>
+<tr>
+    <td><img src="screenshots/bmo-anim.gif" alt="bmo"></td>
+    <td><img src="screenshots/chief-anim.gif" alt="chief"></td>
+  </tr>
+</table>
 
-|   |  |
-|---|---|
-|  ![](screenshots/gun.png) | ![](screenshots/teapot.png) |
+<table border="1">
+  <tr>
+    <td colspan="2" align="center"><b>Post-Processing Stack</b></td>
+  </tr>
+  <tr>
+    <td><img src="screenshots/demo.gif" alt="demo"></td>
+  </tr>
+</table>
 
-|   Post-Processing Enabled    |
-|:----------------------------:|
-|  ![](screenshots/demo.gif)   |
-| ![](screenshots/samurai.png) |
+<table border="1">
+  <tr>
+    <td colspan="2"><img src="screenshots/applevr.png" alt="applevr"></td>
+  </tr>
+  <tr>
+    <td><img src="screenshots/gun.png" alt="gun"></td>
+    <td><img src="screenshots/teapot.png" alt="teapot"></td>
+  </tr>
+</table>
 
 ## Features
 
@@ -44,19 +71,21 @@ My personal hobby renderer written in C++ using Vulkan. It is intended as a plac
     * Sphere, tube, rectangle lights
   * Image-based lighting using environment maps
     * Generated offline and loaded as `dds` files
+* Compute Shader Mesh Skinning
+  * Skinning matrix calculations are done on the GPU
 * Bindless Textures
-  * Bind up to [4294967295 textures](https://vulkan.gpuinfo.org/displaydevicelimit.php?platform=windows&name=maxPerStageDescriptorSamplers) in one draw call depending on your hardware. I limit it to 80 to maintain compatibility on macOS. Removes repeated texture bindings
+  * Bind up to [4294967295 textures](https://vulkan.gpuinfo.org/displaydevicelimit.php?platform=windows&name=maxPerStageDescriptorSamplers) in one draw call depending on your hardware. Limited to 80 to maintain compatibility on macOS
 * Asynchronous Model Loading
   * Models are loaded on multiple separate threads. Vertex/texture data is created with a dedicated transfer queue (if your GPU has one)
-  * Interactive loading bar
-  * Loads most gltf 2.0 models with support for up to 2 UV channels
-* Heavy multithreading
-  * Older APIs such as OpenGL require that GPU work be recorded/submitted from one thread (with workarounds such as shared contexts). I take advantage of Vulkan's exposure of command buffers by using multiple threads to perform tasks such as loading environment maps. This provides noticeable performance improvements (~57% faster)
+* Multithreaded command buffer generation
+  * Older APIs such as OpenGL require that GPU work be recorded/submitted from one thread (with workarounds such as shared contexts). I take advantage of Vulkan's exposure of command buffers by using multiple threads to speed up tasks such as loading environment maps
 * Post-processing Stack
-  * Apply a variety of configurable post-processing shaders in any order, as many times as you would like. 
+  * Apply a variety of configurable post-processing shaders an arbitrary number of times in any order
     * FXAA
     * Vignette
     * Sharpen
+    * Film Grain
+    * Chromatic Aberration
   * Multiple selectable tone mapping operators
     * Reinhard
     * Khronos PBR Neutral
@@ -67,10 +96,9 @@ My personal hobby renderer written in C++ using Vulkan. It is intended as a plac
   * GUI to change renderer settings and load models
 
 ## Future Features
-In the order I will most likely implement them:
 - [x] ~~Dynamic Lights~~ [#16](https://github.com/AaronTian-stack/qhenki-renderer/pull/16)
   - Sphere, tube, and rectangle lights
-- [ ] Compute Skinning and Skeletal + Morph Animation
+- [x] ~~Compute Skinning and Skeletal Animation~~ [#17](https://github.com/AaronTian-stack/qhenki-renderer/pull/17)
 - [ ] High Quality Bokeh Depth of Field (physically based)
 - [ ] Physically Based Bloom
 - [ ] Volumetric Lighting
@@ -78,9 +106,9 @@ In the order I will most likely implement them:
 - [ ] Shadow Atlas System
 
 ## Stretch Goals
-Features I want to implement, but I might not get to:
+Features I want to implement eventually:
 - [ ] Tiled Deferred Rendering
-- [ ] Indirect draw, GPU culling
+- [ ] Indirect draw, GPU compute culling
 - [ ] GTAO
 - [ ] Temporal Anti-Aliasing
 - [ ] Ray Tracing
@@ -97,22 +125,28 @@ Features I want to implement, but I might not get to:
 * [tinyobjloader](https://github.com/tinyobjloader/tinyobjloader) - MIT License
 * [SPIRV-Cross](https://github.com/KhronosGroup/SPIRV-Cross) - Apache 2.0 License
 * [dds-ktx](https://github.com/septag/dds-ktx) - BSD 2-Clause License
-* [gdx-vfx](https://github.com/crashinvaders/gdx-vfx) - Apache 2.0: Not an actual library I use but the post processing shaders are based on the ones from this repo.
+* [gdx-vfx](https://github.com/crashinvaders/gdx-vfx) - Apache 2.0: Not used directly but the post processing shaders are based on the ones from this repo.
+* [robin-map](https://github.com/Tessil/robin-map) - MIT License
 
-Several tools such as [glslc](https://github.com/google/shaderc/tree/main/glslc), [cmftStudio](https://github.com/dariomanesku/cmftStudio), and [Blender](https://www.blender.org/) are used.
+Offline tools [glslc](https://github.com/google/shaderc/tree/main/glslc), [cmftStudio](https://github.com/dariomanesku/cmftStudio), and [Blender](https://www.blender.org/) are used.
 
 ## Model Credits
 
+Included in repo:
+
 | Asset            | Link                                                                                                                   | License                         |
 |------------------|------------------------------------------------------------------------------------------------------------------------|---------------------------------|
-| Box Textured     | [Github](https://github.com/KhronosGroup/glTF-Sample-Models/tree/main/2.0/BoxTextured)                                 | CC BY 4.0                       |
 | Damaged Helmet   | [Github](https://github.com/KhronosGroup/glTF-Sample-Models/tree/main/2.0/DamagedHelmet)                               | CC Attribution - Non-commercial |
-| Apple Vision Pro | [Sketchfab](https://sketchfab.com/3d-models/free-apple-vision-pro-ultra-high-quality-8bd7123015ee4509b1c312f54a877597) | CC Attribution - Non-commercial |
-| Salty Snack      | [Sketchfab](https://sketchfab.com/3d-models/salty-snack-firearm-game-ready-702411980d904abc974efef9ba4e47d5)           | CC Attribution                  |
-| Copper Tea Pot   | [Sketchfab](https://sketchfab.com/3d-models/copper-tea-pot-27f2ac58f7614f2796630bdc6f18ee2f)                           | CC Attribution                  |
-| Cyber Samurai    | [Sketchfab](https://sketchfab.com/3d-models/cyber-samurai-26ccafaddb2745ceb56ae5cfc65bfed5)                            | CC Attribution                  |
 
-and of course the famous Crytek Sponza model (don't think there is a license on this model).
+Models featured in screenshots:
+  - [Apple Vision Pro](https://sketchfab.com/3d-models/free-apple-vision-pro-ultra-high-quality-8bd7123015ee4509b1c312f54a877597)
+  - [Salty Snack](https://sketchfab.com/3d-models/salty-snack-firearm-game-ready-702411980d904abc974efef9ba4e47d5)
+  - [Copper Tea Pot](https://sketchfab.com/3d-models/copper-tea-pot-27f2ac58f7614f2796630bdc6f18ee2f)
+  - [Crytek Sponza](https://github.com/KhronosGroup/glTF-Sample-Models/tree/main/2.0/Sponza)
+  - [Tarisland Arachnida](https://sketchfab.com/3d-models/tarisland-arachnida-d9aacbf0a2a44899b0e4b3de0d0c66bd)
+  - [Pico Chan](https://sketchfab.com/3d-models/pico-chan-80923daa339348858c1291a2969c9b10)
+  - [BMO](https://sketchfab.com/3d-models/bmo-realistic-5d8a3f209118401da46e3b1b38903961)
+  - [Spartan Armour MKV - Halo Reach](https://sketchfab.com/3d-models/spartan-armour-mkv-halo-reach-57070b2fd9ff472c8988e76d8c5cbe66)
 
 ## Technical Details
 Uses Vulkan 1.2 (SDK 1.3.283) with only core features. Built using CMake and C++17. Runs on Windows and macOS (MoltenVK).

@@ -15,7 +15,7 @@ void BufferFactory::create(VulkanContext &context)
     Destroyable::create(context.device.logicalDevice);
 }
 
-uPtr<Buffer> BufferFactory::createBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage, VmaAllocationCreateFlagBits flags)
+uPtr<Buffer> BufferFactory::createBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage, VmaAllocationCreateFlags flags)
 {
     vk::BufferCreateInfo bufferCreateInfo{};
     bufferCreateInfo.sType = vk::StructureType::eBufferCreateInfo;

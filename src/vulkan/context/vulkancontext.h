@@ -3,7 +3,7 @@
 #include "../../window.h"
 #include "../queuemanager.h"
 #include <VkBootstrap.h>
-#include "../../smartpointer.h"
+#include <smartpointer.h>
 #include "queuesindices.h"
 
 struct Device

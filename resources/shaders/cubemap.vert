@@ -11,8 +11,7 @@ layout(scalar, set = 0, binding = 0) uniform cameraInfo {
 } ubo;
 
 layout(scalar, push_constant) uniform constants {
-    vec4 color;
-    mat4 matrix;
+    mat4 rotate;
 } pc;
 
 layout(location = 0) out vec3 localPos;
@@ -24,6 +23,6 @@ void main()
 {
     localPos = inPosition;
     mat4 rotView = mat4(mat3(ubo.view)); // remove translation from the view matrix
-    vec4 clipPos = ubo.proj * rotView * vec4(localPos, 1.0);
+    vec4 clipPos = ((ubo.proj * rotView) * pc.rotate) * vec4(localPos, 1.0);
     gl_Position = clipPos.xyww; // always depth 1.0
 }

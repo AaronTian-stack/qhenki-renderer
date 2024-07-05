@@ -44,7 +44,7 @@ void PostProcessManager::tonemap(vk::CommandBuffer commandBuffer,
     pingPongRenderPass->begin(commandBuffer);
 
     auto &activeToneMapper = toneMappers[activeToneMapperIndex];
-    commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, activeToneMapper->pipeline->getGraphicsPipeline());
+    commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, activeToneMapper->pipeline->getPipeline());
 
     vk::DescriptorSetLayout layout;
     vk::DescriptorSet inputSet;
@@ -63,7 +63,7 @@ void PostProcessManager::tonemap(vk::CommandBuffer commandBuffer,
 void PostProcessManager::render(int startIndex, float time, vk::CommandBuffer commandBuffer, DescriptorLayoutCache &layoutCache, DescriptorAllocator &allocator)
 {
     currentAttachmentIndex = startIndex;
-    int ping = startIndex; // start by reading from 1 and outputting to 0
+    int ping = startIndex; // start by reading from startIndex and outputting to 1-startIndex
     vk::DescriptorSetLayout layout;
     for (const auto &postProcess : activePostProcesses)
     {
@@ -74,7 +74,7 @@ void PostProcessManager::render(int startIndex, float time, vk::CommandBuffer co
         pingPongRenderPass->clear(0.f, 0.f, 0.f, 1.0f);
         pingPongRenderPass->begin(commandBuffer);
 
-        commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, postProcess->pipeline->getGraphicsPipeline());
+        commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, postProcess->pipeline->getPipeline());
 
         vk::DescriptorSet inputSet;
         auto descriptorInfo = afb[ping].attachment->getDescriptorInfo();

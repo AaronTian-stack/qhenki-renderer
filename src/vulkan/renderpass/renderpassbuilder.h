@@ -2,7 +2,7 @@
 
 #include "../destroyable.h"
 #include "renderpass.h"
-#include "../../smartpointer.h"
+#include <smartpointer.h>
 
 class RenderPassBuilder : public Destroyable
 {
