@@ -1,6 +1,6 @@
 #version 450
 #extension GL_EXT_scalar_block_layout : require
-#extension GL_ARB_shading_language_include : require
+#extension GL_GOOGLE_include_directive : require
 
 #include "include/brdfmacros.glsl"
 #include "include/closestPoint.glsl"

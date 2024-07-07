@@ -61,20 +61,18 @@ void UserInterface::create(ImGuiCreateParameters param, CommandPool &commandPool
     init_info.Instance = param.context->vkbInstance.instance;
     init_info.PhysicalDevice = param.context->device.physicalDevice;
     init_info.Device = param.context->device.logicalDevice;
+    init_info.QueueFamily = param.context->queueManager.getGraphicsIndex();
     init_info.Queue = param.context->queueManager.queuesIndices.graphics;
     init_info.DescriptorPool = imguiPool;
+    init_info.RenderPass = param.renderPass->getRenderPass();
     init_info.MinImageCount = param.framesInFlight;
     init_info.ImageCount = param.framesInFlight;
     init_info.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
 
     window = param.window;
 
-    ImGui_ImplVulkan_Init(&init_info, param.renderPass->getRenderPass());
-
-    auto commandBuffer = commandPool.beginSingleCommand();
-    ImGui_ImplVulkan_CreateFontsTexture(commandBuffer);
-    commandBuffer.end();
-    commandPool.submitSingleTimeCommands(param.context->queueManager, {commandBuffer}, true);
+    ImGui_ImplVulkan_Init(&init_info);
+    ImGui_ImplVulkan_CreateFontsTexture();
 }
 
 void UserInterface::destroy()
@@ -93,6 +91,8 @@ void UserInterface::render(MenuPayloads menuPayloads)
 
     const int y = 21;
 //    ImGui::ShowDemoWindow();
+    // show docking example
+
     ImGui::SetNextWindowPos(ImVec2(0, y));
     auto flags = ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove;
 

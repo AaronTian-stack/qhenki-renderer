@@ -2,7 +2,7 @@
 
 #include "../../window.h"
 #include "../queuemanager.h"
-#include <VkBootstrap.h>
+#include <vk-bootstrap/VkBootstrap.h>
 #include <smartpointer.h>
 #include "queuesindices.h"
 

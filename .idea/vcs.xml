@@ -3,5 +3,6 @@
   <component name="VcsDirectoryMappings">
     <mapping directory="" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/cmake-build-debug/_deps/fetch_vk_bootstrap-src" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/cmake-build-release/_deps/fetch_vk_bootstrap-src" vcs="Git" />
   </component>
 </project>

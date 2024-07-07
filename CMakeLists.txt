@@ -18,36 +18,50 @@ file(GLOB_RECURSE IMGUI CONFIGURE_DEPENDS
         ${CMAKE_CURRENT_SOURCE_DIR}/dependencies/include/ImGuiFileDialog-0.6.7/*.h
 )
 
-add_subdirectory(dependencies/include/mikktspace)
-add_subdirectory(dependencies/include/spirv_cross)
+file(GLOB_RECURSE MIKKTSPACE CONFIGURE_DEPENDS
+        ${CMAKE_CURRENT_SOURCE_DIR}/dependencies/include/mikktspace/*.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/dependencies/include/mikktspace/*.h
+)
+
+file(GLOB_RECURSE SPIRV_CROSS CONFIGURE_DEPENDS
+        ${CMAKE_CURRENT_SOURCE_DIR}/dependencies/include/spirv_cross/*.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/dependencies/include/spirv_cross/*.h
+        ${CMAKE_CURRENT_SOURCE_DIR}/dependencies/include/spirv_cross/*.hpp
+)
+
+file(GLOB_RECURSE VK_BOOTSTRAP CONFIGURE_DEPENDS
+        ${CMAKE_CURRENT_SOURCE_DIR}/dependencies/include/vk-bootstrap/*.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/dependencies/include/vk-bootstrap/*.h
+)
 
 set(dir ${CMAKE_CURRENT_SOURCE_DIR})
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${dir}/build)
 
 #Include library files
-include_directories(dependencies/include)
+include_directories(
+        ${CMAKE_CURRENT_SOURCE_DIR}/dependencies/include
+        ${CMAKE_CURRENT_SOURCE_DIR}/dependencies/include/imgui
+        ${CMAKE_CURRENT_SOURCE_DIR}/dependencies/include/spirv_cross
+        ${CMAKE_CURRENT_SOURCE_DIR}/dependencies/include/mikktspace
+)
 
-add_executable(${PROJECT_NAME} ${SOURCE_FILES} ${IMGUI} main.cpp
-        src/vfx/effects/chromaticaberration.cpp
-        src/vfx/effects/chromaticaberration.h)
+add_executable(${PROJECT_NAME} ${SOURCE_FILES} ${IMGUI} ${MIKKTSPACE} ${SPIRV_CROSS} ${VK_BOOTSTRAP} main.cpp)
+
 add_subdirectory(dependencies/include/glm)
 find_package(Vulkan REQUIRED)
 
 target_include_directories(${PROJECT_NAME} PUBLIC ${Vulkan_INCLUDE_DIRS})
-target_link_libraries(${PROJECT_NAME} Vulkan::Vulkan
-        mikktspace
-        spirv_cross
-)
+target_link_libraries(${PROJECT_NAME} Vulkan::Vulkan)
 
 # bootstrap-vk
-include(FetchContent)
-FetchContent_Declare(
-        fetch_vk_bootstrap
-        GIT_REPOSITORY https://github.com/charles-lunarg/vk-bootstrap
-        GIT_TAG        v1.3.278
-)
-FetchContent_MakeAvailable(fetch_vk_bootstrap)
-target_link_libraries(${PROJECT_NAME} vk-bootstrap::vk-bootstrap)
+#include(FetchContent)
+#FetchContent_Declare(
+#        fetch_vk_bootstrap
+#        GIT_REPOSITORY https://github.com/charles-lunarg/vk-bootstrap
+#        GIT_TAG        v1.3.278
+#)
+#FetchContent_MakeAvailable(fetch_vk_bootstrap)
+#target_link_libraries(${PROJECT_NAME} vk-bootstrap::vk-bootstrap)
 
 if (APPLE)
     target_link_libraries(${PROJECT_NAME} ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/libglfw.3.dylib)
