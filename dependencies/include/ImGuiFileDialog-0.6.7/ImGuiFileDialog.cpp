@@ -3645,6 +3645,7 @@ bool IGFD::FileDialog::Display(const std::string& vKey, ImGuiWindowFlags vFlags,
             fdFile.ClearFileLists();
             flags = vFlags;
         }
+        flags = flags | ImGuiWindowFlags_NoDocking; // TODO: i had to hack this in bruh
 
         m_NewFrame();
 

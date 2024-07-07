@@ -15,16 +15,16 @@ enum class GBufferAttachmentType : unsigned int
 class GBuffer : public FrameBuffer
 {
 private:
+    vk::Extent2D resolution;
     std::array<Attachment*, (unsigned int)GBufferAttachmentType::END> attachmentMap{};
     std::unordered_map<Attachment*, GBufferAttachmentType> attachmentIndexMap;
 
 public:
-    explicit GBuffer(vk::Device device);
+    GBuffer(vk::Device device, vk::Extent2D extent);
 
     Attachment* getAttachment(GBufferAttachmentType type);
-    void setIndividualFramebuffer(GBufferAttachmentType type, vk::Framebuffer framebuffer);
-    vk::Framebuffer getIndividualFramebuffer(GBufferAttachmentType type);
+    vk::Extent2D getResolution() { return resolution; }
 
     void setAttachment(GBufferAttachmentType type, uPtr<Attachment> &attachment, bool own);
-    void createFrameBuffer(vk::RenderPass renderPass, vk::Extent2D extent);
+    void createFrameBuffer(vk::RenderPass renderPass);
 };

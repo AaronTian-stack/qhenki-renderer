@@ -10,6 +10,7 @@
 #include "vfx/effects/sharpen.h"
 #include "vfx/effects/filmgrain.h"
 #include "vfx/effects/chromaticaberration.h"
+#include "imgui_internal.h"
 #include <thread>
 
 VulkanApp::VulkanApp() : drawBackground(true), clearColor(0.25f) {}
@@ -111,7 +112,7 @@ void VulkanApp::createGbuffer(vk::Extent2D extent, vk::RenderPass renderPass)
 
     outputAttachment->createGenericSampler();
 
-    gBuffer = mkU<GBuffer>(vulkanContext.device.logicalDevice);
+    gBuffer = mkU<GBuffer>(vulkanContext.device.logicalDevice, extent);
 
     gBuffer->setAttachment(GBufferAttachmentType::ALBEDO, colorAttachment, true);
     gBuffer->setAttachment(GBufferAttachmentType::NORMAL, normalAttachment, true);
@@ -120,7 +121,7 @@ void VulkanApp::createGbuffer(vk::Extent2D extent, vk::RenderPass renderPass)
     gBuffer->setAttachment(GBufferAttachmentType::DEPTH, depthBuffer, false);
     gBuffer->setAttachment(GBufferAttachmentType::OUTPUT, outputAttachment, true); // this must be last for some reason
 
-    gBuffer->createFrameBuffer(renderPass, extent);
+    gBuffer->createFrameBuffer(renderPass);
 }
 
 void VulkanApp::createRenderPasses()
@@ -231,9 +232,8 @@ void VulkanApp::createPipelines()
 void VulkanApp::createPostProcess()
 {
     auto device = vulkanContext.device.logicalDevice;
-    auto extent = vulkanContext.swapChain->getExtent();
 
-    postProcessManager = mkU<PostProcessManager>(vulkanContext.device.logicalDevice, extent, bufferFactory, renderPassBuilder);
+    postProcessManager = mkU<PostProcessManager>(vulkanContext.device.logicalDevice, gBuffer->getResolution(), bufferFactory, renderPassBuilder);
     passAndClear.shader = mkU<Shader>(device, "passthrough.vert", "passthrough_depth.frag");
     pipelineFactory.reset();
     pipelineFactory.parseShader("passthrough.vert", "passthrough_depth.frag", layoutCache, false);
@@ -282,8 +282,9 @@ void VulkanApp::create(Window &window)
     pipelineFactory.create(device);
 
     bufferFactory.create(vulkanContext);
-    auto extent = vulkanContext.swapChain->getExtent();
-    depthBuffer = bufferFactory.createAttachment(vk::Format::eD32Sfloat, {extent.width, extent.height, 1},
+
+    const auto resolution = vk::Extent2D(1280, 720);
+    depthBuffer = bufferFactory.createAttachment(vk::Format::eD32Sfloat, {resolution.width, resolution.height, 1},
                                                    vk::ImageUsageFlagBits::eDepthStencilAttachment
                                                    | vk::ImageUsageFlagBits::eInputAttachment | vk::ImageUsageFlagBits::eSampled,
                                                    vk::ImageAspectFlagBits::eDepth);
@@ -295,7 +296,7 @@ void VulkanApp::create(Window &window)
 
     vulkanContext.swapChain->createFramebuffers(displayRenderPass->getRenderPass());
 
-    createGbuffer(vulkanContext.swapChain->getExtent(), offscreenRenderPass->getRenderPass());
+    createGbuffer(resolution, offscreenRenderPass->getRenderPass());
 
     syncer.create(device);
 
@@ -374,7 +375,7 @@ void VulkanApp::setModel(const std::string& filePath)
 void VulkanApp::recordOffscreenBuffer(vk::CommandBuffer commandBuffer, DescriptorAllocator &allocator)
 {
     offscreenRenderPass->setFramebuffer(gBuffer->framebuffer);
-    offscreenRenderPass->setRenderAreaExtent(vulkanContext.swapChain->getExtent());
+    offscreenRenderPass->setRenderAreaExtent(gBuffer->getResolution());
     offscreenRenderPass->clear(0.f, 0.f, 0.f, 0.f);
     offscreenRenderPass->begin(commandBuffer);
 
@@ -536,7 +537,7 @@ void VulkanApp::recordCommandBuffer(FrameBuffer *framebuffer)
     // TODO: multi thread secondary command buffer recording
     auto &frame = frames[currentFrame];
     auto primaryCommandBuffer = frame.commandBuffer;
-    auto swapChainExtent = vulkanContext.swapChain->getExtent();
+    const auto gBufferResolution = gBuffer->getResolution();
 
     updateCameraBuffer();
     updateLightBuffers();
@@ -565,8 +566,8 @@ void VulkanApp::recordCommandBuffer(FrameBuffer *framebuffer)
     lock.unlock();
     compute.end();
 
-    ScreenUtils::setViewport(primaryCommandBuffer, swapChainExtent.width, swapChainExtent.height);
-    ScreenUtils::setScissor(primaryCommandBuffer, swapChainExtent);
+    ScreenUtils::setViewport(primaryCommandBuffer, gBufferResolution.width, gBufferResolution.height);
+    ScreenUtils::setScissor(primaryCommandBuffer, gBufferResolution);
     recordOffscreenBuffer(primaryCommandBuffer, allocator);
 
     // output already transitioned by render pass
@@ -582,7 +583,7 @@ void VulkanApp::recordCommandBuffer(FrameBuffer *framebuffer)
     //// CLEAR COLOR
     auto &ppr = postProcessManager->getPingPongRenderPass();
     ppr.setFramebuffer(postProcessManager->getFramebuffer(1));
-    ppr.setRenderAreaExtent(swapChainExtent);
+    ppr.setRenderAreaExtent(gBuffer->getResolution());
     ppr.clear(0.f, 0.f, 0.f, 1.f);
     ppr.begin(primaryCommandBuffer);
     primaryCommandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, passAndClear.pipeline->getPipeline());
@@ -603,7 +604,7 @@ void VulkanApp::recordCommandBuffer(FrameBuffer *framebuffer)
     // final post process buffer already in shader read layout from render pass
 
     displayRenderPass->setFramebuffer(framebuffer->framebuffer);
-    displayRenderPass->setRenderAreaExtent(swapChainExtent);
+    displayRenderPass->setRenderAreaExtent(vulkanContext.swapChain->getExtent());
     displayRenderPass->clear(0.f, 0.f, 0.f, 1.0f);
     displayRenderPass->begin(primaryCommandBuffer);
 
@@ -614,9 +615,12 @@ void VulkanApp::recordCommandBuffer(FrameBuffer *framebuffer)
             .bindImage(0, {postProcessManager->getCurrentAttachment()->getDescriptorInfo()}, // output attachment sampler
                        1, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eFragment)
             .build(samplerSet, layout);
-    primaryCommandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pass.pipeline->getPipelineLayout(),
-                                            0, {samplerSet}, nullptr);
-    primaryCommandBuffer.draw(3, 1, 0, 0);
+//    primaryCommandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pass.pipeline->getPipelineLayout(),
+//                                            0, {samplerSet}, nullptr);
+//    primaryCommandBuffer.draw(3, 1, 0, 0);
+
+    const auto gRes = gBuffer->getResolution();
+    ui->renderImage(samplerSet, ImVec2(gRes.width, gRes.height));
 
     ui->end(primaryCommandBuffer);
     displayRenderPass->end();
@@ -691,7 +695,7 @@ void VulkanApp::updateCameraBuffer()
 {
     auto const options = camera.options;
     auto view = camera.getViewMatrix();
-    auto extent = vulkanContext.swapChain->getExtent();
+    auto extent = gBuffer->getResolution();
     float aspect = extent.width / (float) extent.height;
     auto proj = glm::perspective(glm::radians(camera.getFOV()), aspect, options.nearClip, options.farClip);
     proj[1][1] *= -1;
@@ -708,11 +712,13 @@ void VulkanApp::updateCameraBuffer()
 void VulkanApp::handleInput()
 {
     ImGuiIO& io = ImGui::GetIO();
-    if (io.WantCaptureMouse)
-    {
+//    if (io.WantCaptureMouse)
+//    {
+//        // check what is focused in imgui
+//        auto focusedWindow = ImGui::FindWindowByID(ImGui::GetActiveID());
         InputProcesser::setUserPointer(nullptr);
-    }
-    else
+//    }
+    if (UserInterface::bruh)
     {
         InputProcesser::setUserPointer(&camera);
         if (InputProcesser::mouseButtons[GLFW_MOUSE_BUTTON_LEFT] ||
@@ -724,6 +730,10 @@ void VulkanApp::handleInput()
         {
             InputProcesser::enableCursor();
         }
+    }
+    else if (InputProcesser::getCursorState() == GLFW_CURSOR_DISABLED)
+    {
+        InputProcesser::enableCursor();
     }
 }
 

@@ -1,5 +1,7 @@
 #pragma once
 
+#define IMGUI_DEFINE_MATH_OPERATORS
+
 #include <vulkan/vulkan_core.h>
 #include "../window.h"
 #include "../vulkan/renderpass/renderpass.h"
@@ -49,10 +51,13 @@ public:
 
     void create(ImGuiCreateParameters param, CommandPool &commandPool);
     void render(MenuPayloads menuPayloads);
+    void renderImage(vk::DescriptorSet image, ImVec2 size);
     void destroy() override;
 
     void begin();
     void end(VkCommandBuffer commandBuffer);
+
+    static inline bool bruh;
 
     std::function<void(std::string)> modelSelectCallback;
 

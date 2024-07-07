@@ -8,6 +8,7 @@
 #include <iostream>
 #include "ImGuiFileDialog-0.6.7/ImGuiFileDialog.h"
 #include "../models/gltfloader.h"
+#include "imgui_internal.h"
 
 UserInterface::UserInterface() {}
 
@@ -24,7 +25,7 @@ void UserInterface::create(ImGuiCreateParameters param, CommandPool &commandPool
     else
         std::cerr << "Could not find font" << std::endl;
     io.ConfigWindowsMoveFromTitleBarOnly = true;
-    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard | ImGuiConfigFlags_DockingEnable;
 
     VkDescriptorPoolSize pool_sizes[] =
     {
@@ -84,19 +85,45 @@ void UserInterface::destroy()
     ImGui::DestroyContext();
 }
 
+static ImGuiID dockLeftId, dockRightId;
+
 void UserInterface::render(MenuPayloads menuPayloads)
 {
     ImGuiStyle& style = ImGui::GetStyle();
     style.FrameRounding = 5.0f;
 
-    const int y = 21;
+    static bool firstTime = true;
+    if (firstTime)
+    {
+        // Set up initial dock layout
+        ImGuiID dockspaceId = ImGui::GetID("MyDockSpace");
+        ImGui::DockBuilderRemoveNode(dockspaceId); // Clear out existing layout
+        ImGui::DockBuilderAddNode(dockspaceId, ImGuiDockNodeFlags_DockSpace); // Add back the dock space without any nodes
+        ImGui::DockBuilderSetNodeSize(dockspaceId, ImGui::GetMainViewport()->Size);
+
+        // Split the dockspace to create a left dock area
+        ImGuiID dockMainId = dockspaceId;
+        ImGui::DockBuilderSplitNode(dockMainId, ImGuiDir_Left, 0.15f, &dockLeftId, &dockRightId);
+
+        ImGui::DockBuilderDockWindow("Stats", dockLeftId);
+
+        ImGui::DockBuilderFinish(dockspaceId);
+
+        firstTime = false;
+    }
+
 //    ImGui::ShowDemoWindow();
-    // show docking example
+    ImGuiID dockspaceId = ImGui::GetID("MyDockSpace");
+    ImGui::DockSpaceOverViewport(dockspaceId, ImGui::GetMainViewport(), ImGuiDockNodeFlags_PassthruCentralNode);
 
-    ImGui::SetNextWindowPos(ImVec2(0, y));
-    auto flags = ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove;
+    ImGuiWindowClass windowClass;
+    windowClass.DockNodeFlagsOverrideSet = ImGuiDockNodeFlags_NoWindowMenuButton
+            | ImGuiDockNodeFlags_NoDockingOverOther;
+    ImGui::SetNextWindowClass(&windowClass);
 
-    ImGui::Begin("Stats", nullptr, flags);
+    ImGui::Begin("Stats", nullptr, ImGuiWindowFlags_NoMove);
+
+    // TODO: device information
 
     ImGui::Text("FPS: %f", ImGui::GetIO().Framerate);
 
@@ -107,7 +134,7 @@ void UserInterface::render(MenuPayloads menuPayloads)
         frameTimes.erase(frameTimes.begin());
 
     ImGui::PlotLines("", frameTimes.data(), frameTimes.size(), 0, "",
-                     0.f, 0.05f, ImVec2(0, 20));
+                     0.f, 0.05f, ImVec2(ImGui::GetContentRegionAvail().x, 40));
 
     ImGui::Separator();
     if (ImGui::Button("Visual Options"))
@@ -189,7 +216,9 @@ void UserInterface::renderMenuBar()
         ImGui::EndMainMenuBar();
     }
 
-    if (ImGuiFileDialog::Instance()->Display("ChooseFileDlgKey")) {
+    // dont allow this window to dock
+    if (ImGuiFileDialog::Instance()->Display("ChooseFileDlgKey"))
+    {
         if (ImGuiFileDialog::Instance()->IsOk())
         {
             std::string filePathName = ImGuiFileDialog::Instance()->GetFilePathName();
@@ -197,7 +226,6 @@ void UserInterface::renderMenuBar()
             // call a function passed from vulkan app
             modelSelectCallback(filePathName);
         }
-
         // close
         ImGuiFileDialog::Instance()->Close();
     }
@@ -213,8 +241,32 @@ void UserInterface::renderMenuBar()
         ImGui::BulletText("Scroll Wheel: Zoom Camera");
         ImGui::BulletText("Mouse 4: Increase FOV");
         ImGui::BulletText("Mouse 5: Decrease FOV");
+        ImGui::BulletText("Ctrl +: Zoom in image");
+        ImGui::BulletText("Ctrl -: Zoom out image");
         ImGui::BulletText("ESC: Quit");
         ImGui::EndPopup();
     }
+    ImGui::End();
+}
+
+void UserInterface::renderImage(vk::DescriptorSet image, ImVec2 size)
+{
+    ImGuiWindowClass windowClass;
+    windowClass.DockNodeFlagsOverrideSet = ImGuiDockNodeFlags_NoDockingSplitOther;
+    ImGui::SetNextWindowClass(&windowClass);
+
+    ImGui::Begin("Render", nullptr, ImGuiWindowFlags_HorizontalScrollbar);
+    static float multiplier = 1.f;
+    bruh = ImGui::IsWindowFocused();
+    if (bruh)
+    {
+        auto controlPlus = ImGui::IsKeyChordPressed(ImGuiMod_Ctrl | ImGuiKey_Equal);
+        auto controlMinus = ImGui::IsKeyChordPressed(ImGuiMod_Ctrl | ImGuiKey_Minus);
+        if (controlPlus)
+            multiplier += 0.05f;
+        if (controlMinus)
+            multiplier -= 0.05f;
+    }
+    ImGui::Image((ImTextureID)image, size * multiplier);
     ImGui::End();
 }
