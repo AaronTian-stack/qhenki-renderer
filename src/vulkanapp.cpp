@@ -532,6 +532,8 @@ void VulkanApp::recordOffscreenBuffer(vk::CommandBuffer commandBuffer, Descripto
     offscreenRenderPass->end();
 }
 
+static bool inRenderWindow;
+
 void VulkanApp::recordCommandBuffer(FrameBuffer *framebuffer)
 {
     // TODO: multi thread secondary command buffer recording
@@ -615,12 +617,9 @@ void VulkanApp::recordCommandBuffer(FrameBuffer *framebuffer)
             .bindImage(0, {postProcessManager->getCurrentAttachment()->getDescriptorInfo()}, // output attachment sampler
                        1, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eFragment)
             .build(samplerSet, layout);
-//    primaryCommandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pass.pipeline->getPipelineLayout(),
-//                                            0, {samplerSet}, nullptr);
-//    primaryCommandBuffer.draw(3, 1, 0, 0);
 
     const auto gRes = gBuffer->getResolution();
-    ui->renderImage(samplerSet, ImVec2(gRes.width, gRes.height));
+    inRenderWindow = ui->renderImage(samplerSet, ImVec2(gRes.width, gRes.height));
 
     ui->end(primaryCommandBuffer);
     displayRenderPass->end();
@@ -711,23 +710,18 @@ void VulkanApp::updateCameraBuffer()
 
 void VulkanApp::handleInput()
 {
-    ImGuiIO& io = ImGui::GetIO();
-//    if (io.WantCaptureMouse)
-//    {
-//        // check what is focused in imgui
-//        auto focusedWindow = ImGui::FindWindowByID(ImGui::GetActiveID());
-        InputProcesser::setUserPointer(nullptr);
-//    }
-    if (UserInterface::bruh)
+    InputProcesser::setUserPointer(nullptr);
+    if (inRenderWindow)
     {
         InputProcesser::setUserPointer(&camera);
         if (InputProcesser::mouseButtons[GLFW_MOUSE_BUTTON_LEFT] ||
-             InputProcesser::mouseButtons[GLFW_MOUSE_BUTTON_RIGHT])
+            InputProcesser::mouseButtons[GLFW_MOUSE_BUTTON_RIGHT])
         {
             InputProcesser::disableCursor();
         }
         else if (InputProcesser::getCursorState() == GLFW_CURSOR_DISABLED)
         {
+            InputProcesser::setUserPointer(nullptr);
             InputProcesser::enableCursor();
         }
     }

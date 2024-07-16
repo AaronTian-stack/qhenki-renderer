@@ -53,16 +53,6 @@ find_package(Vulkan REQUIRED)
 target_include_directories(${PROJECT_NAME} PUBLIC ${Vulkan_INCLUDE_DIRS})
 target_link_libraries(${PROJECT_NAME} Vulkan::Vulkan)
 
-# bootstrap-vk
-#include(FetchContent)
-#FetchContent_Declare(
-#        fetch_vk_bootstrap
-#        GIT_REPOSITORY https://github.com/charles-lunarg/vk-bootstrap
-#        GIT_TAG        v1.3.278
-#)
-#FetchContent_MakeAvailable(fetch_vk_bootstrap)
-#target_link_libraries(${PROJECT_NAME} vk-bootstrap::vk-bootstrap)
-
 if (APPLE)
     target_link_libraries(${PROJECT_NAME} ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/libglfw.3.dylib)
 elseif (WIN32)

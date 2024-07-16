@@ -51,13 +51,11 @@ public:
 
     void create(ImGuiCreateParameters param, CommandPool &commandPool);
     void render(MenuPayloads menuPayloads);
-    void renderImage(vk::DescriptorSet image, ImVec2 size);
+    bool renderImage(vk::DescriptorSet image, ImVec2 size);
     void destroy() override;
 
     void begin();
     void end(VkCommandBuffer commandBuffer);
-
-    static inline bool bruh;
 
     std::function<void(std::string)> modelSelectCallback;
 

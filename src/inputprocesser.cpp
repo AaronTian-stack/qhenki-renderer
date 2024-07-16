@@ -39,6 +39,15 @@ void InputProcesser::mouse_callback(GLFWwindow *window, double xposIn, double yp
     auto* cam = static_cast<Camera*>(glfwGetWindowUserPointer(window));
     if (cam)
         cam->update();
+
+    // lock mouse position
+    if (glfwGetInputMode(window, GLFW_CURSOR) == GLFW_CURSOR_DISABLED)
+    {
+        int width, height;
+        glfwGetWindowSize(window, &width, &height);
+        glfwSetCursorPos(window, width / 2, height / 2);
+        lastMousePos = {width / 2, height / 2};
+    }
 }
 
 void InputProcesser::scroll_callback(GLFWwindow *window, double xoffset, double yoffset)
@@ -54,6 +63,8 @@ void InputProcesser::setCallbacks(Window &window)
     glfwSetCursorPosCallback(InputProcesser::window, mouse_callback);
     glfwSetMouseButtonCallback(InputProcesser::window, mouse_button_callback);
     glfwSetScrollCallback(InputProcesser::window, scroll_callback);
+
+    glfwSetWindowUserPointer(InputProcesser::window, nullptr);
 }
 
 void InputProcesser::disableCursor()
@@ -75,4 +86,9 @@ int InputProcesser::getCursorState()
 void InputProcesser::setUserPointer(void *ptr)
 {
     glfwSetWindowUserPointer(InputProcesser::window, ptr);
+}
+
+void *InputProcesser::getUserPointer()
+{
+    return glfwGetWindowUserPointer(InputProcesser::window);
 }

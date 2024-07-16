@@ -103,9 +103,10 @@ void UserInterface::render(MenuPayloads menuPayloads)
 
         // Split the dockspace to create a left dock area
         ImGuiID dockMainId = dockspaceId;
-        ImGui::DockBuilderSplitNode(dockMainId, ImGuiDir_Left, 0.15f, &dockLeftId, &dockRightId);
+        ImGui::DockBuilderSplitNode(dockMainId, ImGuiDir_Left, 0.2f, &dockLeftId, &dockRightId);
 
         ImGui::DockBuilderDockWindow("Stats", dockLeftId);
+        ImGui::DockBuilderDockWindow("Render", dockRightId);
 
         ImGui::DockBuilderFinish(dockspaceId);
 
@@ -243,30 +244,51 @@ void UserInterface::renderMenuBar()
         ImGui::BulletText("Mouse 5: Decrease FOV");
         ImGui::BulletText("Ctrl +: Zoom in image");
         ImGui::BulletText("Ctrl -: Zoom out image");
+        ImGui::BulletText("Middle Mouse: Pan image (double click to reset)");
         ImGui::BulletText("ESC: Quit");
         ImGui::EndPopup();
     }
     ImGui::End();
 }
 
-void UserInterface::renderImage(vk::DescriptorSet image, ImVec2 size)
+bool UserInterface::renderImage(vk::DescriptorSet image, ImVec2 size)
 {
     ImGuiWindowClass windowClass;
-    windowClass.DockNodeFlagsOverrideSet = ImGuiDockNodeFlags_NoDockingSplitOther;
+    windowClass.DockNodeFlagsOverrideSet = ImGuiDockNodeFlags_NoDockingSplitOther | ImGuiDockNodeFlags_NoWindowMenuButton;
     ImGui::SetNextWindowClass(&windowClass);
 
-    ImGui::Begin("Render", nullptr, ImGuiWindowFlags_HorizontalScrollbar);
+    ImGui::Begin("Render", nullptr, ImGuiWindowFlags_HorizontalScrollbar | ImGuiWindowFlags_NoMove);
     static float multiplier = 1.f;
-    bruh = ImGui::IsWindowFocused();
-    if (bruh)
+    static ImVec2 offset = ImVec2(0, 0);
+    bool isHovered = ImGui::IsWindowHovered();
+
+    if (ImGui::IsWindowHovered())
     {
+        if (ImGui::IsMouseDown(ImGuiMouseButton_Middle))
+        {
+            offset.x += ImGui::GetIO().MouseDelta.x;
+            offset.y += ImGui::GetIO().MouseDelta.y;
+        }
+        // double click to reset
+        if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Middle))
+        {
+            offset = ImVec2(0, 0);
+        }
         auto controlPlus = ImGui::IsKeyChordPressed(ImGuiMod_Ctrl | ImGuiKey_Equal);
         auto controlMinus = ImGui::IsKeyChordPressed(ImGuiMod_Ctrl | ImGuiKey_Minus);
+
         if (controlPlus)
-            multiplier += 0.05f;
+        {
+            multiplier += 0.1f;
+            // TODO: zoom in on mouse cursor position
+        }
+
         if (controlMinus)
-            multiplier -= 0.05f;
+            multiplier -= 0.1f;
     }
+    ImGui::SetCursorPos(offset);
     ImGui::Image((ImTextureID)image, size * multiplier);
     ImGui::End();
+
+    return isHovered;
 }
