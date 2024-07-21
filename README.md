@@ -159,3 +159,4 @@ Uses Vulkan 1.2 (SDK 1.3.283) with only core features. Built using CMake and C++
 - https://kylehalladay.com/blog/tutorial/vulkan/2018/01/28/Textue-Arrays-Vulkan.html
 - https://blog.selfshadow.com/publications/s2013-shading-course/karis/s2013_pbs_epic_notes_v2.pdf
 - https://seblagarde.wordpress.com/wp-content/uploads/2015/07/course_notes_moving_frostbite_to_pbr_v32.pdf
+- https://iquilezles.org/articles/filterableprocedurals/

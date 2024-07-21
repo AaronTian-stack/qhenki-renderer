@@ -13,7 +13,7 @@
 #include "imgui_internal.h"
 #include <thread>
 
-VulkanApp::VulkanApp() : drawBackground(true), clearColor(0.25f) {}
+VulkanApp::VulkanApp() : drawBackground(true), drawGrid(false), clearColor(0.25f) {}
 
 VulkanApp::~VulkanApp()
 {
@@ -39,6 +39,7 @@ VulkanApp::~VulkanApp()
     cubeMap.destroy();
     lightDisplay.destroy();
     solidPlane.destroy();
+    gridPlane.destroy();
     
     skinning.destroy();
 
@@ -221,6 +222,12 @@ void VulkanApp::createPipelines()
     pipelineFactory.parseShader("plane.vert", "solid.frag", layoutCache, false);
     pipelineFactory.getColorBlending().attachmentCount = 1;
     solidPlane.pipeline = pipelineFactory.buildPipeline(offscreenRenderPass.get(), 3, solidPlane.shader.get());
+
+    gridPlane.shader = mkU<Shader>(device, "grid_plane.vert", "grid_plane.frag");
+    pipelineFactory.reset();
+    pipelineFactory.parseShader("grid_plane.vert", "grid_plane.frag", layoutCache, false);
+    pipelineFactory.getColorBlending().attachmentCount = 1;
+    gridPlane.pipeline = pipelineFactory.buildPipeline(offscreenRenderPass.get(), 3, gridPlane.shader.get());
 
     // skinning shader
     skinning.shader = mkU<Shader>(device, "skinning.comp");
@@ -529,6 +536,19 @@ void VulkanApp::recordOffscreenBuffer(vk::CommandBuffer commandBuffer, Descripto
         commandBuffer.draw(6, 1, 0, 0);
     }
 
+    if (drawGrid)
+    {
+        commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, gridPlane.pipeline->getPipeline());
+        auto bmi = bayerMatrix->getDescriptorInfo();
+        vk::DescriptorSet bayerSet;
+        DescriptorBuilder::beginSet(&layoutCache, &allocator)
+                .bindBuffer(0, &bmi, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eFragment)
+                .build(bayerSet, layout);
+        commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, gridPlane.pipeline->getPipelineLayout(),
+                                         0, {cameraSet, bayerSet}, nullptr);
+        commandBuffer.draw(6, 1, 0, 0);
+    }
+
     offscreenRenderPass->end();
 }
 
@@ -806,12 +826,14 @@ void VulkanApp::attemptToDeleteOldModel()
 MenuPayloads VulkanApp::getPartialMenuPayload()
 {
     MenuPayloads m{};
+    m.deviceName = &vulkanContext.device.vkbDevice.physical_device.name;
     m.postProcessManager = postProcessManager.get();
     m.camera = &camera;
     m.visualMenuPayload.lightingParameters = &lightingParameters;
     m.visualMenuPayload.cubeMapRotation = &cubeMapRotation;
     m.visualMenuPayload.clearColor = &clearColor;
     m.visualMenuPayload.drawBackground = &drawBackground;
+    m.visualMenuPayload.drawGrid = &drawGrid;
     m.lightsList.sphereLights = &sphereLights;
     m.lightsList.tubeLights = &tubeLights;
     m.lightsList.rectangleLights = &rectangleLights;

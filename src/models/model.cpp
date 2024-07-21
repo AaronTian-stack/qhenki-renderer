@@ -25,11 +25,6 @@ void Model::destroy()
     }
 }
 
-void Model::skin(vk::CommandBuffer commandBuffer)
-{
-
-}
-
 std::vector<vk::DescriptorImageInfo> Model::getDescriptorImageInfo()
 {
     std::vector<vk::DescriptorImageInfo> descriptorImageInfo;

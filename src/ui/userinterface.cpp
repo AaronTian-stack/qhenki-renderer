@@ -124,7 +124,10 @@ void UserInterface::render(MenuPayloads menuPayloads)
 
     ImGui::Begin("Stats", nullptr, ImGuiWindowFlags_NoMove);
 
-    // TODO: device information
+    if (menuPayloads.deviceName)
+        ImGui::Text("Device: %s", menuPayloads.deviceName->c_str());
+    else
+        ImGui::Text("Device: N/A");
 
     ImGui::Text("FPS: %f", ImGui::GetIO().Framerate);
 

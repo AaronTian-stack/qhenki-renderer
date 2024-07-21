@@ -18,10 +18,12 @@ void VisualMenu::renderMenu(void *payload)
             ImGui::BeginDisabled(*visualMenuPayload->drawBackground);
             ImGui::ColorEdit3("Clear Color", reinterpret_cast<float *>(visualMenuPayload->clearColor));
             ImGui::EndDisabled();
+
+            ImGui::Checkbox("Draw Grid", visualMenuPayload->drawGrid);
         }
         else
         {
-            ImGui::TextColored(ImVec4(1.f, 0.f, 0.f, 1.f), "Missing clear color");
+            ImGui::TextColored(ImVec4(1.f, 0.f, 0.f, 1.f), "Missing visual options");
         }
 
         ImGui::Separator();

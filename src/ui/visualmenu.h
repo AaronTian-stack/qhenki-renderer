@@ -12,6 +12,7 @@ struct VisualMenuPayload
     bool *postProcessOpen;
     bool *lightsOpen;
     bool *drawBackground;
+    bool *drawGrid;
 };
 
 class VisualMenu : public Menu

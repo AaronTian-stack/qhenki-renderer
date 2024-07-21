@@ -26,6 +26,7 @@ struct ImGuiCreateParameters
 
 struct MenuPayloads
 {
+    std::string *deviceName;
     void *camera;
     void *postProcessManager;
     VisualMenuPayload visualMenuPayload;
