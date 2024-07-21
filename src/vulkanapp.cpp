@@ -13,7 +13,7 @@
 #include "imgui_internal.h"
 #include <thread>
 
-VulkanApp::VulkanApp() : drawBackground(true), drawGrid(false), clearColor(0.25f) {}
+VulkanApp::VulkanApp() : drawBackground(true), drawGrid(false), gridScale(35.f), clearColor(0.25f) {}
 
 VulkanApp::~VulkanApp()
 {
@@ -546,6 +546,7 @@ void VulkanApp::recordOffscreenBuffer(vk::CommandBuffer commandBuffer, Descripto
                 .build(bayerSet, layout);
         commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, gridPlane.pipeline->getPipelineLayout(),
                                          0, {cameraSet, bayerSet}, nullptr);
+        gridPlane.pipeline->setPushConstant(commandBuffer, &gridScale, sizeof(float), 0, vk::ShaderStageFlagBits::eFragment);
         commandBuffer.draw(6, 1, 0, 0);
     }
 
@@ -834,6 +835,7 @@ MenuPayloads VulkanApp::getPartialMenuPayload()
     m.visualMenuPayload.clearColor = &clearColor;
     m.visualMenuPayload.drawBackground = &drawBackground;
     m.visualMenuPayload.drawGrid = &drawGrid;
+    m.visualMenuPayload.gridScale = &gridScale;
     m.lightsList.sphereLights = &sphereLights;
     m.lightsList.tubeLights = &tubeLights;
     m.lightsList.rectangleLights = &rectangleLights;

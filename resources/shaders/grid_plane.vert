@@ -10,10 +10,6 @@ layout(scalar, set = 0, binding = 0) uniform cameraInfo {
     mat4 proj;
 } ubo;
 
-layout(scalar, push_constant) uniform ModelTransform {
-    mat4 transform;
-} modelTransform;
-
 layout(location = 0) out vec3 camPos;
 layout(location = 1) out vec3 nearPoint;
 layout(location = 2) out vec3 farPoint;

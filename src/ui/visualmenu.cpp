@@ -20,6 +20,9 @@ void VisualMenu::renderMenu(void *payload)
             ImGui::EndDisabled();
 
             ImGui::Checkbox("Draw Grid", visualMenuPayload->drawGrid);
+            ImGui::BeginDisabled(!*visualMenuPayload->drawGrid);
+            ImGui::DragFloat("Grid Line Scale", visualMenuPayload->gridScale, 0.1f, 35.f, 100.f);
+            ImGui::EndDisabled();
         }
         else
         {

@@ -13,6 +13,7 @@ struct VisualMenuPayload
     bool *lightsOpen;
     bool *drawBackground;
     bool *drawGrid;
+    float *gridScale;
 };
 
 class VisualMenu : public Menu

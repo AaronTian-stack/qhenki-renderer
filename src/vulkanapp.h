@@ -32,6 +32,7 @@ class VulkanApp
 {
 private:
     bool drawBackground, drawGrid;
+    float gridScale;
     glm::vec3 clearColor;
     EnvironmentMap envMap;
     std::vector<uPtr<Model>> models;

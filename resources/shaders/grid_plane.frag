@@ -13,6 +13,10 @@ layout(scalar, set = 1, binding = 0) uniform DitherMatrix {
     float dither[64];
 } ditherMatrix;
 
+layout(scalar, push_constant) uniform PushConstant {
+    float gridScale;
+} pc;
+
 float computeDepth(vec3 pos)
 {
     vec4 ndc = viewProj * vec4(pos, 1.0);
@@ -27,12 +31,11 @@ float linearize_depth(float d,float zNear,float zFar)
 float filteredGrid(vec2 p, vec2 dpdx, vec2 dpdy)
 {
     // thanks iq
-    const float N = 10.0; // TODO: configurable
     vec2 w = max(abs(dpdx), abs(dpdy));
     vec2 a = p + 0.5*w;
     vec2 b = p - 0.5*w;
-    vec2 i = (floor(a)+min(fract(a)*N,1.0)-
-    floor(b)-min(fract(b)*N,1.0))/(N*w);
+    vec2 i = (floor(a)+min(fract(a)*pc.gridScale,1.0)-
+    floor(b)-min(fract(b)*pc.gridScale,1.0))/(pc.gridScale*w);
     return (1.0-i.x)*(1.0-i.y);
 }
 
@@ -57,18 +60,19 @@ void main()
 
     float dither = ditherMatrix.dither[int(mod(gl_FragCoord.y, 8.0)) * 8 + int(mod(gl_FragCoord.x, 8.0))];
 
-    if (t < 0.0 || (1.0 - linearDepth) < dither) discard;
+    if (t < 0.0) //|| (1.0 - linearDepth) < dither)
+        discard;
 
     vec4 color = vec4(1.0);
     // check if hitpoint is on x or z axis
     if (abs(hitPoint.z) < 0.1)
     {
-        mate = 0.1;
+        mate = 1.0;
         color = vec4(1.0, 0.0, 0.0, 1.0);
     }
     if (abs(hitPoint.x) < 0.1)
     {
-        mate = 0.1;
+        mate = 1.0;
         color = vec4(0.0, 0.0, 1.0, 1.0);
     }
 
