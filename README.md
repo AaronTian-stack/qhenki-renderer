@@ -14,13 +14,6 @@ My personal hobby renderer written in C++ using Vulkan. It is intended as a plac
 
 ## Showcase
 
-<table>
-  <tr>
-    <td><img src="screenshots/editor.png" alt="editor"></td>
-    <td><img src="screenshots/helmet.png" alt="helmet"></td>
-  </tr>
-</table>
-
 <table border="1">
   <tr>
     <td colspan="2" align="center"><b>Dynamic Area Lights</b></td>
@@ -41,6 +34,16 @@ My personal hobby renderer written in C++ using Vulkan. It is intended as a plac
 <tr>
     <td><img src="screenshots/bmo-anim.gif" alt="bmo"></td>
     <td><img src="screenshots/chief-anim.gif" alt="chief"></td>
+  </tr>
+</table>
+
+<table border="1">
+  <tr>
+    <td colspan="2" align="center"><b>Image Based Lighting and Editor</b></td>
+  </tr>
+  <tr>
+    <td><img src="screenshots/editor.png" alt="editor"></td>
+    <td><img src="screenshots/helmet.png" alt="helmet"></td>
   </tr>
 </table>
 
@@ -152,6 +155,7 @@ Models featured in screenshots:
   - [Pico Chan](https://sketchfab.com/3d-models/pico-chan-80923daa339348858c1291a2969c9b10)
   - [BMO](https://sketchfab.com/3d-models/bmo-realistic-5d8a3f209118401da46e3b1b38903961)
   - [Spartan Armour MKV - Halo Reach](https://sketchfab.com/3d-models/spartan-armour-mkv-halo-reach-57070b2fd9ff472c8988e76d8c5cbe66)
+  - [Metal-Rough Spheres](https://github.com/KhronosGroup/glTF-Sample-Models/tree/main/2.0/MetalRoughSpheres)
 
 ## Technical Details
 Uses Vulkan 1.2 (SDK 1.3.283) with only core features. Built using CMake and C++17. Runs on Windows and macOS (MoltenVK).
