@@ -16,15 +16,6 @@ My personal hobby renderer written in C++ using Vulkan. It is intended as a plac
 
 <table border="1">
   <tr>
-    <td colspan="2" align="center"><b>Dynamic Area Lights</b></td>
-  </tr>
-  <tr>
-    <td><img src="screenshots/lights.png" alt="lights"></td>
-  </tr>
-</table>
-
-<table border="1">
-  <tr>
     <td colspan="2" align="center"><b>Compute Shader Skinning and Animation</b></td>
   </tr>
   <tr>
@@ -34,6 +25,15 @@ My personal hobby renderer written in C++ using Vulkan. It is intended as a plac
 <tr>
     <td><img src="screenshots/bmo-anim.gif" alt="bmo"></td>
     <td><img src="screenshots/chief-anim.gif" alt="chief"></td>
+  </tr>
+</table>
+
+<table border="1">
+  <tr>
+    <td colspan="2" align="center"><b>Dynamic Area Lights</b></td>
+  </tr>
+  <tr>
+    <td><img src="screenshots/lights.png" alt="lights"></td>
   </tr>
 </table>
 
@@ -101,7 +101,7 @@ My personal hobby renderer written in C++ using Vulkan. It is intended as a plac
 * Tangent Space Normal Mapping
   * Tangent vectors are automatically computed by the application using the [MikkTSpace](http://www.mikktspace.com/) standard (assuming the model doesn't already have them)
 * ImGUI Integration
-  * GUI to change renderer settings and load models
+  * Docking GUI to change renderer settings and load models
 
 ## Future Features
 - [x] ~~Dynamic Lights~~ [#16](https://github.com/AaronTian-stack/qhenki-renderer/pull/16)
