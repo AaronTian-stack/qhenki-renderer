@@ -65,12 +65,12 @@ void main()
 
     vec4 color = vec4(1.0);
     // check if hitpoint is on x or z axis
-    if (abs(hitPoint.z) < 0.1)
+    if (abs(hitPoint.z) < 0.03)
     {
         mate = 1.0;
         color = vec4(1.0, 0.0, 0.0, 1.0);
     }
-    if (abs(hitPoint.x) < 0.1)
+    if (abs(hitPoint.x) < 0.03)
     {
         mate = 1.0;
         color = vec4(0.0, 0.0, 1.0, 1.0);

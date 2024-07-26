@@ -14,7 +14,12 @@ My personal hobby renderer written in C++ using Vulkan. It is intended as a plac
 
 ## Showcase
 
-![helmet](screenshots/helmet.png)
+<table>
+  <tr>
+    <td><img src="screenshots/editor.png" alt="editor"></td>
+    <td><img src="screenshots/helmet.png" alt="helmet"></td>
+  </tr>
+</table>
 
 <table border="1">
   <tr>
