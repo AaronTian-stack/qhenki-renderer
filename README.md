@@ -104,9 +104,9 @@ My personal hobby renderer written in C++ using Vulkan. It is intended as a plac
   * Docking GUI to change renderer settings and load models
 
 ## Future Features
-- [x] ~~Dynamic Lights~~ [#16](https://github.com/AaronTian-stack/qhenki-renderer/pull/16)
+- [x] Dynamic Lights [#16](https://github.com/AaronTian-stack/qhenki-renderer/pull/16)
   - Sphere, tube, and rectangle lights
-- [x] ~~Compute Skinning and Skeletal Animation~~ [#17](https://github.com/AaronTian-stack/qhenki-renderer/pull/17)
+- [x] Compute Skinning and Skeletal Animation [#17](https://github.com/AaronTian-stack/qhenki-renderer/pull/17)
 - [ ] High Quality Bokeh Depth of Field (physically based)
 - [ ] Physically Based Bloom
 - [ ] Volumetric Lighting
