@@ -8,6 +8,7 @@
 #include <iostream>
 #include "ImGuiFileDialog-0.6.7/ImGuiFileDialog.h"
 #include "../models/gltfloader.h"
+#include "imgui_internal.h"
 
 UserInterface::UserInterface() {}
 
@@ -24,7 +25,7 @@ void UserInterface::create(ImGuiCreateParameters param, CommandPool &commandPool
     else
         std::cerr << "Could not find font" << std::endl;
     io.ConfigWindowsMoveFromTitleBarOnly = true;
-    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard | ImGuiConfigFlags_DockingEnable;
 
     VkDescriptorPoolSize pool_sizes[] =
     {
@@ -61,20 +62,18 @@ void UserInterface::create(ImGuiCreateParameters param, CommandPool &commandPool
     init_info.Instance = param.context->vkbInstance.instance;
     init_info.PhysicalDevice = param.context->device.physicalDevice;
     init_info.Device = param.context->device.logicalDevice;
+    init_info.QueueFamily = param.context->queueManager.getGraphicsIndex();
     init_info.Queue = param.context->queueManager.queuesIndices.graphics;
     init_info.DescriptorPool = imguiPool;
+    init_info.RenderPass = param.renderPass->getRenderPass();
     init_info.MinImageCount = param.framesInFlight;
     init_info.ImageCount = param.framesInFlight;
     init_info.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
 
     window = param.window;
 
-    ImGui_ImplVulkan_Init(&init_info, param.renderPass->getRenderPass());
-
-    auto commandBuffer = commandPool.beginSingleCommand();
-    ImGui_ImplVulkan_CreateFontsTexture(commandBuffer);
-    commandBuffer.end();
-    commandPool.submitSingleTimeCommands(param.context->queueManager, {commandBuffer}, true);
+    ImGui_ImplVulkan_Init(&init_info);
+    ImGui_ImplVulkan_CreateFontsTexture();
 }
 
 void UserInterface::destroy()
@@ -86,17 +85,49 @@ void UserInterface::destroy()
     ImGui::DestroyContext();
 }
 
+static ImGuiID dockLeftId, dockRightId;
+
 void UserInterface::render(MenuPayloads menuPayloads)
 {
     ImGuiStyle& style = ImGui::GetStyle();
     style.FrameRounding = 5.0f;
 
-    const int y = 21;
-//    ImGui::ShowDemoWindow();
-    ImGui::SetNextWindowPos(ImVec2(0, y));
-    auto flags = ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove;
+    static bool firstTime = true;
+    if (firstTime)
+    {
+        // Set up initial dock layout
+        ImGuiID dockspaceId = ImGui::GetID("MyDockSpace");
+        ImGui::DockBuilderRemoveNode(dockspaceId); // Clear out existing layout
+        ImGui::DockBuilderAddNode(dockspaceId, ImGuiDockNodeFlags_DockSpace); // Add back the dock space without any nodes
+        ImGui::DockBuilderSetNodeSize(dockspaceId, ImGui::GetMainViewport()->Size);
 
-    ImGui::Begin("Stats", nullptr, flags);
+        // Split the dockspace to create a left dock area
+        ImGuiID dockMainId = dockspaceId;
+        ImGui::DockBuilderSplitNode(dockMainId, ImGuiDir_Left, 0.2f, &dockLeftId, &dockRightId);
+
+        ImGui::DockBuilderDockWindow("Stats", dockLeftId);
+        ImGui::DockBuilderDockWindow("Render", dockRightId);
+
+        ImGui::DockBuilderFinish(dockspaceId);
+
+        firstTime = false;
+    }
+
+//    ImGui::ShowDemoWindow();
+    ImGuiID dockspaceId = ImGui::GetID("MyDockSpace");
+    ImGui::DockSpaceOverViewport(dockspaceId, ImGui::GetMainViewport(), ImGuiDockNodeFlags_PassthruCentralNode);
+
+    ImGuiWindowClass windowClass;
+    windowClass.DockNodeFlagsOverrideSet = ImGuiDockNodeFlags_NoWindowMenuButton
+            | ImGuiDockNodeFlags_NoDockingOverOther;
+    ImGui::SetNextWindowClass(&windowClass);
+
+    ImGui::Begin("Stats", nullptr, ImGuiWindowFlags_NoMove);
+
+    if (menuPayloads.deviceName)
+        ImGui::Text("Device: %s", menuPayloads.deviceName->c_str());
+    else
+        ImGui::Text("Device: N/A");
 
     ImGui::Text("FPS: %f", ImGui::GetIO().Framerate);
 
@@ -107,7 +138,7 @@ void UserInterface::render(MenuPayloads menuPayloads)
         frameTimes.erase(frameTimes.begin());
 
     ImGui::PlotLines("", frameTimes.data(), frameTimes.size(), 0, "",
-                     0.f, 0.05f, ImVec2(0, 20));
+                     0.f, 0.05f, ImVec2(ImGui::GetContentRegionAvail().x, 40));
 
     ImGui::Separator();
     if (ImGui::Button("Visual Options"))
@@ -189,7 +220,9 @@ void UserInterface::renderMenuBar()
         ImGui::EndMainMenuBar();
     }
 
-    if (ImGuiFileDialog::Instance()->Display("ChooseFileDlgKey")) {
+    // dont allow this window to dock
+    if (ImGuiFileDialog::Instance()->Display("ChooseFileDlgKey"))
+    {
         if (ImGuiFileDialog::Instance()->IsOk())
         {
             std::string filePathName = ImGuiFileDialog::Instance()->GetFilePathName();
@@ -197,7 +230,6 @@ void UserInterface::renderMenuBar()
             // call a function passed from vulkan app
             modelSelectCallback(filePathName);
         }
-
         // close
         ImGuiFileDialog::Instance()->Close();
     }
@@ -213,8 +245,53 @@ void UserInterface::renderMenuBar()
         ImGui::BulletText("Scroll Wheel: Zoom Camera");
         ImGui::BulletText("Mouse 4: Increase FOV");
         ImGui::BulletText("Mouse 5: Decrease FOV");
+        ImGui::BulletText("Ctrl +: Zoom in image");
+        ImGui::BulletText("Ctrl -: Zoom out image");
+        ImGui::BulletText("Middle Mouse: Pan image (double click to reset)");
         ImGui::BulletText("ESC: Quit");
         ImGui::EndPopup();
     }
     ImGui::End();
+}
+
+bool UserInterface::renderImage(vk::DescriptorSet image, ImVec2 size)
+{
+    ImGuiWindowClass windowClass;
+    windowClass.DockNodeFlagsOverrideSet = ImGuiDockNodeFlags_NoDockingSplitOther | ImGuiDockNodeFlags_NoWindowMenuButton;
+    ImGui::SetNextWindowClass(&windowClass);
+
+    ImGui::Begin("Render", nullptr, ImGuiWindowFlags_HorizontalScrollbar | ImGuiWindowFlags_NoMove);
+    static float multiplier = 1.f;
+    static ImVec2 offset = ImVec2(0, 0);
+    bool isHovered = ImGui::IsWindowHovered();
+
+    if (ImGui::IsWindowHovered())
+    {
+        if (ImGui::IsMouseDown(ImGuiMouseButton_Middle))
+        {
+            offset.x += ImGui::GetIO().MouseDelta.x;
+            offset.y += ImGui::GetIO().MouseDelta.y;
+        }
+        // double click to reset
+        if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Middle))
+        {
+            offset = ImVec2(0, 0);
+        }
+        auto controlPlus = ImGui::IsKeyChordPressed(ImGuiMod_Ctrl | ImGuiKey_Equal);
+        auto controlMinus = ImGui::IsKeyChordPressed(ImGuiMod_Ctrl | ImGuiKey_Minus);
+
+        if (controlPlus)
+        {
+            multiplier += 0.1f;
+            // TODO: zoom in on mouse cursor position
+        }
+
+        if (controlMinus)
+            multiplier -= 0.1f;
+    }
+    ImGui::SetCursorPos(offset);
+    ImGui::Image((ImTextureID)image, size * multiplier);
+    ImGui::End();
+
+    return isHovered;
 }

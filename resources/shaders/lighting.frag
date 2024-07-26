@@ -1,5 +1,9 @@
 #version 450
 #extension GL_EXT_scalar_block_layout : require
+#extension GL_GOOGLE_include_directive : require
+
+#include "include/brdfmacros.glsl"
+#include "include/closestPoint.glsl"
 
 layout (input_attachment_index = 0, set = 1, binding = 0) uniform subpassInput inputAlbedo;
 layout (input_attachment_index = 1, set = 1, binding = 1) uniform subpassInput inputNormal;
@@ -34,13 +38,6 @@ struct Light
 {
     vec3 position;
     vec3 color;
-};
-
-struct PointLight
-{
-    vec3 position;
-    vec3 color;
-    float intensity;
 };
 
 struct SphereLight
@@ -97,8 +94,6 @@ struct Material
 };
 
 // https://seblagarde.wordpress.com/wp-content/uploads/2015/07/course_notes_moving_frostbite_to_pbr_v32.pdf
-
-#define PI 3.14159265359
 
 vec3 F_Schlick(vec3 f0, float f90, float u)
 {
@@ -181,33 +176,6 @@ float RectangleSolidAngle(vec3 worldPos, vec3 p0, vec3 p1, vec3 p2, vec3 p3)
     return g0 + g1 + g2 + g3 - 2.0 * PI;
 }
 
-// https://wickedengine.net/2017/09/area-lights/
-
-// N:	float3 normal
-// L:	float3 light vector
-// V:	float3 view vector
-#define BRDF_MAKE( N, L, V )								\
-	const vec3	    H = normalize(L + V);			  		\
-	const float		VdotN = abs(dot(N, V)) + 1e-5f;			\
-	const float		LdotN = max(0.0, dot(L, N));  			\
-	const float		HdotV = max(0.0, dot(H, V));			\
-	const float		HdotN = max(0.0, dot(H, N)); 			\
-	const float		NdotV = VdotN;					  		\
-	const float		NdotL = LdotN;					  		\
-	const float		VdotH = HdotV;					  		\
-	const float		NdotH = HdotN;					  		\
-	const float		LdotH = HdotV;					  		\
-	const float		HdotL = LdotH;
-
-// ROUGHNESS:	float surface roughness
-// F0:			float3 surface specular color (fresnel f0)
-#define BRDF_SPECULAR( ROUGHNESS, F0, F )					\
-	GetSpecular(NdotV, NdotL, LdotH, NdotH, ROUGHNESS, F0, F)
-
-// ROUGHNESS:		float surface roughness
-#define BRDF_DIFFUSE( ROUGHNESS )							\
-	GetDiffuse(NdotV, NdotL, LdotH, ROUGHNESS)
-
 vec3 BRDF_CALCULATE(Material material, float illumuinace, vec3 lightColor, vec3 N, vec3 L, vec3 V)
 {
     float roughness = material.roughness;
@@ -251,12 +219,7 @@ float illuminanceSphereOrDisk(float cosTheta, float sinSigmaSqr)
     }
     return max(illuminance, 0.0f);
 }
-vec3 closestPointSphere(float radius, vec3 L, vec3 R, vec3 fragPos)
-{
-    vec3 centerToRay = (dot(L, R) * R) - L;
-    vec3 closestPoint = L + centerToRay * clamp(radius / length(centerToRay), 0.0, 1.0);
-    return normalize(closestPoint);
-}
+
 vec3 calculateSphereLight(SphereLight light, vec3 N, vec3 V, vec3 R, vec3 fragPos, Material material)
 {
     vec3 Lunormalized = light.position - fragPos;
@@ -277,18 +240,7 @@ vec3 calculateSphereLight(SphereLight light, vec3 N, vec3 V, vec3 R, vec3 fragPo
     return BRDF_CALCULATE(material, illumuinace, light.color, N, L, V);
 }
 
-vec3 closestPointOnLine(vec3 a, vec3 b, vec3 c)
-{
-    vec3 ab = b - a;
-    float t = dot(c - a , ab) / dot(ab, ab);
-    return a + t * ab ;
-}
-vec3 closestPointOnSegment(vec3 a, vec3 b, vec3 c)
-{
-    vec3 ab = b - a;
-    float t = dot(c - a, ab) / dot(ab, ab);
-    return a + clamp (t, 0.0, 1.0) * ab;
-}
+
 vec3 calculateTubeLight(TubeLight light, vec3 N, vec3 V, vec3 R, vec3 fragPos, Material material)
 {
     float lightWidth = distance(light.position1, light.position2);
@@ -331,20 +283,6 @@ vec3 calculateTubeLight(TubeLight light, vec3 N, vec3 V, vec3 R, vec3 fragPos, M
     return BRDF_CALCULATE(material, illuminance, light.color, N, L, V);
 }
 
-vec3 tracePlane(vec3 planeOrigin, vec3 planeNormal, vec3 fragPos, vec3 R)
-{
-    float denom = dot(planeNormal, R);
-    float t = dot(planeNormal, planeOrigin - fragPos) / denom;
-    vec3 planeIntersectionPoint = fragPos + R * t;
-    return planeIntersectionPoint;
-}
-vec3 closestPointOnRectangle(vec3 fragPos, vec3 planeOrigin, vec3 planeright, vec3 planeUp, vec2 halfSize)
-{
-    vec3 dir = fragPos - planeOrigin;
-    vec2 dist2D = vec2(dot(dir, -planeright), dot(dir, planeUp));
-    dist2D = clamp(dist2D, -halfSize, halfSize);
-    return planeOrigin + planeright * dist2D.x + planeUp * dist2D.y;
-}
 vec3 calculateRectangle(RectangleLight light, vec3 N, vec3 V, vec3 R, vec3 fragPos, Material material)
 {
     vec3 nRight = normalize(light.right);

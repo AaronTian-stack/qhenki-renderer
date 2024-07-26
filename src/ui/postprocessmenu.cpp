@@ -106,7 +106,9 @@ void PostProcessMenu::renderMenu(void *payload)
                     bool *open = isOpen(activePostProcesses[i]);
                     if (open && *open)
                     {
-                        ImGui::Begin(activePostProcesses[i]->name, open, ImGuiWindowFlags_AlwaysAutoResize);
+                        // breaks with docking so just disable it (window only)
+                        ImGui::Begin(activePostProcesses[i]->name, open,
+                                     ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoDocking);
                         renderPostProcessMenu(activePostProcesses[i]);
                         if (ImGui::Button("Remove"))
                         {

@@ -14,7 +14,19 @@ My personal hobby renderer written in C++ using Vulkan. It is intended as a plac
 
 ## Showcase
 
-![helmet](screenshots/helmet.png)
+<table border="1">
+  <tr>
+    <td colspan="2" align="center"><b>Compute Shader Skinning and Animation</b></td>
+  </tr>
+  <tr>
+    <td><img src="screenshots/spi-anim.gif" alt="spi"></td>
+    <td><img src="screenshots/pico-anim.gif" alt="pico"></td>
+  </tr>
+<tr>
+    <td><img src="screenshots/bmo-anim.gif" alt="bmo"></td>
+    <td><img src="screenshots/chief-anim.gif" alt="chief"></td>
+  </tr>
+</table>
 
 <table border="1">
   <tr>
@@ -27,15 +39,11 @@ My personal hobby renderer written in C++ using Vulkan. It is intended as a plac
 
 <table border="1">
   <tr>
-    <td colspan="2" align="center"><b>Compute Shader Skinning and Animation</b></td>
+    <td colspan="2" align="center"><b>Image Based Lighting and Editor</b></td>
   </tr>
   <tr>
-    <td><img src="screenshots/spi-anim.gif" alt="spi"></td>
-    <td><img src="screenshots/pico-anim.gif" alt="pico"></td>
-  </tr>
-<tr>
-    <td><img src="screenshots/bmo-anim.gif" alt="bmo"></td>
-    <td><img src="screenshots/chief-anim.gif" alt="chief"></td>
+    <td><img src="screenshots/editor.png" alt="editor"></td>
+    <td><img src="screenshots/helmet.png" alt="helmet"></td>
   </tr>
 </table>
 
@@ -93,12 +101,12 @@ My personal hobby renderer written in C++ using Vulkan. It is intended as a plac
 * Tangent Space Normal Mapping
   * Tangent vectors are automatically computed by the application using the [MikkTSpace](http://www.mikktspace.com/) standard (assuming the model doesn't already have them)
 * ImGUI Integration
-  * GUI to change renderer settings and load models
+  * Docking GUI to change renderer settings and load models
 
 ## Future Features
-- [x] ~~Dynamic Lights~~ [#16](https://github.com/AaronTian-stack/qhenki-renderer/pull/16)
+- [x] Dynamic Lights [#16](https://github.com/AaronTian-stack/qhenki-renderer/pull/16)
   - Sphere, tube, and rectangle lights
-- [x] ~~Compute Skinning and Skeletal Animation~~ [#17](https://github.com/AaronTian-stack/qhenki-renderer/pull/17)
+- [x] Compute Skinning and Skeletal Animation [#17](https://github.com/AaronTian-stack/qhenki-renderer/pull/17)
 - [ ] High Quality Bokeh Depth of Field (physically based)
 - [ ] Physically Based Bloom
 - [ ] Volumetric Lighting
@@ -147,6 +155,7 @@ Models featured in screenshots:
   - [Pico Chan](https://sketchfab.com/3d-models/pico-chan-80923daa339348858c1291a2969c9b10)
   - [BMO](https://sketchfab.com/3d-models/bmo-realistic-5d8a3f209118401da46e3b1b38903961)
   - [Spartan Armour MKV - Halo Reach](https://sketchfab.com/3d-models/spartan-armour-mkv-halo-reach-57070b2fd9ff472c8988e76d8c5cbe66)
+  - [Metal-Rough Spheres](https://github.com/KhronosGroup/glTF-Sample-Models/tree/main/2.0/MetalRoughSpheres)
 
 ## Technical Details
 Uses Vulkan 1.2 (SDK 1.3.283) with only core features. Built using CMake and C++17. Runs on Windows and macOS (MoltenVK).
@@ -159,3 +168,4 @@ Uses Vulkan 1.2 (SDK 1.3.283) with only core features. Built using CMake and C++
 - https://kylehalladay.com/blog/tutorial/vulkan/2018/01/28/Textue-Arrays-Vulkan.html
 - https://blog.selfshadow.com/publications/s2013-shading-course/karis/s2013_pbs_epic_notes_v2.pdf
 - https://seblagarde.wordpress.com/wp-content/uploads/2015/07/course_notes_moving_frostbite_to_pbr_v32.pdf
+- https://iquilezles.org/articles/filterableprocedurals/

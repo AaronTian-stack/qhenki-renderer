@@ -1,5 +1,7 @@
 #pragma once
 
+#define IMGUI_DEFINE_MATH_OPERATORS
+
 #include <vulkan/vulkan_core.h>
 #include "../window.h"
 #include "../vulkan/renderpass/renderpass.h"
@@ -24,6 +26,7 @@ struct ImGuiCreateParameters
 
 struct MenuPayloads
 {
+    std::string *deviceName;
     void *camera;
     void *postProcessManager;
     VisualMenuPayload visualMenuPayload;
@@ -49,6 +52,7 @@ public:
 
     void create(ImGuiCreateParameters param, CommandPool &commandPool);
     void render(MenuPayloads menuPayloads);
+    bool renderImage(vk::DescriptorSet image, ImVec2 size);
     void destroy() override;
 
     void begin();

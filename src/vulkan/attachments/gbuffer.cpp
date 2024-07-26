@@ -1,7 +1,7 @@
 #include "gbuffer.h"
 
-GBuffer::GBuffer(vk::Device device)
-: FrameBuffer(device, vk::Framebuffer())
+GBuffer::GBuffer(vk::Device device, vk::Extent2D resolution)
+: FrameBuffer(device, vk::Framebuffer()), resolution(resolution)
 {}
 
 Attachment *GBuffer::getAttachment(GBufferAttachmentType type)
@@ -21,7 +21,7 @@ void GBuffer::setAttachment(GBufferAttachmentType type, uPtr<Attachment> &attach
         attachments.push_back(std::move(attachment));
 }
 
-void GBuffer::createFrameBuffer(vk::RenderPass renderPass, vk::Extent2D extent)
+void GBuffer::createFrameBuffer(vk::RenderPass renderPass)
 {
     std::vector<vk::ImageView> imgAttachments;
     for (unsigned int i = 0; i < (unsigned int)GBufferAttachmentType::END; i++)
@@ -36,8 +36,8 @@ void GBuffer::createFrameBuffer(vk::RenderPass renderPass, vk::Extent2D extent)
             renderPass,
             imgAttachments.size(),
             imgAttachments.data(),
-            extent.width,
-            extent.height,
+            resolution.width,
+            resolution.height,
             1);
     this->framebuffer = device.createFramebuffer(createInfo);
 }

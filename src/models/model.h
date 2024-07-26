@@ -29,7 +29,6 @@ public:
     Model();
     Node* getRoot();
     std::vector<vk::DescriptorImageInfo> getDescriptorImageInfo();
-    void skin(vk::CommandBuffer commandBuffer);
     void destroy();
     void updateAnimation(float time, int frame);
 

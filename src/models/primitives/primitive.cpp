@@ -1,6 +1,6 @@
 #define TINYOBJLOADER_IMPLEMENTATION
 //#define TINYOBJLOADER_USE_MAPBOX_EARCUT
-#include "obj/tiny_obj_loader.h"
+#include <obj/tiny_obj_loader.h>
 
 #include "primitive.h"
 #include <iostream>

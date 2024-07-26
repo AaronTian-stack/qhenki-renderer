@@ -31,7 +31,8 @@
 class VulkanApp
 {
 private:
-    bool drawBackground;
+    bool drawBackground, drawGrid;
+    float gridScale;
     glm::vec3 clearColor;
     EnvironmentMap envMap;
     std::vector<uPtr<Model>> models;
@@ -50,7 +51,7 @@ private:
     uPtr<RenderPass> offscreenRenderPass;
     PipelineBuilder pipelineFactory;
 
-    PipelineShader gBufferPS, lighting, pass, passAndClear, cubeMap, lightDisplay, solidPlane;
+    PipelineShader gBufferPS, lighting, pass, passAndClear, cubeMap, lightDisplay, solidPlane, gridPlane;
     PipelineShader skinning;
 
     std::mutex modelMutex;
