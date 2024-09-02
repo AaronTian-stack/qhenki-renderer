@@ -10,7 +10,6 @@ struct VisualMenuPayload
     float *cubeMapRotation;
     glm::vec3 *clearColor;
     bool *postProcessOpen;
-    bool *lightsOpen;
     bool *drawBackground;
     bool *drawGrid;
     float *gridScale;

@@ -24,6 +24,7 @@ private:
     std::vector<Skin> skins;
     std::vector<Animation> animations;
     tsl::robin_map<int, std::vector<unsigned char>> animationRawData;
+    int animationIndex = 0;
 
 public:
     Model();
@@ -31,6 +32,10 @@ public:
     std::vector<vk::DescriptorImageInfo> getDescriptorImageInfo();
     void destroy();
     void updateAnimation(float time, int frame);
+    const std::vector<Animation>& getAnimations() const { return animations; }
+
+    int getAnimationIndex() const { return animationIndex; }
+    void setAnimationIndex(int index) { animationIndex = index; }
 
     friend class Node;
     friend class GLTFLoader;

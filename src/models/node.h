@@ -28,6 +28,8 @@ private:
 
 public:
     explicit Node(Model *model);
+    const std::string& getName() { return name; }
+    const std::vector<uPtr<Node>>& getChildren() { return children; }
     void setTranslation(glm::vec3 translation);
     void setRotation(glm::quat rotation);
     void setScale(glm::vec3 scale);

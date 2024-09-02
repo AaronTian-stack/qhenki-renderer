@@ -141,22 +141,50 @@ void UserInterface::render(MenuPayloads menuPayloads)
                      0.f, 0.05f, ImVec2(ImGui::GetContentRegionAvail().x, 40));
 
     ImGui::Separator();
-    if (ImGui::Button("Visual Options"))
     {
-        visualMenu.open = true;
-    }
-    ImGui::SameLine();
-    if (ImGui::Button("Camera Options"))
-    {
-        cameraMenu.open = true;
+        ImGui::BeginTable("OptionsTable", 2, ImGuiTableFlags_SizingFixedFit);
+
+        float maxButtonWidth = 0.0f;
+        maxButtonWidth = std::max(maxButtonWidth, ImGui::CalcTextSize("Visual Options").x);
+        maxButtonWidth = std::max(maxButtonWidth, ImGui::CalcTextSize("Lights").x);
+        maxButtonWidth = std::max(maxButtonWidth, ImGui::CalcTextSize("Camera Options").x);
+        maxButtonWidth = std::max(maxButtonWidth, ImGui::CalcTextSize("Model Options").x);
+
+        maxButtonWidth += ImGui::GetStyle().FramePadding.x * 2.f;
+
+        ImGui::TableNextColumn();
+        if (ImGui::Button("Visual Options", ImVec2(maxButtonWidth, 0)))
+        {
+            visualMenu.open = true;
+        }
+
+        ImGui::TableNextColumn();
+        if (ImGui::Button("Model Options", ImVec2(maxButtonWidth, 0)))
+        {
+            modelMenu.open = true;
+        }
+
+        ImGui::TableNextColumn();
+        if (ImGui::Button("Camera Options", ImVec2(maxButtonWidth, 0)))
+        {
+            cameraMenu.open = true;
+        }
+
+        ImGui::TableNextColumn();
+        if (ImGui::Button("Lights", ImVec2(maxButtonWidth, 0)))
+        {
+            lightMenu.open = true;
+        }
+
+        ImGui::EndTable();
     }
 
     menuPayloads.visualMenuPayload.postProcessOpen = &postProcessMenu.open;
-    menuPayloads.visualMenuPayload.lightsOpen = &lightMenu.open;
     visualMenu.renderMenu(&menuPayloads.visualMenuPayload);
     postProcessMenu.renderMenu(menuPayloads.postProcessManager);
     cameraMenu.renderMenu(menuPayloads.camera);
     lightMenu.renderMenu(&menuPayloads.lightsList);
+    modelMenu.renderMenu(menuPayloads.model);
 
     renderMenuBar();
 }
