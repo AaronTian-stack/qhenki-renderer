@@ -28,7 +28,6 @@ PostProcessManager::PostProcessManager(vk::Device device, vk::Extent2D extent, B
                 extent.height,
                 1);
         afb[i].framebuffer = device.createFramebuffer(createInfo);
-        afb[i].attachment->createGenericSampler(vk::Filter::eNearest, vk::SamplerMipmapMode::eLinear);
     }
 }
 
@@ -60,7 +59,9 @@ void PostProcessManager::tonemap(vk::CommandBuffer commandBuffer,
     pingPongRenderPass->end();
 }
 
-void PostProcessManager::render(int startIndex, float time, vk::CommandBuffer commandBuffer, DescriptorLayoutCache &layoutCache, DescriptorAllocator &allocator)
+void PostProcessManager::render(int startIndex, float time, vk::CommandBuffer commandBuffer,
+                                DescriptorLayoutCache &layoutCache, DescriptorAllocator &allocator,
+                                vk::Sampler sampler)
 {
     currentAttachmentIndex = startIndex;
     int ping = startIndex; // start by reading from startIndex and outputting to 1-startIndex
@@ -77,7 +78,7 @@ void PostProcessManager::render(int startIndex, float time, vk::CommandBuffer co
         commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, postProcess->pipeline->getPipeline());
 
         vk::DescriptorSet inputSet;
-        auto descriptorInfo = afb[ping].attachment->getDescriptorInfo();
+        auto descriptorInfo = afb[ping].attachment->getDescriptorInfo(sampler);
         DescriptorBuilder::beginSet(&layoutCache, &allocator).bindImage(0, {descriptorInfo},
                            1, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eFragment)
                 .build(inputSet, layout);

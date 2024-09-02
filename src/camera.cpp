@@ -16,14 +16,14 @@ void Camera::update()
     right = glm::normalize(glm::cross(forward, worldUp));
     up = glm::normalize(glm::cross(right, forward));
 
-    if (InputProcesser::mouseButtons[GLFW_MOUSE_BUTTON_LEFT])
+    if (InputProcesser::getButton(GLFW_MOUSE_BUTTON_LEFT))
     {
         auto offset = InputProcesser::deltaMouse * InputProcesser::SENSITIVITY_ROTATE;
         regular.theta += offset.x;
         regular.phi += offset.y;
         regular.phi = glm::clamp(regular.phi, 1.f, 179.0f);
     }
-    if (InputProcesser::mouseButtons[GLFW_MOUSE_BUTTON_RIGHT])
+    if (InputProcesser::getButton(GLFW_MOUSE_BUTTON_RIGHT))
     {
         auto offset = InputProcesser::deltaMouse * InputProcesser::SENSITIVITY_TRANSLATE;
         regular.target -= right * offset.x ;

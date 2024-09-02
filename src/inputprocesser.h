@@ -4,22 +4,26 @@
 #include <GLFW/glfw3.h>
 #include "window.h"
 #include <unordered_map>
+#include <tsl/robin_map.h>
 
 class InputProcesser
 {
 private:
     inline static GLFWwindow *window;
     inline static glm::vec2 lastMousePos;
+    inline static tsl::robin_map<int, int> buttons;
 
 public:
     static void setCallbacks(Window &window);
 
     inline static glm::vec2 deltaMouse;
-    inline static std::unordered_map<int, int> mouseButtons;
+
+    static int getButton(int key);
 
     static void mouse_button_callback(GLFWwindow* window, int button, int action, int mods);
     static void mouse_callback(GLFWwindow* window, double xposIn, double yposIn);
     static void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
+    static void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods);
 
     static void disableCursor();
     static void enableCursor();

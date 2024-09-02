@@ -111,8 +111,6 @@ void VulkanApp::createGbuffer(vk::Extent2D extent, vk::RenderPass renderPass)
                                                            vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled,
                                                            vk::ImageAspectFlagBits::eColor);
 
-    outputAttachment->createGenericSampler();
-
     gBuffer = mkU<GBuffer>(vulkanContext.device.logicalDevice, extent);
 
     gBuffer->setAttachment(GBufferAttachmentType::ALBEDO, colorAttachment, true);
@@ -295,7 +293,6 @@ void VulkanApp::create(Window &window)
                                                    vk::ImageUsageFlagBits::eDepthStencilAttachment
                                                    | vk::ImageUsageFlagBits::eInputAttachment | vk::ImageUsageFlagBits::eSampled,
                                                    vk::ImageAspectFlagBits::eDepth);
-    depthBuffer->createGenericSampler(vk::Filter::eNearest, vk::SamplerMipmapMode::eNearest);
 
     createRenderPasses();
 
@@ -356,6 +353,8 @@ void VulkanApp::create(Window &window)
         i /= 64.0f;
     bayerMatrix = bufferFactory.createBuffer(sizeof(pattern), vk::BufferUsageFlagBits::eUniformBuffer, flags);
     bayerMatrix->fill(pattern);
+
+    samplerSuite = mkU<SamplerSuite>(vulkanContext.device.logicalDevice);
 }
 
 void VulkanApp::setUpCallbacks() {
@@ -437,11 +436,11 @@ void VulkanApp::recordOffscreenBuffer(vk::CommandBuffer commandBuffer, Descripto
 
     std::vector<std::vector<vk::DescriptorImageInfo>> gBufferInfo =
     {
-        {gBuffer->getAttachment(GBufferAttachmentType::ALBEDO)->getDescriptorInfo()},
-        {gBuffer->getAttachment(GBufferAttachmentType::NORMAL)->getDescriptorInfo()},
-        {gBuffer->getAttachment(GBufferAttachmentType::METAL_ROUGHNESS_AO)->getDescriptorInfo()},
-        {gBuffer->getAttachment(GBufferAttachmentType::EMISSIVE)->getDescriptorInfo()},
-        {depthBuffer->getDescriptorInfo()}
+        {gBuffer->getAttachment(GBufferAttachmentType::ALBEDO)->getDescriptorInfo(nullptr)},
+        {gBuffer->getAttachment(GBufferAttachmentType::NORMAL)->getDescriptorInfo(nullptr)},
+        {gBuffer->getAttachment(GBufferAttachmentType::METAL_ROUGHNESS_AO)->getDescriptorInfo(nullptr)},
+        {gBuffer->getAttachment(GBufferAttachmentType::EMISSIVE)->getDescriptorInfo(nullptr)},
+        {depthBuffer->getDescriptorInfo(samplerSuite->getNearestSampler())}
     };
     vk::DescriptorSet inputSet;
     auto builder = DescriptorBuilder::beginSet(&layoutCache, &allocator);
@@ -454,7 +453,8 @@ void VulkanApp::recordOffscreenBuffer(vk::CommandBuffer commandBuffer, Descripto
     builder.build(inputSet, layout);
 
     vk::DescriptorSet iblSamplerSet;
-    std::vector<std::vector<vk::DescriptorImageInfo>> cubeMapInfos = {
+    std::vector<std::vector<vk::DescriptorImageInfo>> cubeMapInfos =
+    {
             {envMap.cubeMap.texture->getDescriptorInfo()},
             {envMap.irradianceMap.texture->getDescriptorInfo()},
             {envMap.radianceMap.texture->getDescriptorInfo()},
@@ -595,7 +595,7 @@ void VulkanApp::recordCommandBuffer(FrameBuffer *framebuffer)
 
     // output already transitioned by render pass
     auto &outputAttachment = gBuffer->attachments.back();
-    auto outputAttachmentInfo = outputAttachment->getDescriptorInfo();
+    auto outputAttachmentInfo = outputAttachment->getDescriptorInfo(samplerSuite->getNearestSampler());
     auto bmi = bayerMatrix->getDescriptorInfo();
     vk::DescriptorSetLayout lt; vk::DescriptorSet ditherSet;
     DescriptorBuilder::beginSet(&layoutCache, &allocator)
@@ -612,7 +612,7 @@ void VulkanApp::recordCommandBuffer(FrameBuffer *framebuffer)
     primaryCommandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, passAndClear.pipeline->getPipeline());
     vk::DescriptorSet pprSamplerSet; vk::DescriptorSetLayout layout;
     DescriptorBuilder::beginSet(&layoutCache, &allocator)
-            .bindImage(0, {postProcessManager->getAttachment(0)->getDescriptorInfo()},
+            .bindImage(0, {postProcessManager->getAttachment(0)->getDescriptorInfo(samplerSuite->getNearestSampler())},
                        1, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eFragment)
             .build(pprSamplerSet, layout);
     primaryCommandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, passAndClear.pipeline->getPipelineLayout(),
@@ -622,7 +622,7 @@ void VulkanApp::recordCommandBuffer(FrameBuffer *framebuffer)
     ppr.end();
     //// END CLEAR COLOR
 
-    postProcessManager->render(1, (float)glfwGetTime(), primaryCommandBuffer, layoutCache, allocator);
+    postProcessManager->render(1, (float)glfwGetTime(), primaryCommandBuffer, layoutCache, allocator, samplerSuite->getNearestSampler());
 
     // final post process buffer already in shader read layout from render pass
 
@@ -635,7 +635,7 @@ void VulkanApp::recordCommandBuffer(FrameBuffer *framebuffer)
     primaryCommandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, pass.pipeline->getPipeline());
     vk::DescriptorSet samplerSet;
     DescriptorBuilder::beginSet(&layoutCache, &allocator)
-            .bindImage(0, {postProcessManager->getCurrentAttachment()->getDescriptorInfo()}, // output attachment sampler
+            .bindImage(0, {postProcessManager->getCurrentAttachment()->getDescriptorInfo(samplerSuite->getNearestSampler())}, // output attachment sampler
                        1, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eFragment)
             .build(samplerSet, layout);
 
@@ -716,7 +716,7 @@ void VulkanApp::updateCameraBuffer()
     auto const options = camera.options;
     auto view = camera.getViewMatrix();
     auto extent = gBuffer->getResolution();
-    float aspect = extent.width / (float) extent.height;
+    float aspect = extent.width / static_cast<float>(extent.height);
     auto proj = glm::perspective(glm::radians(camera.getFOV()), aspect, options.nearClip, options.farClip);
     proj[1][1] *= -1;
     cameraMatrices.position = camera.getPosition();
@@ -735,12 +735,12 @@ void VulkanApp::handleInput()
     if (inRenderWindow)
     {
         InputProcesser::setUserPointer(&camera);
-        if (InputProcesser::mouseButtons[GLFW_MOUSE_BUTTON_LEFT] ||
-            InputProcesser::mouseButtons[GLFW_MOUSE_BUTTON_RIGHT])
+        if ((InputProcesser::getButton(GLFW_MOUSE_BUTTON_LEFT) ||
+             InputProcesser::getButton(GLFW_MOUSE_BUTTON_RIGHT)) && !InputProcesser::getButton(GLFW_KEY_LEFT_ALT))
         {
             InputProcesser::disableCursor();
         }
-        else if (InputProcesser::getCursorState() == GLFW_CURSOR_DISABLED)
+        else if (InputProcesser::getCursorState() == GLFW_CURSOR_DISABLED || InputProcesser::getButton(GLFW_KEY_LEFT_ALT))
         {
             InputProcesser::setUserPointer(nullptr);
             InputProcesser::enableCursor();
@@ -803,7 +803,7 @@ void VulkanApp::attemptToDeleteOldModel()
         bool canDelete = true;
         for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
         {
-            auto result = vulkanContext.device.logicalDevice.getFenceStatus(frames[0].inFlightFence);
+            auto result = vulkanContext.device.logicalDevice.getFenceStatus(frames[i].inFlightFence);
             if (result != vk::Result::eSuccess)
             {
                 canDelete = false;

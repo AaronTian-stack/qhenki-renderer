@@ -29,7 +29,9 @@ public:
     void tonemap(vk::CommandBuffer commandBuffer,
                  DescriptorLayoutCache &layoutCache, DescriptorAllocator &allocator,
                  vk::DescriptorImageInfo &imageInfo, vk::DescriptorSet &ditherSet);
-    void render(int startIndex, float time, vk::CommandBuffer commandBuffer, DescriptorLayoutCache &layoutCache, DescriptorAllocator &allocator);
+    void render(int startIndex, float time, vk::CommandBuffer commandBuffer,
+                DescriptorLayoutCache &layoutCache, DescriptorAllocator &allocator,
+                vk::Sampler sampler);
     RenderPass& getPingPongRenderPass();
     void addToneMapper(uPtr<PostProcess> &toneMapper);
     void addPostProcess(const sPtr<PostProcess> &postProcess);

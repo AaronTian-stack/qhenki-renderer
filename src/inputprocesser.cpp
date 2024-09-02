@@ -3,7 +3,7 @@
 
 void InputProcesser::mouse_button_callback(GLFWwindow *window, int button, int action, int mods)
 {
-    if (!mouseButtons[GLFW_MOUSE_BUTTON_1] || !mouseButtons[GLFW_MOUSE_BUTTON_2])
+    if (!buttons[GLFW_MOUSE_BUTTON_1] || !buttons[GLFW_MOUSE_BUTTON_2])
     {
         // set lastMousePos to current mouse position
         double xpos, ypos;
@@ -20,7 +20,7 @@ void InputProcesser::mouse_button_callback(GLFWwindow *window, int button, int a
                 cam->adjustFOV(adjust);
         }
     }
-    mouseButtons[button] = action;
+    buttons[button] = action;
 }
 
 void InputProcesser::mouse_callback(GLFWwindow *window, double xposIn, double yposIn)
@@ -57,12 +57,18 @@ void InputProcesser::scroll_callback(GLFWwindow *window, double xoffset, double 
         cam->zoom(yoffset);
 }
 
+void InputProcesser::key_callback(GLFWwindow *window, int key, int scancode, int action, int mods)
+{
+    buttons[key] = action;
+}
+
 void InputProcesser::setCallbacks(Window &window)
 {
     InputProcesser::window = window.getWindow();
     glfwSetCursorPosCallback(InputProcesser::window, mouse_callback);
     glfwSetMouseButtonCallback(InputProcesser::window, mouse_button_callback);
     glfwSetScrollCallback(InputProcesser::window, scroll_callback);
+    glfwSetKeyCallback(InputProcesser::window, key_callback);
 
     glfwSetWindowUserPointer(InputProcesser::window, nullptr);
 }
@@ -91,4 +97,9 @@ void InputProcesser::setUserPointer(void *ptr)
 void *InputProcesser::getUserPointer()
 {
     return glfwGetWindowUserPointer(InputProcesser::window);
+}
+
+int InputProcesser::getButton(int key)
+{
+    return buttons[key];
 }

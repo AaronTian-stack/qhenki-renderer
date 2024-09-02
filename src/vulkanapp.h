@@ -25,6 +25,7 @@
 #include "vfx/effects/fxaa.h"
 #include "lights/lights.h"
 #include "vulkan/pipeline/pipelineshader.h"
+#include "vulkan/attachments/samplersuite.h"
 #include <atomic>
 #include <mutex>
 
@@ -38,6 +39,7 @@ private:
     std::vector<uPtr<Model>> models;
 
     LightingParameters lightingParameters;
+    uPtr<SamplerSuite> samplerSuite;
     uPtr<GBuffer> gBuffer;
     uPtr<Attachment> depthBuffer;
 

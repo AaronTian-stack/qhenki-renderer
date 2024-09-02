@@ -23,13 +23,14 @@ void FrameBuffer::destroy()
     }
 }
 
-std::vector<vk::DescriptorImageInfo> FrameBuffer::getDescriptorInfo()
+std::vector<vk::DescriptorImageInfo> FrameBuffer::getDescriptorInfo(const std::vector<vk::Sampler> &samplers)
 {
     std::vector<vk::DescriptorImageInfo> descriptorImageInfo;
     descriptorImageInfo.reserve(attachments.size());
-    for (auto &attachment : attachments)
+
+    for (int i = 0; i < attachments.size(); i++)
     {
-        descriptorImageInfo.push_back(attachment->getDescriptorInfo());
+        descriptorImageInfo.push_back(attachments[i]->getDescriptorInfo(samplers[std::min(i, (int)samplers.size() - 1)]));
     }
     return descriptorImageInfo;
 }

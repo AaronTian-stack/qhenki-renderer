@@ -248,6 +248,7 @@ void UserInterface::renderMenuBar()
         ImGui::BulletText("Ctrl +: Zoom in image");
         ImGui::BulletText("Ctrl -: Zoom out image");
         ImGui::BulletText("Middle Mouse: Pan image (double click to reset)");
+        ImGui::BulletText("Alt + Left Mouse: Pan image (double click to reset)");
         ImGui::BulletText("ESC: Quit");
         ImGui::EndPopup();
     }
@@ -267,13 +268,15 @@ bool UserInterface::renderImage(vk::DescriptorSet image, ImVec2 size)
 
     if (ImGui::IsWindowHovered())
     {
-        if (ImGui::IsMouseDown(ImGuiMouseButton_Middle))
+        auto trackpad = ImGui::IsKeyDown(ImGuiKey_LeftAlt) && ImGui::IsMouseDown(ImGuiMouseButton_Left);
+        if (ImGui::IsMouseDown(ImGuiMouseButton_Middle) || trackpad)
         {
             offset.x += ImGui::GetIO().MouseDelta.x;
             offset.y += ImGui::GetIO().MouseDelta.y;
         }
         // double click to reset
-        if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Middle))
+        if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Middle) ||
+            (ImGui::IsKeyDown(ImGuiKey_LeftAlt) && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)))
         {
             offset = ImVec2(0, 0);
         }

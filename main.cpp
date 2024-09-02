@@ -7,7 +7,7 @@
 
 #include "src/vulkanapp.h"
 
-Window window(1792, 778);
+Window window(1600, 900);
 
 int main()
 {

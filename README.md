@@ -72,7 +72,7 @@ My personal hobby renderer written in C++ using Vulkan. It is intended as a plac
   * Albedo, Normal, Metal/Roughness/Ambient Occlusion, and Emission
   * Implemented entirely using Vulkan Subpasses: Tiled-based renderer friendly
   * Position reconstructed from depth
-  * Supports transparency
+  * Supports transparency/opacity through dithering
 * PBR Pipeline
   * Metallic/Roughness Cook-Torrance BRDF
   * Dynamic Area Lights
@@ -98,6 +98,7 @@ My personal hobby renderer written in C++ using Vulkan. It is intended as a plac
     * Reinhard
     * Khronos PBR Neutral
     * ACES
+  * Banding is removed used dithering
 * Tangent Space Normal Mapping
   * Tangent vectors are automatically computed by the application using the [MikkTSpace](http://www.mikktspace.com/) standard (assuming the model doesn't already have them)
 * ImGUI Integration
