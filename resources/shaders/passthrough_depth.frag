@@ -16,7 +16,7 @@ void main()
     vec4 tex = texture(texSampler, fragUV);
     vec3 color = tex.rgb;
     // alpha is used as true false flag
-    if (pc.clearColor.a > 0.0 && tex.a == 0)
+    if (tex.a == 0)
     {
         color = pc.clearColor.rgb;
     }

@@ -76,5 +76,5 @@ void main()
         color = vec4(0.0, 0.0, 1.0, 1.0);
     }
 
-    outColor = color * mate;
+    outColor = vec4((color * mate).rgb, 1.0);
 }
