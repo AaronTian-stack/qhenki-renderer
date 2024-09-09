@@ -14,6 +14,7 @@
 #include "visualmenu.h"
 #include "postprocessmenu.h"
 #include "lightmenu.h"
+#include "modelmenu.h"
 #include <functional>
 
 struct ImGuiCreateParameters
@@ -29,6 +30,7 @@ struct MenuPayloads
     std::string *deviceName;
     void *camera;
     void *postProcessManager;
+    void *model;
     VisualMenuPayload visualMenuPayload;
     LightsList lightsList;
 };
@@ -44,6 +46,7 @@ private:
     CameraMenu cameraMenu;
     PostProcessMenu postProcessMenu;
     LightMenu lightMenu;
+    ModelMenu modelMenu;
 
     std::vector<float> frameTimes;
 

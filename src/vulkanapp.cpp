@@ -49,6 +49,8 @@ VulkanApp::~VulkanApp()
     displayRenderPass->destroy();
     renderPassBuilder.destroy();
 
+    samplerSuite->destroy();
+
     postProcessManager->destroy();
 
     gBuffer->destroy();
@@ -830,6 +832,10 @@ MenuPayloads VulkanApp::getPartialMenuPayload()
     m.deviceName = &vulkanContext.device.vkbDevice.physical_device.name;
     m.postProcessManager = postProcessManager.get();
     m.camera = &camera;
+
+    m.model = nullptr;
+    if (!models.empty()) m.model = models.back().get();
+
     m.visualMenuPayload.lightingParameters = &lightingParameters;
     m.visualMenuPayload.cubeMapRotation = &cubeMapRotation;
     m.visualMenuPayload.clearColor = &clearColor;

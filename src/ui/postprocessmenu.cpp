@@ -100,16 +100,18 @@ void PostProcessMenu::renderMenu(void *payload)
                     }
                     ImGui::PopID();
                 }
+                processRenderedMenus.clear();
                 for (int i = 0; i < activePostProcesses.size(); i++)
                 {
                     ImGui::PushID(i);
                     bool *open = isOpen(activePostProcesses[i]);
-                    if (open && *open)
+                    if (open && *open && !processRenderedMenus.contains(activePostProcesses[i]))
                     {
                         // breaks with docking so just disable it (window only)
                         ImGui::Begin(activePostProcesses[i]->name, open,
                                      ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoDocking);
                         renderPostProcessMenu(activePostProcesses[i]);
+                        processRenderedMenus.insert(activePostProcesses[i]);
                         if (ImGui::Button("Remove"))
                         {
                             indexToRemove = i;

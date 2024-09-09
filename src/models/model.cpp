@@ -40,7 +40,7 @@ void Model::updateAnimation(float time, int frame)
 {
     if (!animations.empty())
     {
-        auto &animation = animations[0];
+        auto &animation = animations[animationIndex];
         for (auto &channel : animation.channels)
         {
             auto &sampler = animation.samplers[channel.sampler];
@@ -52,8 +52,12 @@ void Model::updateAnimation(float time, int frame)
             const auto size = inputBuffer.size() * sizeof(unsigned char) / sizeof(float);
             auto inputTimes = reinterpret_cast<float*>(inputBuffer.data());
 
-            // pretty sure gltf animations always start at 0
-            const auto newTime = fmod(time, inputTimes[size - 1]);
+            // see https://github.com/KhronosGroup/glTF/issues/1327
+            // this is approach number 1 (unity / cesium style)
+//            const auto newTime = glm::clamp(fmod(time, inputTimes[size - 1]), inputTimes[0], inputTimes[size - 1]);
+            // approach 2 (sketchfab style)
+            const auto animationLength = inputTimes[size - 1] - inputTimes[0];
+            const auto newTime = fmod(time, animationLength) + inputTimes[0];
 
             int timeIndex = 0;
             for (int i = 0; i < size - 1; i++)
@@ -68,6 +72,7 @@ void Model::updateAnimation(float time, int frame)
             auto &outputBuffer = animationRawData[sampler.output];
 
             float interpolationValue = (newTime - inputTimes[timeIndex]) / (inputTimes[timeIndex + 1] - inputTimes[timeIndex]);
+            interpolationValue = glm::clamp(interpolationValue, 0.0f, 1.0f);
 
             if (channel.path == TargetPath::TRANSLATION)
             {

@@ -45,11 +45,6 @@ void VisualMenu::renderMenu(void *payload)
         {
             if(validPayload) *visualMenuPayload->postProcessOpen = !*visualMenuPayload->postProcessOpen;
         }
-        ImGui::SameLine();
-        if (ImGui::Button("Lights"))
-        {
-            if(validPayload) *visualMenuPayload->lightsOpen = !*visualMenuPayload->lightsOpen;
-        }
         ImGui::End();
     }
 }
