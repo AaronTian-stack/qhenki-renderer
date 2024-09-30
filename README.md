@@ -74,13 +74,13 @@ My personal hobby renderer written in C++ using Vulkan. It is intended as a plac
   * Position reconstructed from depth
   * Supports transparency/opacity through dithering
 * PBR Pipeline
-  * Metallic/Roughness Cook-Torrance BRDF
+  * [Frostbite](https://seblagarde.wordpress.com/wp-content/uploads/2015/07/course_notes_moving_frostbite_to_pbr_v32.pdf) Metallic/Roughness Cook-Torrance BRDF
   * Dynamic Area Lights
     * Sphere, tube, rectangle lights
   * Image-based lighting using environment maps
     * Generated offline and loaded as `dds` files
 * Compute Shader Mesh Skinning
-  * Skinning matrix calculations are done on the GPU
+  * Skinning matrix calculations for mesh skeletons are done on the GPU
 * Bindless Textures
   * Bind up to [4294967295 textures](https://vulkan.gpuinfo.org/displaydevicelimit.php?platform=windows&name=maxPerStageDescriptorSamplers) in one draw call depending on your hardware. Limited to 80 to maintain compatibility on macOS
 * Asynchronous Model Loading
@@ -98,7 +98,7 @@ My personal hobby renderer written in C++ using Vulkan. It is intended as a plac
     * Reinhard
     * Khronos PBR Neutral
     * ACES
-  * Banding is removed used dithering
+  * Banding from tone mapping is removed used dithering
 * Tangent Space Normal Mapping
   * Tangent vectors are automatically computed by the application using the [MikkTSpace](http://www.mikktspace.com/) standard (assuming the model doesn't already have them)
 * ImGUI Integration
