@@ -30,7 +30,7 @@ void LightMenu::renderMenu(void *payload)
                     ImGui::PopID();
                 }
                 // button to add another light
-                if (ImGui::Button("Add Sphere Light"))
+                if (ImGui::Button("Add Sphere Light") && lightsList->sphereLights->size() < 10)
                 {
                     lightsList->sphereLights->push_back({{}, {1.f, 1.f, 1.f}, 10.f, 1.f});
                 }
@@ -59,7 +59,7 @@ void LightMenu::renderMenu(void *payload)
                     }
                     ImGui::PopID();
                 }
-                if (ImGui::Button("Add Tube Light"))
+                if (ImGui::Button("Add Tube Light") && lightsList->tubeLights->size() < 10)
                 {
                     lightsList->tubeLights->push_back({{}, 0.2f, {1.f, 1.f, 1.f}, 10.f, 0.2f, {}, {}});
                 }
@@ -85,7 +85,7 @@ void LightMenu::renderMenu(void *payload)
                     }
                     ImGui::PopID();
                 }
-                if (ImGui::Button("Add Rectangle Light"))
+                if (ImGui::Button("Add Rectangle Light") && lightsList->rectangleLights->size() < 10)
                 {
                     lightsList->rectangleLights->push_back({{}, {1.f, 1.f, 1.f}, 10.f, {}, {}, {1.f, 1.f}});
                 }

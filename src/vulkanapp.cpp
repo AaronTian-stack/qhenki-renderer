@@ -470,7 +470,9 @@ void VulkanApp::recordOffscreenBuffer(vk::CommandBuffer commandBuffer, Descripto
     }
     cubeBuilder.build(iblSamplerSet, layout);
 
-    if (sphereLights.size() > MAX_LIGHTS) throw std::runtime_error("Too many sphere lights");
+    assert(sphereLights.size() <= MAX_LIGHTS);
+    assert(tubeLights.size() <= MAX_LIGHTS);
+    assert(rectangleLights.size() <= MAX_LIGHTS);
 
     auto sphereLightBufferInfo = sphereLightBuffers[currentFrame]->getDescriptorInfo();
     auto tubeLightBufferInfo = tubeLightsBuffers[currentFrame]->getDescriptorInfo();
