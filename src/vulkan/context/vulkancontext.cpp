@@ -161,11 +161,12 @@ bool VulkanContext::create(Window &window)
         queues.present = queues.graphics;
         queues.presentIndex = queues.graphicsIndex;
     }
-    auto q_transfer = vkb_device.get_queue(vkb::QueueType::transfer);
+    // try to get dedicated queue for transfer
+    auto q_transfer = vkb_device.get_dedicated_queue(vkb::QueueType::transfer);
     if (q_transfer.has_value())
     {
         queues.transfer = q_transfer.value();
-        queues.transferIndex = vkb_device.get_queue_index(vkb::QueueType::transfer).value();
+        queues.transferIndex = vkb_device.get_dedicated_queue_index(vkb::QueueType::transfer).value();
     }
     else
     {
