@@ -95,6 +95,7 @@ bool VulkanContext::create(Window &window)
     requiredFeatures.shaderInt16 = VK_TRUE;
 
     vkb::PhysicalDeviceSelector selector{ vkbInstance };
+
     auto phys_ret = selector.set_surface(surface)
             .set_minimum_version (1, 2)
             .add_required_extensions(deviceExtensions)
@@ -113,18 +114,18 @@ bool VulkanContext::create(Window &window)
     scalarFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SCALAR_BLOCK_LAYOUT_FEATURES;
     scalarFeatures.scalarBlockLayout = VK_TRUE;
 
-    VkPhysicalDevice16BitStorageFeatures storageFeatures{};
-    storageFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_16BIT_STORAGE_FEATURES;
-    storageFeatures.storageBuffer16BitAccess = VK_TRUE;
-    storageFeatures.storageInputOutput16 = VK_TRUE;
-    storageFeatures.storagePushConstant16 = VK_TRUE;
-    storageFeatures.uniformAndStorageBuffer16BitAccess = VK_TRUE;
+//    VkPhysicalDevice16BitStorageFeatures storageFeatures{};
+//    storageFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_16BIT_STORAGE_FEATURES;
+//    storageFeatures.storageBuffer16BitAccess = VK_TRUE;
+//    storageFeatures.storageInputOutput16 = VK_TRUE;
+//    storageFeatures.storagePushConstant16 = VK_TRUE;
+//    storageFeatures.uniformAndStorageBuffer16BitAccess = VK_TRUE;
 
     // by default, one queue from each family is enabled
     vkb::DeviceBuilder device_builder{ phys_ret.value() };
     auto dev_ret = device_builder
             .add_pNext(&scalarFeatures)
-            .add_pNext(&storageFeatures)
+            //.add_pNext(&storageFeatures) // causing issues with device selection
             .build();
     if (!dev_ret)
     {
@@ -139,12 +140,37 @@ bool VulkanContext::create(Window &window)
         vk::Device(vkb_device.device)
     };
 
-    auto queues = selectQueues(vkb_device, device.logicalDevice);
+//    auto queues = selectQueues(vkb_device, device.logicalDevice);
+//    auto opt = vkb_device.get_queue(vkb::QueueType::transfer);
+//    if (opt.has_value())
+//    {
+//        queues.transfer = vk::Queue(opt.value());
+//    }
 
-    auto opt = vkb_device.get_queue(vkb::QueueType::transfer);
-    if (opt.has_value())
+    QueuesIndices queues = {};
+    queues.graphics = vkb_device.get_queue(vkb::QueueType::graphics).value();
+    queues.graphicsIndex = vkb_device.get_queue_index(vkb::QueueType::graphics).value();
+    auto q_present = vkb_device.get_queue(vkb::QueueType::present);
+    if (q_present.has_value())
     {
-        queues.transfer = vk::Queue(opt.value());
+        queues.present = q_present.value();
+        queues.presentIndex = vkb_device.get_queue_index(vkb::QueueType::present).value();
+    }
+    else
+    {
+        queues.present = queues.graphics;
+        queues.presentIndex = queues.graphicsIndex;
+    }
+    auto q_transfer = vkb_device.get_queue(vkb::QueueType::transfer);
+    if (q_transfer.has_value())
+    {
+        queues.transfer = q_transfer.value();
+        queues.transferIndex = vkb_device.get_queue_index(vkb::QueueType::transfer).value();
+    }
+    else
+    {
+        queues.transfer = queues.graphics;
+        queues.transferIndex = queues.graphicsIndex;
     }
 
     queueManager.initQueues(queues);
