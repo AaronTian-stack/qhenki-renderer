@@ -320,31 +320,32 @@ uPtr<Buffer> GLTFLoader::getBuffer(BufferFactory &bufferFactory, tinygltf::Model
     if (flags & vk::BufferUsageFlagBits::eVertexBuffer)
     {
         if (accessor.componentType == TINYGLTF_COMPONENT_TYPE_INT) throw std::runtime_error("int not supported");
-        if (accessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE)
+        if (accessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE || accessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT)
         {
             if (accessor.type != 4) throw std::runtime_error("Invalid type"); // assumes is always joint index
-            vBuffer = bufferFactory.createBuffer(accessor.count * sizeof(glm::u16vec4), flags,
+            vBuffer = bufferFactory.createBuffer(accessor.count * sizeof(glm::uvec4), flags,
                                                  VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
             if (accessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE)
             {
                 const auto *data = reinterpret_cast<const glm::u8vec4*>(&buffer.data[bufferView.byteOffset + accessor.byteOffset]);
-                std::vector<glm::u16vec4> newData(accessor.count);
+                std::vector<glm::uvec4> newData(accessor.count);
+                for (int i = 0; i < accessor.count; i++)
+                {
+                    // hope this casts correctly
+                    newData[i] = data[i];
+                }
+                vBuffer->fill(newData.data());
+            }
+            if (accessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT)
+            {
+                const auto *data = reinterpret_cast<const glm::u16vec4*>(&buffer.data[bufferView.byteOffset + accessor.byteOffset]);
+                std::vector<glm::uvec4> newData(accessor.count);
                 for (int i = 0; i < accessor.count; i++)
                 {
                     newData[i] = data[i];
                 }
                 vBuffer->fill(newData.data());
             }
-//            if (accessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT)
-//            {
-//                const auto *data = reinterpret_cast<const glm::u16vec4*>(&buffer.data[bufferView.byteOffset + accessor.byteOffset]);
-//                std::vector<glm::uvec4> newData(accessor.count);
-//                for (int i = 0; i < accessor.count; i++)
-//                {
-//                    newData[i] = data[i];
-//                }
-//                vBuffer->fill(newData.data());
-//            }
         }
         else
         {

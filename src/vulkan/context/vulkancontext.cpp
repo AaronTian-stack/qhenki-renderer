@@ -124,7 +124,7 @@ bool VulkanContext::create(Window &window)
     vkb::DeviceBuilder device_builder{ phys_ret.value() };
     auto dev_ret = device_builder
             .add_pNext(&scalarFeatures)
-            .add_pNext(&storageFeatures)
+            //.add_pNext(&storageFeatures) // causing issues with device selection
             .build();
     if (!dev_ret)
     {
