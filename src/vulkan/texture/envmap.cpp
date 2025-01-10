@@ -1,5 +1,4 @@
 #include "envmap.h"
-#include <gltf/stb_image.h>
 
 #include <fstream>
 #include <vector>
@@ -10,7 +9,7 @@
 #include <thread>
 #include <iostream>
 
-#define MULTITHREAD_ENVIRONMENT_MAP
+//#define MULTITHREAD_ENVIRONMENT_MAP
 
 void EnvironmentMap::create(BufferFactory &bufferFactory, CommandPool &commandPool, QueueManager &queueManager,
                             const char *path)
@@ -33,7 +32,8 @@ void EnvironmentMap::create(BufferFactory &bufferFactory, CommandPool &commandPo
     };
 
     uPtr<Buffer> deferStagingBuffer;
-    auto brdfLUTL = [&]() {
+    auto brdfLUTL = [&](
+            vk::CommandBuffer *commandBuffer) {
         //// BRDF LUT
         std::ifstream file("../resources/envmaps/brdf_lut.dds", std::ios::binary);
         std::vector<char> fileData((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
@@ -73,16 +73,17 @@ void EnvironmentMap::create(BufferFactory &bufferFactory, CommandPool &commandPo
         };
         brdfLUT.texture->createSampler(samplerInfo);
 
-        commandBuffers[3] = defer.cmd;
+        *commandBuffer = defer.cmd;
         deferStagingBuffer = std::move(defer.stagingBufferToDestroy);
     };
 
+    std::cout << "Creating Environment Maps..." << std::endl;
     auto time1 = std::chrono::high_resolution_clock::now();
 #ifdef MULTITHREAD_ENVIRONMENT_MAP
     std::thread t1(cubeMapL, &commandBuffers[0]);
     std::thread t2(irradianceMapL, &commandBuffers[1]);
     std::thread t3(radianceMapL, &commandBuffers[2]);
-    std::thread t4(brdfLUTL);
+    std::thread t4(brdfLUTL, &commandBuffers[3]);
 
     t1.join();
     t2.join();
@@ -92,7 +93,7 @@ void EnvironmentMap::create(BufferFactory &bufferFactory, CommandPool &commandPo
     cubeMapL(&commandBuffers[0]);
     irradianceMapL(&commandBuffers[1]);
     radianceMapL(&commandBuffers[2]);
-    brdfLUTL();
+    brdfLUTL(&commandBuffers[3]);
 #endif
 
     auto time2 = std::chrono::high_resolution_clock::now();

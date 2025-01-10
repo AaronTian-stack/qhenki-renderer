@@ -37,7 +37,7 @@ file(GLOB_RECURSE VK_BOOTSTRAP CONFIGURE_DEPENDS
 set(dir ${CMAKE_CURRENT_SOURCE_DIR})
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${dir}/build)
 
-#Include library files
+# Include library files
 include_directories(
         ${CMAKE_CURRENT_SOURCE_DIR}/dependencies/include
         ${CMAKE_CURRENT_SOURCE_DIR}/dependencies/include/imgui
@@ -56,9 +56,9 @@ target_link_libraries(${PROJECT_NAME} Vulkan::Vulkan)
 if (APPLE)
     target_link_libraries(${PROJECT_NAME} ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/libglfw.3.dylib)
 elseif (WIN32)
-    target_link_libraries(${PROJECT_NAME} ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/glfw3.dll)
+    target_link_libraries(${PROJECT_NAME} ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/libglfw3dll.a)
 endif ()
 
-# include the code to compile shaders
+# Include the code to compile shaders
 include(resources/shaders/compile_shaders.cmake)
 compile_shaders(${CMAKE_CURRENT_SOURCE_DIR}/resources/shaders ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
